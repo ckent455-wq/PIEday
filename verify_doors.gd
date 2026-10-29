@@ -29,4 +29,3 @@ func run_checks() -> void:
 	assert(not game.has_node("IndoorBoundary_Door_02"), "Freezer is an interior room")
 	print("PASS: 13 doors open and close; indoor spawn on floor; exterior barriers active.")
 	quit()
-

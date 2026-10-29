@@ -233,4 +233,3 @@ func _update_interaction() -> void:
 		interaction_label.text = "[E] " + ("Close door" if target_door.get_meta("open") else "Open door")
 		if target_door.name == "Door_03":
 			interaction_label.text += " (exterior access restricted)"
-

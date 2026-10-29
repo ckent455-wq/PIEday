@@ -9,7 +9,7 @@ make customers angry; correct orders make them leave happy.
 
 Download the Windows ZIP from this repository's **Releases** page and extract
 the entire folder. Keep `PIEday.exe` and `PIEday.pck` together. Run `PIEday.exe`
-for the full shift flow, or `Play Customer Demo.cmd` to start with the daily
+for the full shift flow, or press **F6 in the game** to start with the daily
 tasks already complete. The unsigned prototype may show a Windows security
 prompt on a new PC.
 

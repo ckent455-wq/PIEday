@@ -1,0 +1,10 @@
+.godot/
+
+*.log
+builds/
+dist/
+*.blend1
+*.blend2
+__pycache__/
+.DS_Store
+__MACOSX/

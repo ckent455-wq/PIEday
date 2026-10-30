@@ -6,6 +6,7 @@ func _initialize() -> void:
 func run_checks() -> void:
 	var game = load("res://main.tscn").instantiate()
 	root.add_child(game)
+	game.shift.earnings.save_enabled = false
 	game.set_physics_process(false)
 	await physics_frame
 	var door: MeshInstance3D

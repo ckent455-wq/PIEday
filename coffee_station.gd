@@ -10,9 +10,12 @@ var cup_color := Color(0.88, 0.82, 0.67)
 var band_color := Color(0.36, 0.19, 0.085)
 var liquid_color := Color(0.10, 0.035, 0.012)
 var built_in_cup_holder := false
+var easy_coffee := false
 var reference_cup_mesh: ArrayMesh
 var fill_height := 0.15
 var fill_radius := 0.048
+var cup_position := Vector3(0, -0.20, -0.09)
+var spout_position := Vector3(0, 0.175, -0.09)
 var shift: Node3D
 var state := "empty"
 var holding_empty := false
@@ -34,7 +37,7 @@ func setup(host: Node3D) -> void:
 	collision_layer = 4
 	set_meta("action", machine_action)
 	if built_in_cup_holder: _extract_reference_cup()
-	_collision(self, Vector3(0.42, 0.42, 0.32), Vector3.ZERO)
+	_collision(self, Vector3(0.85, 0.70, 0.55) if easy_coffee else Vector3(0.42, 0.42, 0.32), Vector3.ZERO)
 	status = shift._label(self, drink_name.to_upper() + ": TAKE A CUP FIRST", Vector3(0, 0.58, 0), 0.0016)
 	stack = StaticBody3D.new()
 	stack.name = "CupHolder" if built_in_cup_holder else "CupStack"
@@ -51,9 +54,10 @@ func setup(host: Node3D) -> void:
 	held_cup.position = Vector3(-0.30, -0.28, -0.68)
 	machine_cup = _cup(self)
 	machine_cup.name = drink_name + "CupUnderSpout"
-	machine_cup.position = Vector3(0, -0.20, -0.09)
+	machine_cup.position = cup_position
 	liquid = _cylinder(machine_cup, fill_radius, 0.003, Vector3(0, 0.012, 0), liquid_color)
-	stream = _cylinder(self, 0.004, 0.21, Vector3(0, 0.07, -0.09), liquid_color)
+	var cup_surface := cup_position + Vector3(0, fill_height, 0)
+	stream = _cylinder(self, 0.004, spout_position.y - cup_surface.y, (spout_position + cup_surface) * 0.5, liquid_color)
 	reset_station()
 
 func prompt(action: String) -> String:
@@ -63,6 +67,8 @@ func prompt(action: String) -> String:
 	match state:
 		"brewing": return "Filling %s... %d%%" % [drink_name.to_lower(), int(fill * 100)]
 		"ready": return "[Click / E] Pick up full " + drink_name.to_lower() + " cup"
+	if easy_coffee and not holding_empty:
+		return "[Click / E] Make coffee (%d cups left)" % cups_left if cups_left > 0 else "No coffee cups left until next shift"
 	return "[Click / E] Place empty cup and fill" if holding_empty else "Pull an empty cup from the dispenser's front holder first" if built_in_cup_holder else "Take an empty cup from the stack first"
 
 func interact(action: String) -> void:
@@ -87,14 +93,24 @@ func interact(action: String) -> void:
 			state = "empty"
 			machine_cup.visible = false
 			status.text = drink_name.to_upper() + ": TAKE A CUP FIRST"
+			if easy_coffee: status.text = "COFFEE: CLICK TO MAKE"
 			_say("Full coffee picked up. Click the serving tray on the counter to place it.")
 		return
 	if state == "brewing":
 		_say("The cup is still filling. Pick it up when the machine says READY.")
 		return
 	if not holding_empty:
-		_say("Pick up an empty cup from the stack beside the machine first.")
-		return
+		if not easy_coffee:
+			_say("Pick up an empty cup from the stack beside the machine first.")
+			return
+		if shift.has_empty_cup() or not shift.carried_item.is_empty():
+			_say("Free your hand before making coffee.")
+			return
+		if cups_left <= 0:
+			_say("No empty cups left. The stack is refilled next shift.")
+			return
+		cups_left -= 1
+		_rebuild_stack()
 	holding_empty = false
 	held_cup.visible = false
 	state = "brewing"
@@ -111,6 +127,7 @@ func interact(action: String) -> void:
 func _fill_cup(amount: float) -> void:
 	fill = amount
 	liquid.position.y = lerpf(0.012, fill_height, amount)
+	if easy_coffee: status.text = "COFFEE: FILLING %d%%" % int(amount * 100)
 
 func _finish_brewing() -> void:
 	state = "ready"
@@ -137,6 +154,7 @@ func reset_station() -> void:
 	machine_cup.visible = false
 	stream.visible = false
 	status.text = drink_name.to_upper() + ": TAKE A CUP FIRST"
+	if easy_coffee: status.text = "COFFEE: CLICK TO MAKE"
 	_rebuild_stack()
 
 func _rebuild_stack() -> void:

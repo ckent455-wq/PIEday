@@ -6,11 +6,13 @@ func _initialize() -> void:
 func run_checks() -> void:
 	var game = load("res://main.tscn").instantiate()
 	root.add_child(game)
+	game.shift.earnings.save_enabled = false
 	await physics_frame
+	print("REGISTERED_DOORS ", game.doors.map(func(door): return door.name))
 	for door in game.doors:
 		if door.get_meta("open"): game._toggle_door(door)
 	await create_timer(0.55).timeout
-	assert(game.doors.size() == 13, "Expected all 13 building, cubicle, cooler and appliance doors")
+	assert(game.doors.size() == 14, "Expected all 14 building, cubicle, cooler, appliance and back doors")
 	for door in game.doors:
 		var closed: float = door.rotation.y
 		var closed_center: Vector3 = door.global_transform * door.mesh.get_aabb().get_center()
@@ -27,5 +29,5 @@ func run_checks() -> void:
 	assert(game.player.position.distance_to(Vector3(-2, -0.094, 0)) < 0.2)
 	assert(game.get_node("IndoorBoundary_Door_03").collision_layer == 2)
 	assert(not game.has_node("IndoorBoundary_Door_02"), "Freezer is an interior room")
-	print("PASS: 13 doors open and close; indoor spawn on floor; exterior barriers active.")
+	print("PASS: 14 doors open and close; indoor spawn on floor; exterior barriers active.")
 	quit()

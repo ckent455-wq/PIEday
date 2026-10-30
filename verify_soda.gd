@@ -4,6 +4,7 @@ func _initialize():
 func check():
 	var game = load("res://main.tscn").instantiate()
 	root.add_child(game)
+	game.shift.earnings.save_enabled = false
 	game.set_physics_process(false)
 	game.set_process_unhandled_input(false)
 	var shift = game.shift
@@ -47,7 +48,6 @@ func check():
 		print("SODA_TARGET ", action, " ", game.target_action)
 		assert(is_instance_valid(game.target_action) and game.target_action.get_meta("action") == action, "Dispenser and stack must be reachable from directly in front")
 	game.camera.look_at(Vector3(1.35,1.6,-7.0))
-	shift._update_panel()
 	if DisplayServer.get_name() != "headless":
 		await create_timer(0.2).timeout
 		await RenderingServer.frame_post_draw
@@ -62,6 +62,7 @@ func check():
 		if pie.get_meta("item") == "Apple pie":
 			apple = pie
 			break
+	apple.set_meta("bake_quality", "perfect") # Oven flow is covered by verify_oven.gd.
 	shift.pickup_item("Apple pie", apple)
 	shift.place_carried()
 	for child in shift.customer.get_children():

@@ -10,7 +10,34 @@
 - **Food Inventory Sprites – 50 Pack by Polyy:** CC0; included license and README
   in `assets/food/food_inventory_sprites_50_pack/`. The golden meat pie sprite
   informed the new Blender pie's appearance.
-- **Pie, cafeteria tray, customer modifications, and service-bell sound:** created
+- **Service-bell sound:** user-provided `609722__theplax__desk-bell.wav`,
+  downloaded October 28, 2026; included as `assets/audio/service_bell.wav`.
+  Creator name in the source filename: theplax. No license file was supplied.
+- **Pie, cafeteria tray, and customer modifications:** created
   for this project. Editable Blender files and generation scripts are in `art/`.
 
 This file records provenance; it does not relicense third-party material.
+
+- **Intro typewriter:** user-provided `Text Typerwriter.zip`. The included
+  `atwriter.ttf` font and `keyPress.wav` sound are in `assets/typewriter/`.
+  Godot implementation adapts the per-character playback and volume variation
+  from George Blackwell's 2019 `TextTyper.cs`. Original source is preserved in
+  `art/typewriter/`; its MIT notice is in `assets/typewriter/LICENSE.txt`.
+  No separate font or audio license file accompanied those supplied assets.
+
+- **Shift clipboard:** modeled in Blender for this project using the
+  user-provided `clipboard.jpg` as a visual reference. Reference, generation
+  script, and editable `shift_clipboard.blend` are in `art/clipboard/`.
+  The game-ready model is `assets/clipboard/shift_clipboard.glb`.
+
+- **Outdoor dumpster:** user-provided `Trash Dumpster.glb`, downloaded
+  October 29, 2026. Original preserved in `art/dumpster/source.glb`;
+  normalized portable model in `assets/dumpster/dumpster.glb`.
+  No license or attribution file accompanied the supplied model.
+
+- **Morning-duty trash bag:** user-provided `Retro PSX Trash bag update.zip`,
+  downloaded October 29, 2026. Original FBX variants and color textures are
+  preserved in `art/trashbag/source/`. Converted to self-contained GLBs in
+  `assets/trashbag/` with the supplied black texture and 0.55m height.
+  Variant A replaces the morning-duty placeholder; variant B is also available.
+  No license or attribution file was included in the supplied ZIP.

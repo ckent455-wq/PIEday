@@ -1,7 +1,9 @@
 extends Node3D
 
 const PIE_NAMES := ["Meat pie", "Apple pie", "Cherry pie"]
-const ORDERS := [["Meat pie", "Donut", "Coffee"], ["Apple pie", "Soda"], ["Cherry pie", "Donut", "Coffee"], ["Meat pie", "Soda"]]
+const SHIRT_COLORS := [Color(0.12,0.32,0.42), Color(0.48,0.12,0.10), Color(0.18,0.35,0.17), Color(0.48,0.32,0.10), Color(0.32,0.18,0.40), Color(0.60,0.53,0.39), Color(0.21,0.22,0.25), Color(0.57,0.30,0.23)]
+var last_shirt_color := -1
+const ORDERS := [["Meat pie", "Donut", "Coffee"], ["Apple pie", "Soda"], ["Cherry pie", "Donut", "Coffee"], ["Apple pie", "Donut", "Coffee"], ["Meat pie", "Soda"], ["Cherry pie", "Soda"]]
 var game: Node3D
 var phase := "prep"
 var tasks := {"bathroom": false, "kitchen": false, "trash": false}
@@ -24,11 +26,11 @@ var lost := 0
 var order_index := 0
 var arrival_delay := 0.0
 var animation_time := 0.0
-var panel: Label
 var notice: Label
 var held_tray: Node3D
 var task_nodes: Dictionary = {}
 var carrying_trash := false
+var held_trash: Node3D
 var cleaning_progress := 0.0
 var cleaning_task := ""
 var all_pies: Array[Node3D] = []
@@ -43,15 +45,24 @@ var carried_visual: Node3D
 var coffee_station: StaticBody3D
 var soda_station: StaticBody3D
 var service_bell: StaticBody3D
+var oven: StaticBody3D
+var earnings := preload("res://earnings.gd").new()
+var service_seconds := 0.0
+var payment_label: Label
+var payment_time := 0.0
+var cash_label: Label
+const SHIFT_SECONDS := 300.0
+var shift_remaining := SHIFT_SECONDS
+var closing_time := false
+var shift_clock: Label
 
 func setup(host: Node3D) -> void:
 	game = host
 	name = "ShiftScenario"
 	_build_hud()
 	_tag_pies()
-	_make_station("donut", "DONUTS", Vector3(0.15, 1.46, -5.02), Color(0.85, 0.55, 0.23))
-	_make_station("clock", "SHIFT BOARD", Vector3(-3.9, 1.3, -5.0), Color(0.2, 0.65, 0.43))
-	_make_station("dispose", "REFUSE HATCH", Vector3(10.5, 1.05, 3.65), Color(0.48, 0.52, 0.53))
+	_setup_donut_case()
+	_make_shift_board()
 	_make_task("bathroom", "BATHROOM: hold E to scrub", Vector3(-7.15, -0.075, -10.1))
 	_make_task("kitchen", "KITCHEN: hold E to scrub", Vector3(0, -0.075, -11.7))
 	_make_task("trash", "TRASH: E to collect bag", Vector3(10.1, -0.075, 1.5))
@@ -81,6 +92,12 @@ func setup(host: Node3D) -> void:
 	carried_visual = Node3D.new()
 	hand_anchor.add_child(carried_visual)
 	carried_visual.position = Vector3(0.25, -0.32, -0.8)
+	held_trash = preload("res://assets/trashbag/trashbag_a.glb").instantiate()
+	held_trash.name = "HeldTrashBag"
+	hand_anchor.add_child(held_trash)
+	held_trash.position = Vector3(0.45, -0.72, -1.2)
+	held_trash.scale = Vector3.ONE * 1.25
+	held_trash.visible = false
 	add_child(held_tray)
 	var light := DirectionalLight3D.new()
 	light.rotation_degrees = Vector3(-45, -25, 0)
@@ -110,6 +127,7 @@ func setup(host: Node3D) -> void:
 	tray_model.scale = Vector3.ONE * 1.95
 	held_tray.visible = true
 	coffee_station = preload("res://coffee_station.gd").new()
+	coffee_station.easy_coffee = true
 	add_child(coffee_station)
 	coffee_station.setup(self)
 	soda_station = preload("res://coffee_station.gd").new()
@@ -121,6 +139,9 @@ func setup(host: Node3D) -> void:
 	soda_station.stack_offset = Vector3(0, -0.50, 0.10)
 	soda_station.fill_height = 0.205
 	soda_station.fill_radius = 0.061
+	# Rest on the dispenser's recessed drip tray, directly below a nozzle.
+	soda_station.cup_position = Vector3(0.126, -0.195, -0.48)
+	soda_station.spout_position = Vector3(0.126, 0.358, -0.48)
 	soda_station.fill_seconds = 1.8
 	soda_station.cup_color = Color(0.75, 0.10, 0.065)
 	soda_station.band_color = Color(0.9, 0.88, 0.80)
@@ -136,6 +157,9 @@ func setup(host: Node3D) -> void:
 	service_bell = preload("res://service_bell.gd").new()
 	add_child(service_bell)
 	service_bell.setup(self)
+	oven = preload("res://oven.gd").new()
+	add_child(oven)
+	oven.setup(self)
 	if "--customer-demo" in OS.get_cmdline_user_args():
 		start_demo()
 	else:
@@ -144,18 +168,6 @@ func setup(host: Node3D) -> void:
 func _build_hud() -> void:
 	var canvas := CanvasLayer.new()
 	add_child(canvas)
-	var background := ColorRect.new()
-	background.color = Color(0.025, 0.035, 0.045, 0.92)
-	background.position = Vector2(824, 18)
-	background.size = Vector2(438, 370)
-	background.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	canvas.add_child(background)
-	panel = Label.new()
-	panel.position = Vector2(842, 32)
-	panel.size = Vector2(402, 345)
-	panel.add_theme_font_size_override("font_size", 19)
-	panel.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	canvas.add_child(panel)
 	notice = Label.new()
 	notice.position = Vector2(24, 598)
 	notice.size = Vector2(1190, 100)
@@ -165,6 +177,59 @@ func _build_hud() -> void:
 	notice.add_theme_constant_override("shadow_offset_x", 2)
 	notice.add_theme_constant_override("shadow_offset_y", 2)
 	canvas.add_child(notice)
+	payment_label = Label.new()
+	payment_label.position = Vector2(24, 510)
+	payment_label.add_theme_font_size_override("font_size", 25)
+	payment_label.add_theme_color_override("font_color", Color(0.55, 1.0, 0.65))
+	payment_label.add_theme_color_override("font_shadow_color", Color.BLACK)
+	payment_label.add_theme_constant_override("shadow_offset_x", 2)
+	payment_label.add_theme_constant_override("shadow_offset_y", 2)
+	payment_label.visible = false
+	canvas.add_child(payment_label)
+	cash_label = Label.new()
+	cash_label.position = Vector2(24, 20)
+	cash_label.add_theme_font_size_override("font_size", 30)
+	cash_label.add_theme_color_override("font_color", Color(0.65, 1.0, 0.70))
+	cash_label.add_theme_color_override("font_shadow_color", Color.BLACK)
+	cash_label.add_theme_constant_override("shadow_offset_x", 2)
+	cash_label.add_theme_constant_override("shadow_offset_y", 2)
+	cash_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	canvas.add_child(cash_label)
+	_update_cash_display()
+	shift_clock = Label.new()
+	shift_clock.position = Vector2(24, 58)
+	shift_clock.add_theme_font_size_override("font_size", 21)
+	shift_clock.add_theme_color_override("font_shadow_color", Color.BLACK)
+	shift_clock.add_theme_constant_override("shadow_offset_x", 2)
+	shift_clock.add_theme_constant_override("shadow_offset_y", 2)
+	shift_clock.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	canvas.add_child(shift_clock)
+	_update_shift_clock()
+
+func _update_shift_clock() -> void:
+	if phase == "prep": shift_clock.text = "READY TO OPEN"
+	elif phase == "cleanup": shift_clock.text = "AFTER HOURS - CLEANUP"
+	elif phase == "closed": shift_clock.text = "CLOSED"
+	elif closing_time: shift_clock.text = "CLOSING - LAST CUSTOMER"
+	else:
+		var seconds := int(ceil(shift_remaining))
+		shift_clock.text = "SHIFT  %d:%02d" % [seconds / 60, seconds % 60]
+	shift_clock.modulate = Color(1, 0.7, 0.4) if closing_time else Color.WHITE
+
+func _finish_day() -> void:
+	begin_cleanup()
+
+func _show_day_summary() -> void:
+	earnings.finish_day()
+	_update_cash_display()
+	phase = "closed"
+	arrival_delay = 0
+	_message("SHIFT COMPLETE! Sales: $%d | Tips: $%d | Service: $%d | Streak: $%d\nClosing bonus: $%d | Today: $%d | Cash: $%d\n%s" % [earnings.sales, earnings.tips, earnings.service_rewards, earnings.streak_rewards, earnings.closing_bonus, earnings.day_total(), earnings.cash, "TREATMENT FUNDED! You have saved enough for Grandpa." if earnings.cash >= earnings.TREATMENT_GOAL else "Use the shift clipboard to begin the next day."])
+	notice_time = 0
+	_update_shift_clock()
+
+func _update_cash_display() -> void:
+	if is_instance_valid(cash_label): cash_label.text = "CASH  $%d / $15,000" % earnings.cash
 
 func _tag_pies() -> void:
 	all_pies.clear()
@@ -180,24 +245,42 @@ func _tag_pies() -> void:
 		for column in range(3):
 			_label(interior, PIE_NAMES[column].to_upper(), Vector3(0.68 + column * 0.56, 0.17 + row * 0.52, -8.91), 0.0012)
 
-func _make_station(action: String, title: String, location: Vector3, color: Color) -> void:
+func _setup_donut_case() -> void:
+	# Use the actual case, trays and displayed donuts as pickup targets.
+	for mesh in game.find_children("*", "MeshInstance3D", true, false):
+		if mesh.name == "Showcase" or mesh.name.begins_with("Donus") or mesh.name in ["Tray_04", "Tray_03", "Tray_02", "Tray_01_001"]:
+			mesh.set_meta("action", "donut")
+		if mesh.name == "Showcase":
+			for surface in range(mesh.mesh.get_surface_count()):
+				var original: Material = mesh.get_active_material(surface)
+				if original.resource_name != "Glass": continue
+				var glass := StandardMaterial3D.new()
+				glass.resource_name = "Donut case clear glass"
+				glass.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+				glass.albedo_color = Color(0.82, 0.94, 1.0, 0.10)
+				glass.roughness = 0.08
+				glass.metallic_specular = 0.35
+				glass.cull_mode = BaseMaterial3D.CULL_DISABLED
+				mesh.set_surface_override_material(surface, glass)
+
+func _make_shift_board() -> void:
 	var node := StaticBody3D.new()
-	node.name = "Station_" + action
+	node.name = "Station_clock"
 	node.collision_layer = 4
 	add_child(node)
-	node.position = location
-	node.set_meta("action", action)
+	# The dining-room side of this wall faces +X at x = -3.7496.
+	node.position = Vector3(-3.735, 2.05, -5.0)
+	node.set_meta("action", "clock")
 	var shape := BoxShape3D.new()
-	shape.size = Vector3(0.42, 0.28, 0.3)
+	shape.size = Vector3(0.10, 0.80, 0.54)
 	var collider := CollisionShape3D.new()
 	collider.shape = shape
+	collider.position.x = 0.04
 	node.add_child(collider)
-	_box(node, Vector3(0, -0.12, 0), Vector3(0.45, 0.035, 0.32), color)
-	_label(node, title, Vector3(0, 0.24, 0), 0.0018)
-	if action in ["coffee", "soda", "donut"]:
-		_item_model(node, {"coffee": "Coffee", "soda": "Soda", "donut": "Donut"}[action], Vector3(0, -0.09, 0), 1.0)
-	elif action == "dispose":
-		_box(node, Vector3.ZERO, Vector3(0.4, 0.24, 0.05), color)
+	var clipboard: Node3D = preload("res://assets/clipboard/shift_clipboard.glb").instantiate()
+	clipboard.name = "ShiftClipboard"
+	node.add_child(clipboard)
+	clipboard.rotation.y = PI / 2
 
 func _make_task(id: String, title: String, location: Vector3) -> void:
 	var node := StaticBody3D.new()
@@ -213,10 +296,17 @@ func _make_task(id: String, title: String, location: Vector3) -> void:
 	collider.position.y = 0.2
 	node.add_child(collider)
 	if id == "trash":
-		var bag := SphereMesh.new()
-		bag.radius = 0.22
-		bag.height = 0.52
-		_mesh(node, bag, Vector3(0, 0.26, 0), Color(0.045, 0.05, 0.04))
+		var bag: Node3D = preload("res://assets/trashbag/trashbag_a.glb").instantiate()
+		bag.name = "MorningTrashBag"
+		bag.scale = Vector3.ONE * 1.55
+		node.add_child(bag)
+		shape.size = Vector3(0.95, 0.90, 0.95)
+		collider.position.y = 0.45
+		for mesh in bag.find_children("*", "MeshInstance3D", true, false):
+			for surface in range(mesh.mesh.get_surface_count()):
+				var material = mesh.get_active_material(surface)
+				if material is BaseMaterial3D:
+					material.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST_WITH_MIPMAPS
 	else:
 		for i in range(5):
 			var stain := CylinderMesh.new()
@@ -225,7 +315,7 @@ func _make_task(id: String, title: String, location: Vector3) -> void:
 			stain.height = 0.006
 			stain.radial_segments = 10
 			_mesh(node, stain, Vector3(sin(i * 2.1) * 0.3, 0.005 + i * 0.0004, cos(i * 1.7) * 0.3), Color(0.21, 0.16, 0.075))
-	_label(node, title, Vector3(0, 0.65, 0), 0.0015)
+	_label(node, title, Vector3(0, 1.0 if id == "trash" else 0.65, 0), 0.0015)
 	task_nodes[id] = node
 
 func begin_prep() -> void:
@@ -233,17 +323,39 @@ func begin_prep() -> void:
 	_reset_customer()
 	_clear_tray(true)
 	phase = "prep"
-	carrying_trash = false
+	closing_time = false
+	shift_remaining = SHIFT_SECONDS
+	_update_shift_clock()
+	_set_carrying_trash(false)
 	cleaning_progress = 0.0
+	for id in tasks:
+		tasks[id] = true
+		task_nodes[id].visible = false
+		task_nodes[id].collision_layer = 0
+	_reset_stock()
+	_open_staff_doors()
+	game.set_night(false)
+	_message("Ready for the day. Use the shift clipboard to open the diner.")
+
+func begin_cleanup() -> void:
+	_reset_customer()
+	_clear_tray(true)
+	arrival_delay = 0
+	phase = "cleanup"
+	closing_time = true
+	_set_carrying_trash(false)
+	cleaning_progress = 0
 	for id in tasks:
 		tasks[id] = false
 		task_nodes[id].visible = true
 		task_nodes[id].collision_layer = 4
-	_reset_stock()
-	_open_staff_doors()
-	_message("Before opening: clean the bathroom and kitchen, then take the trash to the refuse hatch inside the diner.")
+	game.set_night(true)
+	_update_shift_clock()
+	_message("Service is over. Clean the bathroom and kitchen, then take the trash outside to the dumpster. Finish all chores to end the day.")
 
 func start_demo() -> void:
+	game.set_night(false)
+	_set_carrying_trash(false)
 	_reset_customer()
 	_clear_tray(true)
 	for id in tasks:
@@ -256,6 +368,7 @@ func start_demo() -> void:
 	served = 0
 	lost = 0
 	_open_staff_doors()
+	phase = "prep"
 	start_shift()
 	game.spawn_point = Vector3(-2.4, 0.03, -5.8)
 	game.player.position = game.spawn_point
@@ -270,16 +383,25 @@ func _open_staff_doors() -> void:
 			game._toggle_door(door)
 
 func start_shift() -> bool:
+	if phase != "prep": return false
 	for done in tasks.values():
 		if not done:
 			_message("Finish all three daily tasks before opening the shift.")
 			return false
 	phase = "arriving"
+	closing_time = false
+	shift_remaining = SHIFT_SECONDS
+	_update_shift_clock()
+	earnings.start_day()
+	service_seconds = 0
+	payment_label.visible = false
 	customers_this_shift = 0
-	arrival_delay = 1.2
+	arrival_delay = 0.25
+	_message("SHIFT OPEN! A customer is on the way. Take their order at the counter.")
 	return true
 
 func _spawn_customer() -> void:
+	if closing_time: return
 	_reset_customer()
 	order.assign(ORDERS[order_index % ORDERS.size()])
 	order_taken = false
@@ -291,6 +413,7 @@ func _spawn_customer() -> void:
 	customer_visual = load("res://assets/customer/customer.glb").instantiate()
 	customer.add_child(customer_visual)
 	customer_visual.scale = Vector3.ONE * 1.2
+	_randomize_customer_shirt()
 	limbs.clear()
 	limb_rest_rotations.clear()
 	for node in customer_visual.find_children("*", "Node3D", true, false):
@@ -318,6 +441,19 @@ func _spawn_customer() -> void:
 		if door.name == "Door_03" and not door.get_meta("open"):
 			game._toggle_door(door)
 
+func _randomize_customer_shirt() -> void:
+	var index := randi_range(0, SHIRT_COLORS.size() - 1)
+	if last_shirt_color >= 0:
+		index = (last_shirt_color + 1 + randi_range(0, SHIRT_COLORS.size() - 2)) % SHIRT_COLORS.size()
+	last_shirt_color = index
+	for mesh in customer_visual.find_children("*", "MeshInstance3D", true, false):
+		for surface in range(mesh.mesh.get_surface_count()):
+			var original: Material = mesh.get_active_material(surface)
+			if original is StandardMaterial3D and original.resource_name.to_lower().begins_with("shirt"):
+				var shirt: StandardMaterial3D = original.duplicate()
+				shirt.albedo_color = SHIRT_COLORS[index]
+				mesh.set_surface_override_material(surface, shirt)
+
 func _set_route(points: Array[Vector3]) -> void:
 	route = points
 	route_index = 0
@@ -327,6 +463,18 @@ func _process(delta: float) -> void:
 	if not is_instance_valid(game):
 		return
 	animation_time += delta
+	if phase in ["arriving", "waiting", "leaving"] and not closing_time:
+		shift_remaining = maxf(0.0, shift_remaining - delta)
+		if shift_remaining <= 0:
+			closing_time = true
+			arrival_delay = 0
+			if not is_instance_valid(customer): _finish_day()
+			else: _message("CLOSING TIME! Finish the last customer, then the day will end.")
+	_update_shift_clock()
+	if phase == "waiting" and order_taken: service_seconds += delta
+	if payment_time > 0:
+		payment_time -= delta
+		if payment_time <= 0: payment_label.visible = false
 	if notice_time > 0:
 		notice_time -= delta
 		if notice_time <= 0:
@@ -337,7 +485,7 @@ func _process(delta: float) -> void:
 			_spawn_customer()
 	if is_instance_valid(customer) and walking:
 		var goal := route[route_index]
-		var speed := 3.1 if angry else 1.25
+		var speed := (6.5 if angry else 5.5) if phase == "leaving" else 4.0
 		var movement := goal - customer.position
 		if movement.length() < speed * delta:
 			customer.position = goal
@@ -346,12 +494,11 @@ func _process(delta: float) -> void:
 				walking = false
 				if phase == "leaving":
 					_reset_customer()
-					if customers_this_shift >= 4:
-						phase = "closed"
-						_message("SHIFT COMPLETE! Happy: %d, lost: %d. F7 begins the next shift's daily tasks." % [served, lost])
+					if closing_time:
+						_finish_day()
 					else:
 						phase = "arriving"
-						arrival_delay = 2.0
+						arrival_delay = 0.35
 				else:
 					phase = "waiting"
 					customer.rotation.y = PI
@@ -360,13 +507,13 @@ func _process(delta: float) -> void:
 			customer.position += movement.normalized() * speed * delta
 			customer.rotation.y = atan2(movement.x, movement.z)
 		if is_instance_valid(customer_visual):
-			customer_visual.position.y = absf(sin(animation_time * speed * 8)) * 0.018
-			_pose_customer(sin(animation_time * speed * 7))
+			var gait_speed := minf(speed, 2.5)
+			customer_visual.position.y = absf(sin(animation_time * gait_speed * 8)) * 0.018
+			_pose_customer(sin(animation_time * gait_speed * 7))
 	elif is_instance_valid(customer_visual):
 		customer_visual.position.y = 0
 		_pose_customer(0)
 	_update_cleaning(delta)
-	_update_panel()
 
 func _pose_customer(stride: float) -> void:
 	if not is_instance_valid(customer_skeleton): return
@@ -379,7 +526,7 @@ func _pose_customer(stride: float) -> void:
 		customer_skeleton.set_bone_pose_rotation(bone_id, baseline * rest.inverse() * Quaternion(Vector3.RIGHT, angle) * rest)
 
 func _update_cleaning(delta: float) -> void:
-	if phase != "prep" or not is_instance_valid(target) or not target.has_meta("task") or not Input.is_physical_key_pressed(KEY_E) or Input.mouse_mode != Input.MOUSE_MODE_CAPTURED:
+	if phase != "cleanup" or not is_instance_valid(target) or not target.has_meta("task") or not Input.is_physical_key_pressed(KEY_E) or Input.mouse_mode != Input.MOUSE_MODE_CAPTURED:
 		cleaning_progress = 0
 		return
 	var id: String = target.get_meta("task")
@@ -394,27 +541,34 @@ func _update_cleaning(delta: float) -> void:
 		complete_task(id)
 
 func complete_task(id: String) -> void:
+	if phase != "cleanup": return
 	tasks[id] = true
 	task_nodes[id].visible = false
 	task_nodes[id].collision_layer = 0
 	cleaning_progress = 0
-	_message(id.capitalize() + " done. Use the shift board behind the counter when all tasks are complete.")
+	_message(id.capitalize() + " done. Finish the remaining closing chores.")
+	if tasks.values().all(func(done): return done): _show_day_summary()
 
 func action_prompt(node: Node) -> String:
 	var action: String = node.get_meta("action", "")
 	match action:
 		"pie": return "[Click / E] Pick up " + str(node.get_meta("item"))
-		"donut": return "[Click / E] Pick up " + action.capitalize()
+		"donut": return "[Click / E] Grab a donut" if carried_item.is_empty() and not has_empty_cup() else "Hands full - place or return your item first"
 		"tray": return "[Click / E] Place " + carried_item + " on tray" if not carried_item.is_empty() else "[Click / E] Take last item off tray" if not tray.is_empty() else "Serving tray - bring the customer's items here"
 		"coffee", "cup_stack": return coffee_station.prompt(action)
 		"soda", "soda_cup_stack": return soda_station.prompt(action)
 		"bell": return "[Click / E] Ding bell and serve the tray"
+		"oven": return oven.prompt()
 		"customer":
 			if phase != "waiting": return "Customer is leaving" if phase == "leaving" else "Customer is approaching"
 			return "[E] " + ("Hear order again - ring bell to serve" if order_taken else "Take customer's order")
 		"task": return "[E] Collect trash bag" if node.get_meta("task") == "trash" else "Hold [E] to clean " + str(node.get_meta("task"))
-		"dispose": return "[E] Dispose of trash bag" if carrying_trash else "Refuse hatch - collect the trash bag first"
-		"clock": return "[E] Open shift" if phase == "prep" else "[E] Start next shift's daily tasks"
+		"dispose": return "[Click / E] Throw trash into dumpster" if carrying_trash else "Dumpster - collect the morning trash bag first"
+		"clock":
+			if phase == "prep": return "[E] Open shift"
+			if phase == "closed": return "[E] Begin the next day"
+			if phase == "cleanup": return "Finish closing chores to end the day"
+			return "Shift is open - serve customers at the counter"
 	return ""
 
 func interact(node: Node) -> void:
@@ -432,27 +586,38 @@ func interact(node: Node) -> void:
 		"coffee", "cup_stack": coffee_station.interact(action)
 		"soda", "soda_cup_stack": soda_station.interact(action)
 		"bell": service_bell.ring()
+		"oven": oven.interact()
 		"customer":
 			if phase != "waiting": return
+			if not order_taken: service_seconds = 0.0
 			order_taken = true
 			speech.text = "I'd like " + ", ".join(order) + ", please."
 			_message("CUSTOMER: " + ", ".join(order) + ". Place everything on the counter tray, then ring the bell to serve.")
 		"task":
-			if phase != "prep": return
+			if phase != "cleanup": return
 			if node.get_meta("task") == "trash":
-				carrying_trash = true
+				_set_carrying_trash(true)
 				node.visible = false
 				node.collision_layer = 0
-				_message("Trash collected. Carry it to the REFUSE HATCH on the right side of the dining room.")
+				_message("Trash collected. Take it through the kitchen back door and throw it in the outdoor dumpster.")
 		"dispose":
 			if carrying_trash:
-				carrying_trash = false
+				_set_carrying_trash(false)
 				complete_task("trash")
 		"clock":
 			if phase == "prep": start_shift()
-			else: begin_prep()
+			elif phase == "closed": begin_prep()
+			elif phase == "cleanup": _message("Finish cleaning and take the trash to the dumpster before starting the next day.")
+			else: _message("Your shift is already open. Customers are waiting at the counter.")
+
+func _set_carrying_trash(value: bool) -> void:
+	carrying_trash = value
+	if is_instance_valid(held_trash): held_trash.visible = value
 
 func add_item(item: String, source: Node3D = null) -> bool:
+	if item.ends_with("pie") and (not is_instance_valid(source) or source.get_meta("bake_quality", "raw") == "raw"):
+		_message("Bake the pie in the kitchen oven before putting it on the serving tray.")
+		return false
 	if phase not in ["waiting", "arriving"]:
 		_message("Start a shift before preparing orders.")
 		return false
@@ -490,17 +655,29 @@ func serve_order() -> bool:
 	expected.sort()
 	actual.sort()
 	var correct := expected == actual
+	for index in range(tray.size()):
+		if tray[index].ends_with("pie"):
+			var source := tray_sources[index]
+			if not is_instance_valid(source) or source.get_meta("bake_quality", "raw") != "perfect": correct = false
 	angry = not correct
 	if correct:
+		var has_perfect_pie := tray.any(func(item): return item.ends_with("pie"))
+		var payment: Dictionary = earnings.payout(order, true, service_seconds, has_perfect_pie)
+		_update_cash_display()
+		payment_label.text = "Order +$%d  |  Tip +$%d  |  Service +$%d" % [payment.sale, payment.tip, payment.service]
+		if payment.streak_bonus > 0: payment_label.text += "  |  Streak +$%d" % payment.streak_bonus
+		payment_label.visible = true
+		payment_time = 6.0
 		served += 1
 		speech.text = "Perfect! Thank you!"
 		speech.modulate = Color(0.55, 1, 0.65)
 		_message("CORRECT ORDER! The customer leaves happy.")
 	else:
+		earnings.payout(order, false, service_seconds, false)
 		lost += 1
 		speech.text = "That's NOT what I ordered!"
 		speech.modulate = Color(1, 0.35, 0.25)
-		_message("WRONG ORDER! Customer wanted " + ", ".join(order) + ". They are storming out.")
+		_message("Customer wanted " + ", ".join(order) + ", with a perfectly baked pie. They are storming out.")
 	_clear_tray(false)
 	phase = "leaving"
 	customers_this_shift += 1
@@ -529,7 +706,7 @@ func _refresh_tray() -> void:
 		item.set_meta("held_item", true)
 		held_tray.add_child(item)
 		var height := 0.004 if tray[index].ends_with("pie") else 0.014
-		_item_model(item, tray[index], Vector3(-0.275 + (index % 3) * 0.275, height, -0.14 + (index / 3) * 0.28), 0.95)
+		_item_model(item, tray[index], Vector3(-0.275 + (index % 3) * 0.275, height, -0.14 + (index / 3) * 0.28), 0.95, tray_sources[index])
 
 func _set_pickup_visible(node: Node3D, shown: bool) -> void:
 	node.visible = shown
@@ -537,9 +714,13 @@ func _set_pickup_visible(node: Node3D, shown: bool) -> void:
 		body.collision_layer = 1 if shown else 0
 
 func _reset_stock() -> void:
+	if is_instance_valid(oven): oven.reset_oven()
 	if is_instance_valid(coffee_station): coffee_station.reset_station()
 	if is_instance_valid(soda_station): soda_station.reset_station()
-	for pie in all_pies: _set_pickup_visible(pie, true)
+	for pie in all_pies:
+		pie.set_meta("bake_quality", "raw")
+		pie.set_meta("bake_seconds", 0.0)
+		_set_pickup_visible(pie, true)
 
 func _reset_customer() -> void:
 	walking = false
@@ -556,40 +737,22 @@ func _message(text: String) -> void:
 	notice.text = text
 	notice_time = 9.0
 
-func _update_panel() -> void:
-	var text := "PIEDAY  /  SHIFT %02d\n" % shift_number
-	if phase == "prep":
-		text += "BEFORE OPENING\n"
-		for id in tasks:
-			text += ("[DONE] " if tasks[id] else "[  ] ") + id.capitalize() + "\n"
-		if carrying_trash: text += "Carrying trash -> refuse hatch\n"
-		text += "Finish tasks, then E at SHIFT BOARD."
-	else:
-		text += "Happy: %d   Lost: %d\n" % [served, lost]
-		if order_taken and phase == "waiting": text += "ORDER: " + ", ".join(order) + "\n"
-		elif phase == "waiting": text += "Customer waiting - E to take order\n"
-		elif phase == "leaving": text += "Customer leaving...\n"
-		elif phase == "closed": text += "SHIFT COMPLETE - F7 to prepare next\n"
-		else: text += "Customer arriving...\n"
-		text += "TRAY: " + (", ".join(tray) if not tray.is_empty() else "Empty") + "\n"
-		text += "Pies: cooler (meat / apple / cherry).\nSoda cups: dispenser's front holder.\nDrinks: empty cup -> fill -> tray.\nRING THE BELL TO SERVE.\n"
-		if not carried_item.is_empty(): text += "HAND: " + carried_item + " -> counter tray\n"
-		elif has_empty_cup(): text += "HAND: EMPTY CUP\n"
-		elif coffee_station.state == "brewing": text += "COFFEE: filling...\n"
-		elif coffee_station.state == "ready": text += "COFFEE: ready to collect\n"
-		elif soda_station.state == "brewing": text += "SODA: filling...\n"
-		elif soda_station.state == "ready": text += "SODA: ready to collect\n"
-	text += "\nQ remove item  |  F6 customer demo\nF7 new shift with daily tasks"
-	panel.text = text
-
-func _item_model(parent: Node3D, item: String, at: Vector3, size: float) -> void:
+func _item_model(parent: Node3D, item: String, at: Vector3, size: float, source: Node3D = null) -> void:
 	var holder := Node3D.new()
 	parent.add_child(holder)
 	holder.position = at
 	holder.scale = Vector3.ONE * size
 	if item.ends_with("pie"):
-		var pie = load("res://assets/pies/pie_ps2.glb").instantiate()
+		var quality: String = str(source.get_meta("bake_quality", "raw")) if is_instance_valid(source) else "raw"
+		var path := "res://assets/pies/pie_ps2_toasted.glb" if quality in ["perfect", "burnt"] else "res://assets/pies/pie_ps2.glb"
+		var pie = load(path).instantiate()
 		holder.add_child(pie)
+		if quality == "burnt":
+			for mesh in pie.find_children("*", "MeshInstance3D", true, false):
+				for surface in range(mesh.mesh.get_surface_count()):
+					var mat: StandardMaterial3D = mesh.get_active_material(surface).duplicate()
+					mat.albedo_color *= Color(0.18, 0.13, 0.10)
+					mesh.set_surface_override_material(surface, mat)
 	elif item in ["Coffee", "Soda"] and is_instance_valid(coffee_station):
 		var station: StaticBody3D = coffee_station if item == "Coffee" else soda_station
 		var cup: Node3D = station._cup(holder)
@@ -669,7 +832,7 @@ func pickup_item(item: String, source: Node3D = null) -> bool:
 	carried_source = source
 	if is_instance_valid(source): _set_pickup_visible(source, false)
 	_refresh_carried()
-	_message("Picked up " + item + ". Click the tray on the counter to place it.")
+	_message("Picked up " + item + (". Bake it in the kitchen oven first." if item.ends_with("pie") and (not is_instance_valid(source) or source.get_meta("bake_quality", "raw") == "raw") else ". Click the tray on the counter to place it."))
 	return true
 
 func place_carried() -> bool:
@@ -690,7 +853,7 @@ func _refresh_carried() -> void:
 	for child in carried_visual.get_children():
 		carried_visual.remove_child(child)
 		child.queue_free()
-	if not carried_item.is_empty(): _item_model(carried_visual, carried_item, Vector3.ZERO, 0.95)
+	if not carried_item.is_empty(): _item_model(carried_visual, carried_item, Vector3.ZERO, 0.95, carried_source)
 
 func has_empty_cup() -> bool:
 	return (is_instance_valid(coffee_station) and coffee_station.holding_empty) or (is_instance_valid(soda_station) and soda_station.holding_empty)

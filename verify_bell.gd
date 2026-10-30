@@ -4,6 +4,7 @@ func _initialize():
 func check():
 	var game = load("res://main.tscn").instantiate()
 	root.add_child(game)
+	game.shift.earnings.save_enabled = false
 	game.set_physics_process(false)
 	game.set_process_unhandled_input(false)
 	var shift = game.shift
@@ -24,7 +25,15 @@ func check():
 	await create_timer(0.46).timeout
 	shift.interact(bell)
 	assert(shift.phase == "waiting" and shift.served == 0)
-	for item in shift.order: shift.add_item(item)
+	for item in shift.order:
+		var source: Node3D
+		if item.ends_with("pie"):
+			for pie in shift.all_pies:
+				if pie.get_meta("item") == item:
+					source = pie
+					break
+			source.set_meta("bake_quality", "perfect")
+		shift.add_item(item, source)
 	shift.interact(customer_body)
 	assert(shift.phase == "waiting" and shift.served == 0, "Talking must never submit an order")
 	game.player.position = Vector3(-3.1, -0.09, -5.6)
@@ -34,7 +43,6 @@ func check():
 		game._update_interaction()
 		assert(is_instance_valid(game.target_action))
 	game.camera.look_at(Vector3(-3.25,1.25,-4.4))
-	shift._update_panel()
 	if DisplayServer.get_name() != "headless":
 		await create_timer(0.3).timeout
 		await RenderingServer.frame_post_draw

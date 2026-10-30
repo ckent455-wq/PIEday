@@ -4,6 +4,7 @@ func _initialize():
 func check():
 	var game = load("res://main.tscn").instantiate()
 	root.add_child(game)
+	game.shift.earnings.save_enabled = false
 	game.set_physics_process(false)
 	game.player.position = Vector3(1.25, -0.09, -11.3)
 	game.player.rotation.y = PI

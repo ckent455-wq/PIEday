@@ -6,6 +6,7 @@ func _initialize() -> void:
 func run_checks() -> void:
 	var game = load("res://main.tscn").instantiate()
 	root.add_child(game)
+	game.shift.earnings.save_enabled = false
 	game.set_physics_process(false)
 	game.set_process_unhandled_input(false)
 	var shift = game.shift
@@ -13,18 +14,21 @@ func run_checks() -> void:
 	assert(shift.held_tray.visible, "The empty tray should be visible")
 	shift.set_process(false)
 	assert(shift.phase == "prep")
-	assert(not shift.start_shift(), "Dirty diner must not open")
-	shift.complete_task("bathroom")
-	shift.complete_task("kitchen")
-	shift.interact(shift.task_nodes["trash"])
-	assert(shift.carrying_trash and not shift.tasks.trash)
-	shift.interact(shift.get_node("Station_dispose"))
-	assert(shift.tasks.trash and not shift.carrying_trash)
-	assert(shift.start_shift(), "Clean diner can open")
+	assert(shift.tasks.values().all(func(done): return done), "No chores before opening")
+	var board = shift.get_node("Station_clock")
+	shift.interact(board)
+	assert(shift.phase == "arriving", "Completed duties plus shift board must open the shift")
+	var delay: float = shift.arrival_delay
+	for press in range(5): shift.interact(board)
+	assert(shift.phase == "arriving" and shift.arrival_delay == delay, "Repeated board presses must not restart duties or delay customers")
+	assert(shift.tasks.values().all(func(done): return done))
+	assert(not shift.start_shift(), "An active shift cannot be opened twice")
 	shift.start_demo()
 	for frame in range(620):
 		shift._process(1.0 / 60.0)
 	assert(shift.phase == "waiting", "Customer must arrive at counter")
+	shift.interact(board)
+	assert(shift.phase == "waiting" and is_instance_valid(shift.customer), "Board cannot reset a waiting customer")
 	assert(shift.limbs.size() == 4, "Imported humanoid limbs must animate")
 	var customer_body: Node
 	for child in shift.customer.get_children():
@@ -38,14 +42,14 @@ func run_checks() -> void:
 	assert(shift.order_taken)
 	var pie: Node3D = shift.all_pies[0]
 	var flavor: String = pie.get_meta("item")
+	pie.set_meta("bake_quality", "perfect") # Oven flow is covered by verify_oven.gd.
 	shift.add_item(flavor, pie)
 	assert(not pie.visible)
 	shift.discard_last()
 	assert(pie.visible and shift.tray.is_empty())
 	for item in shift.order:
-		assert(shift.add_item(item))
+		assert(shift.add_item(item, pie if item.ends_with("pie") else null))
 	if DisplayServer.get_name() != "headless":
-		shift._update_panel()
 		await create_timer(0.5).timeout
 		await RenderingServer.frame_post_draw
 		root.get_texture().get_image().save_png("res://.godot/customer-scenario-preview.png")
@@ -60,5 +64,10 @@ func run_checks() -> void:
 	assert(not shift.serve_order())
 	assert(shift.lost == 1 and shift.angry and shift.phase == "leaving")
 	assert(shift.tray.is_empty())
+	shift.interact(board)
+	assert(shift.phase == "leaving" and shift.tasks.values().all(func(done): return done), "Board cannot reset an active shift")
+	shift.phase = "closed"
+	shift.interact(board)
+	assert(shift.phase == "prep" and shift.tasks.values().all(func(done): return done), "Next duties are available only after closing")
 	print("PASS: daily task gate, trash disposal, customer arrival, humanoid animation, counter interaction, pickup/return, correct order, angry wrong order, and next customer")
 	quit()

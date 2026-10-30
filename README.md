@@ -1,5 +1,9 @@
 # PIEday
 
+The game opens with a typewriter-style story on a black screen. Press E or
+Space to reveal each passage and advance, then choose Open the Diner. Earn $15,000 toward Grandpa's
+treatment; the upper-left cash display tracks the goal. Existing cash is retained.
+
 A first-person diner prototype built with **Godot 4.7.2**. Prepare customer orders
 with meat, apple, or cherry pies, donuts, coffee, and fountain soda. Assemble the
 order on the counter tray and **ring the service bell to serve it**. Wrong orders
@@ -9,27 +13,39 @@ make customers angry; correct orders make them leave happy.
 
 Download the Windows ZIP from this repository's **Releases** page and extract
 the entire folder. Keep `PIEday.exe` and `PIEday.pck` together. Run `PIEday.exe`
-for the full shift flow, or press **F6 in the game** to start with the daily
-tasks already complete. The unsigned prototype may show a Windows security
+for the full day flow, or press **F6 in the game** to jump into customer service.
+The unsigned prototype may show a Windows security
 prompt on a new PC.
 
 - **WASD / mouse:** move and look. **Shift:** sprint. **Space:** jump.
 - **E / left click:** pick up an item or interact. **E:** open and close doors.
 - **Q:** return or set aside a held item, or remove the last tray item.
 - **Esc:** release the mouse; click to capture it again. **R:** respawn.
-- **F6:** restart the customer demo. **F7:** begin a new shift with daily tasks.
+- **F6:** restart the customer demo. **F7:** jump to nighttime closing chores.
 
 Take an order from the customer. Carry one item at a time and click the stationary
 counter tray to set it down. The customer interaction repeats the order;
 **the bell submits the tray**.
 
-Coffee requires an empty cup from the stack beside the coffee machine. Place it
-under the spout, wait for it to fill, pick it up, and put it on the tray. Soda uses
+Pies from the cooler must be baked in the double-door kitchen oven. Open both
+doors, click inside with a pie in hand to load it, then close both doors.
+Open the doors at 7 seconds and before 13 seconds for a perfect toasted pie.
+Press E on either oven door to open or close both together; opening pauses heat. Open both and click inside with an empty hand
+to collect the pie, then put it on the counter tray. At 13 seconds it burns;
+customers reject burnt or undercooked pies. The timer is above the oven doors.
+
+Click the coffee machine with an empty hand to automatically place a cup and
+start filling. Click again when READY to collect it, then put it on the tray.
+The separate empty cup stack also works for manual placement. Soda uses
 the cups in the dispenser's **front-mounted cup holders**, with the same cup
 model in your hand, under the nozzle, and on the tray.
 
-Four customers make a shift. Before opening a normal shift, clean the bathroom
-and kitchen, collect the trash, and take it to the indoor refuse hatch. See
+Service lasts five minutes after opening; finish the last customer at closing.
+Nighttime closing chores then begin: clean the bathroom
+and kitchen, collect the trash, and take it through the kitchen back door to
+the dumpster in the fenced service yard. Press E on the back door to open or
+close it, and click or press E at the dumpster to throw away the held bag.
+All chores must be finished before the day's summary and the next day. See
 [GAMEPLAY.md](GAMEPLAY.md) for more detail.
 
 ## Continue development on another PC
@@ -38,7 +54,7 @@ and kitchen, collect the trash, and take it to the indoor refuse hatch. See
 2. Clone this repository, or download and extract its source ZIP.
 3. Import `project.godot` in Godot. Allow its first asset import to finish.
 4. Press **F6 in the running game** for the customer demo, or play the full
-   pre-shift flow normally. From the terminal, use:
+   day flow normally. From the terminal, use:
 
    ```text
    godot --path . -- --customer-demo
@@ -57,6 +73,9 @@ are in `assets/`. Blender is only needed to edit or regenerate source art.
 - `art/customer/customer.blend`: connected, skinned customer body and skeleton.
 - `art/pie/golden_pie_ps2.blend`: domed low-poly pie with a 256px texture atlas.
 - `art/tray/black_cafeteria_tray.blend`: modeled black cafeteria tray.
+- `art/clipboard/shift_clipboard.blend`: wall-mounted shift clipboard.
+- `art/pie/toasted_pie_ps2.blend`: separate toasted pie variant.
+- `service_yard.tscn`: editable yard layout; move `OutdoorDumpster` here.
 - `assets/`: diner model and textures, exported models, and the bell sound.
 
 See [ASSET_SOURCES.md](ASSET_SOURCES.md) for asset provenance. The repository does
@@ -83,6 +102,8 @@ outcomes, doors, and movement. For example:
 godot --headless --path . --script verify_soda.gd --quit-after 1800
 godot --headless --path . --script verify_coffee.gd --quit-after 1800
 godot --headless --path . --script verify_bell.gd --quit-after 1800
+godot --headless --path . --script verify_balance.gd --quit-after 1800
+godot --headless --path . --script verify_closing_chores.gd --quit-after 1800
 ```
 
 Visual checks such as `verify_customer_pose.gd` need a graphical renderer. This

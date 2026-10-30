@@ -4,6 +4,7 @@ func _initialize():
 func check():
 	var game = load("res://main.tscn").instantiate()
 	root.add_child(game)
+	game.shift.earnings.save_enabled = false
 	game.set_physics_process(false)
 	game.set_process_unhandled_input(false)
 	var shift = game.shift
@@ -40,6 +41,7 @@ func check():
 	shift.interact(pie)
 	assert(shift.carried_item == "Meat pie" and not pie.visible and shift.tray.size() == 1)
 	assert(not shift.serve_order(), "Held food must be placed before serving")
+	pie.set_meta("bake_quality", "perfect") # Oven flow is covered by verify_oven.gd.
 	shift.interact(tray_target)
 	shift.pickup_item("Donut")
 	shift.interact(tray_target)
@@ -53,7 +55,6 @@ func check():
 	game._update_interaction()
 	assert(game.target_action == tray_target, "Counter tray must be targetable from staff position")
 	assert(shift.held_tray.global_position.is_equal_approx(tray_position), "Tray must stay fixed when player moves")
-	shift._update_panel()
 	if DisplayServer.get_name() != "headless":
 		await create_timer(0.3).timeout
 		await RenderingServer.frame_post_draw

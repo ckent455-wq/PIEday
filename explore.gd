@@ -14,6 +14,7 @@ func _ready() -> void:
 	var diner = load("res://assets/DINER/Models/DINER.dae").instantiate()
 	add_child(diner)
 	preload("res://cooler.gd").install(diner)
+	preload("res://service_yard.gd").install(diner)
 	var bounds := AABB()
 	var first := true
 	for node in diner.find_children("*", "MeshInstance3D", true, false):
@@ -24,8 +25,8 @@ func _ready() -> void:
 			var box: AABB = node.global_transform * node.mesh.get_aabb()
 			bounds = box if first else bounds.merge(box)
 			first = false
-			node.create_trimesh_collision()
-			if (node.name.begins_with("Door") and not node.name.begins_with("Door_frame")) or "Cubicles_Door" in node.name or "Refrigerator_Door" in node.name or "Oven_Door" in node.name or node.has_meta("cooler"):
+			if not node.get_meta("nonblocking_decor", false): node.create_trimesh_collision()
+		if node.name in ["BackDoor", "Door", "Door_01", "Door_02", "Door_03"] or "Cubicles_Door" in node.name or "Refrigerator_Door" in node.name or "Oven_Door" in node.name or node.has_meta("cooler"):
 				_setup_door(node)
 	print("DINER_BOUNDS ", bounds)
 	var sun := DirectionalLight3D.new()
@@ -70,13 +71,6 @@ func _ready() -> void:
 	add_child(ground)
 	var hud := CanvasLayer.new()
 	add_child(hud)
-	var label := Label.new()
-	label.text = "PIEDAY\nWASD move  •  Mouse look  •  Shift sprint  •  Space jump\nE interact / doors  •  Click cups / coffee machine\nQ remove item / return cup  •  R respawn\nEsc release mouse  •  Click capture"
-	label.position = Vector2(24, 20)
-	label.add_theme_color_override("font_shadow_color", Color.BLACK)
-	label.add_theme_constant_override("shadow_offset_x", 2)
-	label.add_theme_constant_override("shadow_offset_y", 2)
-	hud.add_child(label)
 	interaction_label = Label.new()
 	interaction_label.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
 	interaction_label.position = Vector2(520, 400)
@@ -92,6 +86,31 @@ func _ready() -> void:
 	shift = preload("res://shift.gd").new()
 	add_child(shift)
 	shift.setup(self)
+
+func set_night(night: bool) -> void:
+	for child in get_children():
+		if child is DirectionalLight3D: child.light_energy = 0.035 if night else 1.2
+		if child is WorldEnvironment:
+			child.environment.background_color = Color(0.008, 0.012, 0.03) if night else Color(0.4, 0.55, 0.7)
+			child.environment.ambient_light_color = Color(0.32, 0.39, 0.58) if night else Color(0.82, 0.88, 1.0)
+			child.environment.ambient_light_energy = 0.18 if night else 0.65
+	var interior := get_node_or_null("NightInteriorLights")
+	if interior == null:
+		interior = Node3D.new()
+		interior.name = "NightInteriorLights"
+		add_child(interior)
+		for at in [Vector3(0,2.8,0),Vector3(6,2.8,2),Vector3(-6,2.8,2),Vector3(-1,2.7,-6),Vector3(1,2.7,-11),Vector3(-7,2.7,-11)]:
+			var light := OmniLight3D.new()
+			light.position = at
+			light.light_color = Color(1,0.86,0.65)
+			light.light_energy = 1.6
+			light.omni_range = 7.5
+			interior.add_child(light)
+	interior.visible = night
+	var yard_light := find_child("YardLight", true, false)
+	if is_instance_valid(yard_light):
+		yard_light.light_color = Color(1,0.78,0.48) if night else Color(0.85,0.91,1)
+		yard_light.light_energy = 1.0 if night else 1.4
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventMouseMotion and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
@@ -114,9 +133,9 @@ func _unhandled_input(event: InputEvent) -> void:
 		if event.keycode == KEY_F6:
 			shift.start_demo()
 		if event.keycode == KEY_F7:
-			shift.begin_prep()
+			shift.begin_cleanup()
 	if event is InputEventMouseButton and event.pressed:
-		if event.button_index == MOUSE_BUTTON_LEFT and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED and is_instance_valid(target_action) and target_action.get_meta("action", "") in ["coffee", "cup_stack", "tray", "pie", "donut", "soda", "soda_cup_stack", "customer", "bell"]:
+		if event.button_index == MOUSE_BUTTON_LEFT and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED and is_instance_valid(target_action) and target_action.get_meta("action", "") in ["coffee", "cup_stack", "tray", "pie", "donut", "soda", "soda_cup_stack", "customer", "bell", "oven", "dispose"]:
 			shift.interact(target_action)
 			return
 		Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
@@ -139,7 +158,7 @@ func _physics_process(delta: float) -> void:
 	var p := Vector2(player.position.x, player.position.z)
 	var dining := Rect2(-10.35, -7.7, 21.4, 14.65)
 	var rear := Rect2(-10.2, -14.35, 21.25, 6.95)
-	if not (dining.has_point(p) or rear.has_point(p)):
+	if not (dining.has_point(p) or rear.has_point(p) or preload("res://service_yard.gd").WALK_AREA.has_point(p)):
 		player.position.x = previous_position.x
 		player.position.z = previous_position.z
 	_update_interaction()
@@ -193,11 +212,19 @@ func _setup_door(door: MeshInstance3D) -> void:
 		barrier.collision_layer = 2
 
 func _toggle_door(door: MeshInstance3D) -> void:
+	var opened: bool = not door.get_meta("open")
+	if door.name in ["Oven_Door", "Oven_Door_01"]:
+		for leaf in doors:
+			if leaf.name in ["Oven_Door", "Oven_Door_01"]:
+				_set_door_open(leaf, opened)
+	else:
+		_set_door_open(door, opened)
+
+func _set_door_open(door: MeshInstance3D, opened: bool) -> void:
 	if door.has_meta("tween"):
 		var old_tween: Tween = door.get_meta("tween")
 		if old_tween.is_valid():
 			old_tween.kill()
-	var opened: bool = not door.get_meta("open")
 	door.set_meta("open", opened)
 	var angle: float = door.get_meta("closed_rotation")
 	if opened:
@@ -231,5 +258,9 @@ func _update_interaction() -> void:
 		interaction_label.text = shift.action_prompt(target_action)
 	if is_instance_valid(target_door):
 		interaction_label.text = "[E] " + ("Close door" if target_door.get_meta("open") else "Open door")
+		if target_door.name in ["Oven_Door", "Oven_Door_01"]:
+			interaction_label.text = "[E] " + ("Close oven doors" if target_door.get_meta("open") else "Open oven doors")
+		if target_door.name == "BackDoor":
+			interaction_label.text = "[E] " + ("Close back door" if target_door.get_meta("open") else "Open back door to dumpster")
 		if target_door.name == "Door_03":
 			interaction_label.text += " (exterior access restricted)"

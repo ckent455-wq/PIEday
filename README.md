@@ -9,6 +9,10 @@ with meat, apple, or cherry pies, donuts, coffee, and fountain soda. Assemble th
 order on the counter tray and **ring the service bell to serve it**. Wrong orders
 make customers angry; correct orders make them leave happy.
 
+Up to three customers line up. The next customer steps forward while the
+previous one leaves. At closing, everyone already in line is served before
+nighttime cleanup; new arrivals stop.
+
 ## Play the Windows release
 
 Download the Windows ZIP from this repository's **Releases** page and extract
@@ -75,6 +79,7 @@ are in `assets/`. Blender is only needed to edit or regenerate source art.
 - `art/tray/black_cafeteria_tray.blend`: modeled black cafeteria tray.
 - `art/clipboard/shift_clipboard.blend`: wall-mounted shift clipboard.
 - `art/pie/toasted_pie_ps2.blend`: separate toasted pie variant.
+- `art/pie/burnt_pie_ps2.blend`: separate unevenly charred pie variant.
 - `service_yard.tscn`: editable yard layout; move `OutdoorDumpster` here.
 - `assets/`: diner model and textures, exported models, and the bell sound.
 

@@ -4,12 +4,14 @@ func _initialize():
 func check():
 	var game = load("res://main.tscn").instantiate()
 	root.add_child(game)
+	game.shift.customer_line.next_arrival = INF
 	game.shift.earnings.save_enabled = false
 	game.set_physics_process(false)
 	game.set_process_unhandled_input(false)
 	var shift = game.shift
 	shift.set_process(false)
 	shift.start_demo()
+	shift.customer_line.next_arrival = INF
 	for frame in range(620): shift._process(1.0 / 60.0)
 	await physics_frame
 	await physics_frame

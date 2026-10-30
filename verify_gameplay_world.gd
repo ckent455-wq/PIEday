@@ -4,10 +4,12 @@ func _initialize():
 func check():
 	var game = load("res://main.tscn").instantiate()
 	root.add_child(game)
+	game.shift.customer_line.next_arrival = INF
 	game.shift.earnings.save_enabled = false
 	game.set_physics_process(false)
 	game.shift.set_process(false)
 	game.shift.start_demo()
+	game.shift.customer_line.next_arrival = INF
 	for door in game.doors:
 		if door.has_meta("cooler"):
 			game._toggle_door(door)

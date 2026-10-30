@@ -112,15 +112,10 @@ func _refresh_visual() -> void:
 	shown_quality = quality()
 	if pie_item.is_empty(): return
 	var path := "res://assets/pies/pie_ps2.glb" if elapsed < PERFECT_AT else "res://assets/pies/pie_ps2_toasted.glb"
+	if quality() == "burnt": path = "res://assets/pies/pie_ps2_burnt.glb"
 	var pie: Node3D = load(path).instantiate()
 	visual.add_child(pie)
 	pie.scale = Vector3.ONE * 1.15
-	if quality() == "burnt":
-		for mesh in pie.find_children("*", "MeshInstance3D", true, false):
-			for surface in range(mesh.mesh.get_surface_count()):
-				var mat: StandardMaterial3D = mesh.get_active_material(surface).duplicate()
-				mat.albedo_color *= Color(0.18, 0.13, 0.10)
-				mesh.set_surface_override_material(surface, mat)
 
 func _update_display() -> void:
 	heat.visible = not pie_item.is_empty() and sealed()

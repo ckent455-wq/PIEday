@@ -4,10 +4,12 @@ func _initialize():
 func check():
 	var game = load("res://main.tscn").instantiate()
 	root.add_child(game)
+	game.shift.customer_line.next_arrival = INF
 	game.shift.earnings.save_enabled = false
 	game.set_physics_process(false)
 	game.shift.set_process(false)
 	game.shift.start_demo()
+	game.shift.customer_line.next_arrival = INF
 	for frame in range(620): game.shift._process(1.0 / 60.0)
 	assert(game.shift.limbs.size() == 4)
 	assert(game.shift.customer_skeleton.get_bone_count() == 5)

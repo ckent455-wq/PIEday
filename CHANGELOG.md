@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.3.0
+
+- Up to three customers form a visible line. The next person steps up while
+  the previous customer exits independently.
+- New arrivals stop at closing; serve everyone already in line before cleanup.
+- Waiting customers show subtle impatience after 45 seconds. Queue waits have
+  a 60-second grace period before affecting tips; nobody abandons the line.
+- Separate baked burnt-pie model, material atlas, editable Blender source, and
+  generation script. The burnt appearance persists in the oven, hand, and tray.
+- Queue lifecycle, payment, closing, and reset coverage in gameplay checks.
+
 ## 0.2.0
 
 - Segmented typewriter intro with the downloaded font and keypress sound,

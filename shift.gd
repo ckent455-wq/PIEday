@@ -55,6 +55,7 @@ const SHIFT_SECONDS := 300.0
 var shift_remaining := SHIFT_SECONDS
 var closing_time := false
 var shift_clock: Label
+var customer_line: Node
 
 func setup(host: Node3D) -> void:
 	game = host
@@ -160,6 +161,9 @@ func setup(host: Node3D) -> void:
 	oven = preload("res://oven.gd").new()
 	add_child(oven)
 	oven.setup(self)
+	customer_line = preload("res://customer_line.gd").new()
+	customer_line.shift = self
+	add_child(customer_line)
 	if "--customer-demo" in OS.get_cmdline_user_args():
 		start_demo()
 	else:
@@ -210,7 +214,7 @@ func _update_shift_clock() -> void:
 	if phase == "prep": shift_clock.text = "READY TO OPEN"
 	elif phase == "cleanup": shift_clock.text = "AFTER HOURS - CLEANUP"
 	elif phase == "closed": shift_clock.text = "CLOSED"
-	elif closing_time: shift_clock.text = "CLOSING - LAST CUSTOMER"
+	elif closing_time: shift_clock.text = "CLOSING - FINISH THE LINE"
 	else:
 		var seconds := int(ceil(shift_remaining))
 		shift_clock.text = "SHIFT  %d:%02d" % [seconds / 60, seconds % 60]
@@ -319,6 +323,7 @@ func _make_task(id: String, title: String, location: Vector3) -> void:
 	task_nodes[id] = node
 
 func begin_prep() -> void:
+	if is_instance_valid(customer_line): customer_line.clear_all()
 	if phase != "prep": shift_number += 1
 	_reset_customer()
 	_clear_tray(true)
@@ -338,6 +343,7 @@ func begin_prep() -> void:
 	_message("Ready for the day. Use the shift clipboard to open the diner.")
 
 func begin_cleanup() -> void:
+	if is_instance_valid(customer_line): customer_line.clear_all()
 	_reset_customer()
 	_clear_tray(true)
 	arrival_delay = 0
@@ -354,6 +360,7 @@ func begin_cleanup() -> void:
 	_message("Service is over. Clean the bathroom and kitchen, then take the trash outside to the dumpster. Finish all chores to end the day.")
 
 func start_demo() -> void:
+	if is_instance_valid(customer_line): customer_line.clear_all()
 	game.set_night(false)
 	_set_carrying_trash(false)
 	_reset_customer()
@@ -401,19 +408,18 @@ func start_shift() -> bool:
 	return true
 
 func _spawn_customer() -> void:
-	if closing_time: return
+	if is_instance_valid(customer): return
+	if closing_time and customer_line.waiting.is_empty(): return
+	var queued: bool = not customer_line.waiting.is_empty()
 	_reset_customer()
 	order.assign(ORDERS[order_index % ORDERS.size()])
 	order_taken = false
 	angry = false
-	customer = Node3D.new()
+	customer = customer_line.pop_front() if queued else customer_line.make_actor(Vector3(0.76,-0.094,5))
 	customer.name = "Customer"
-	add_child(customer)
-	customer.position = Vector3(0.76, -0.094, 5.0)
-	customer_visual = load("res://assets/customer/customer.glb").instantiate()
-	customer.add_child(customer_visual)
-	customer_visual.scale = Vector3.ONE * 1.2
-	_randomize_customer_shirt()
+	customer_visual = customer.get_node("Visual")
+	customer_visual.rotation.z = 0
+	phase = "arriving"
 	limbs.clear()
 	limb_rest_rotations.clear()
 	for node in customer_visual.find_children("*", "Node3D", true, false):
@@ -424,29 +430,23 @@ func _spawn_customer() -> void:
 				if bone_id >= 0:
 					limbs.append(bone_id)
 					limb_rest_rotations[bone_id] = node.get_bone_pose_rotation(bone_id)
-	var body := StaticBody3D.new()
-	body.collision_layer = 5
-	body.set_meta("action", "customer")
-	customer.add_child(body)
-	var collider := CollisionShape3D.new()
-	var shape := CapsuleShape3D.new()
-	shape.radius = 0.28
-	shape.height = 2.15
-	collider.shape = shape
-	collider.position.y = 1.075
-	body.add_child(collider)
+	customer.get_node("Interaction").set_meta("action", "customer")
 	speech = _label(customer, "CUSTOMER", Vector3(0, 2.45, 0), 0.0021)
-	_set_route([Vector3(0.76, -0.094, 0.2), Vector3(-2.4, -0.094, -3.6)])
+	if customer.position.z <= 0.2:
+		_set_route([Vector3(-2.4,-0.094,-3.6)])
+	else:
+		_set_route([Vector3(0.76,-0.094,0.2),Vector3(-2.4,-0.094,-3.6)])
 	for door in game.doors:
 		if door.name == "Door_03" and not door.get_meta("open"):
 			game._toggle_door(door)
 
-func _randomize_customer_shirt() -> void:
+func _randomize_customer_shirt(visual: Node3D = null) -> void:
+	if not is_instance_valid(visual): visual = customer_visual
 	var index := randi_range(0, SHIRT_COLORS.size() - 1)
 	if last_shirt_color >= 0:
 		index = (last_shirt_color + 1 + randi_range(0, SHIRT_COLORS.size() - 2)) % SHIRT_COLORS.size()
 	last_shirt_color = index
-	for mesh in customer_visual.find_children("*", "MeshInstance3D", true, false):
+	for mesh in visual.find_children("*", "MeshInstance3D", true, false):
 		for surface in range(mesh.mesh.get_surface_count()):
 			var original: Material = mesh.get_active_material(surface)
 			if original is StandardMaterial3D and original.resource_name.to_lower().begins_with("shirt"):
@@ -468,8 +468,11 @@ func _process(delta: float) -> void:
 		if shift_remaining <= 0:
 			closing_time = true
 			arrival_delay = 0
-			if not is_instance_valid(customer): _finish_day()
-			else: _message("CLOSING TIME! Finish the last customer, then the day will end.")
+			_message("CLOSING TIME! No new arrivals. Finish everyone already in line.")
+	customer_line.tick(delta)
+	if phase in ["arriving","waiting","leaving"] and not is_instance_valid(customer):
+		if not customer_line.waiting.is_empty(): _spawn_customer()
+		elif closing_time and customer_line.departing.is_empty(): _finish_day()
 	_update_shift_clock()
 	if phase == "waiting" and order_taken: service_seconds += delta
 	if payment_time > 0:
@@ -492,17 +495,9 @@ func _process(delta: float) -> void:
 			route_index += 1
 			if route_index >= route.size():
 				walking = false
-				if phase == "leaving":
-					_reset_customer()
-					if closing_time:
-						_finish_day()
-					else:
-						phase = "arriving"
-						arrival_delay = 0.35
-				else:
-					phase = "waiting"
-					customer.rotation.y = PI
-					speech.text = "E: TAKE MY ORDER"
+				phase = "waiting"
+				customer.rotation.y = PI
+				speech.text = "E: TAKE MY ORDER"
 		else:
 			customer.position += movement.normalized() * speed * delta
 			customer.rotation.y = atan2(movement.x, movement.z)
@@ -562,6 +557,8 @@ func action_prompt(node: Node) -> String:
 		"customer":
 			if phase != "waiting": return "Customer is leaving" if phase == "leaving" else "Customer is approaching"
 			return "[E] " + ("Hear order again - ring bell to serve" if order_taken else "Take customer's order")
+		"queued_customer": return "Waiting in line"
+		"departing_customer": return "Customer is leaving"
 		"task": return "[E] Collect trash bag" if node.get_meta("task") == "trash" else "Hold [E] to clean " + str(node.get_meta("task"))
 		"dispose": return "[Click / E] Throw trash into dumpster" if carrying_trash else "Dumpster - collect the morning trash bag first"
 		"clock":
@@ -662,7 +659,8 @@ func serve_order() -> bool:
 	angry = not correct
 	if correct:
 		var has_perfect_pie := tray.any(func(item): return item.ends_with("pie"))
-		var payment: Dictionary = earnings.payout(order, true, service_seconds, has_perfect_pie)
+		var queue_wait: float = float(customer.get_meta("queue_wait",0.0))
+		var payment: Dictionary = earnings.payout(order, true, service_seconds + maxf(0,queue_wait - 60.0), has_perfect_pie)
 		_update_cash_display()
 		payment_label.text = "Order +$%d  |  Tip +$%d  |  Service +$%d" % [payment.sale, payment.tip, payment.service]
 		if payment.streak_bonus > 0: payment_label.text += "  |  Streak +$%d" % payment.streak_bonus
@@ -682,8 +680,14 @@ func serve_order() -> bool:
 	phase = "leaving"
 	customers_this_shift += 1
 	order_index += 1
-	if is_instance_valid(customer):
-		_set_route([Vector3(-2.4, -0.094, -0.2), Vector3(0.76, -0.094, 0.2), Vector3(0.76, -0.094, 6.1)])
+	if is_instance_valid(customer): customer_line.leave(customer, angry)
+	customer = null
+	customer_visual = null
+	customer_skeleton = null
+	limbs.clear()
+	walking = false
+	arrival_delay = 0.15
+	if not customer_line.waiting.is_empty(): _spawn_customer()
 	return correct
 
 func _clear_tray(restore: bool) -> void:
@@ -745,14 +749,9 @@ func _item_model(parent: Node3D, item: String, at: Vector3, size: float, source:
 	if item.ends_with("pie"):
 		var quality: String = str(source.get_meta("bake_quality", "raw")) if is_instance_valid(source) else "raw"
 		var path := "res://assets/pies/pie_ps2_toasted.glb" if quality in ["perfect", "burnt"] else "res://assets/pies/pie_ps2.glb"
+		if quality == "burnt": path = "res://assets/pies/pie_ps2_burnt.glb"
 		var pie = load(path).instantiate()
 		holder.add_child(pie)
-		if quality == "burnt":
-			for mesh in pie.find_children("*", "MeshInstance3D", true, false):
-				for surface in range(mesh.mesh.get_surface_count()):
-					var mat: StandardMaterial3D = mesh.get_active_material(surface).duplicate()
-					mat.albedo_color *= Color(0.18, 0.13, 0.10)
-					mesh.set_surface_override_material(surface, mat)
 	elif item in ["Coffee", "Soda"] and is_instance_valid(coffee_station):
 		var station: StaticBody3D = coffee_station if item == "Coffee" else soda_station
 		var cup: Node3D = station._cup(holder)

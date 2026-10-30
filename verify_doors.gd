@@ -6,6 +6,7 @@ func _initialize() -> void:
 func run_checks() -> void:
 	var game = load("res://main.tscn").instantiate()
 	root.add_child(game)
+	game.shift.customer_line.next_arrival = INF
 	game.shift.earnings.save_enabled = false
 	await physics_frame
 	print("REGISTERED_DOORS ", game.doors.map(func(door): return door.name))

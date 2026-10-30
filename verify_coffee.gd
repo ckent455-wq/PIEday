@@ -4,11 +4,13 @@ func _initialize():
 func check():
 	var game = load("res://main.tscn").instantiate()
 	root.add_child(game)
+	game.shift.customer_line.next_arrival = INF
 	game.shift.earnings.save_enabled = false
 	game.set_physics_process(false)
 	game.set_process_unhandled_input(false)
 	game.shift.set_process(false)
 	game.shift.start_demo()
+	game.shift.customer_line.next_arrival = INF
 	var station = game.shift.coffee_station
 	station.interact("coffee")
 	assert(station.state == "brewing" and station.cups_left == 9 and station.machine_cup.visible, "One click supplies a cup and starts filling")

@@ -4,11 +4,13 @@ func _initialize():
 func check():
 	var game = load("res://main.tscn").instantiate()
 	root.add_child(game)
+	game.shift.customer_line.next_arrival = INF
 	game.set_physics_process(false)
 	game.set_process_unhandled_input(false)
 	var shift = game.shift
 	shift.earnings.save_enabled = false
 	shift.start_demo()
+	shift.customer_line.next_arrival = INF
 	shift.set_process(false)
 	for frame in range(620): shift._process(1.0 / 60.0)
 	var oven = shift.oven
@@ -64,6 +66,7 @@ func check():
 	shift.order_taken = true
 	assert(shift.serve_order(), "Perfect pie plus correct sides satisfies customer")
 	shift.start_demo()
+	shift.customer_line.next_arrival = INF
 	shift.set_process(false)
 	for frame in range(620): shift._process(1.0 / 60.0)
 	assert(oven.pie_item.is_empty() and pie.get_meta("bake_quality") == "raw")
@@ -83,6 +86,7 @@ func check():
 	shift.order_taken = true
 	assert(not shift.serve_order(), "Burnt pie fails even with correct flavor and sides")
 	shift.start_demo()
+	shift.customer_line.next_arrival = INF
 	assert(shift.pickup_item(pie.get_meta("item"), pie))
 	oven.interact()
 	oven.elapsed = 3

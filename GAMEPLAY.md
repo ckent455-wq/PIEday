@@ -1,5 +1,11 @@
 # PIEday prototype
 
+Up to three customers can be in service or waiting in line. Waiting customers
+step forward as soon as the previous order is served, while departing customers
+walk out independently. At closing, arrivals stop and everyone already in line
+is served before nighttime chores begin. Waiting in line has a 60-second grace
+period before it can affect tips; nobody abandons the queue in this prototype.
+
 Correct orders earn their menu total: meat pie $8, apple/cherry pie $6,
 donut $2, coffee $3, soda $2. Incorrect orders earn nothing. A tip has a
 50% base chance and is worth $3-$8. Service within 60 seconds adds 15 percentage

@@ -4,12 +4,14 @@ func _initialize():
 func check():
 	var game = load("res://main.tscn").instantiate()
 	root.add_child(game)
+	game.shift.customer_line.next_arrival = INF
 	game.shift.earnings.save_enabled = false
 	game.set_physics_process(false)
 	game.set_process_unhandled_input(false)
 	var shift = game.shift
 	shift.set_process(false)
 	shift.start_demo()
+	shift.customer_line.next_arrival = INF
 	shift.order_index = 1
 	for frame in range(620): shift._process(1.0/60.0)
 	var soda = shift.soda_station
@@ -70,6 +72,7 @@ func check():
 	shift.interact(shift.service_bell)
 	assert(shift.served == 1 and shift.phase == "leaving")
 	shift.start_demo()
+	shift.customer_line.next_arrival = INF
 	assert(soda.state == "empty" and soda.cups_left == 10 and coffee.state == "empty" and coffee.cups_left == 10)
 	soda.interact("soda_cup_stack")
 	shift.discard_last()

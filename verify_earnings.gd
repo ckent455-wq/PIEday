@@ -25,6 +25,7 @@ func check():
 	assert(ledger.sales == 0 and ledger.tips == 0 and ledger.cash == cash)
 	var game = load("res://main.tscn").instantiate()
 	root.add_child(game)
+	game.shift.customer_line.next_arrival = INF
 	game.shift.earnings.save_enabled = false
 	game.set_physics_process(false)
 	game.set_process_unhandled_input(false)
@@ -33,6 +34,7 @@ func check():
 	shift.earnings = preload("res://earnings.gd").new(false)
 	shift.earnings.rng.seed = 1924
 	shift.start_demo()
+	shift.customer_line.next_arrival = INF
 	for label in game.find_children("*","Label",true,false):
 		assert(not label.text.contains("WASD"), "Top-left controls must be removed")
 	for customer_index in range(4):

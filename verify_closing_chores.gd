@@ -3,6 +3,7 @@ func _initialize(): call_deferred("check")
 func check():
 	var game = load("res://main.tscn").instantiate()
 	root.add_child(game)
+	game.shift.customer_line.next_arrival = INF
 	game.set_physics_process(false)
 	var shift = game.shift
 	shift.set_process(false)

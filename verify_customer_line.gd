@@ -32,19 +32,15 @@ func check():
 	assert(is_instance_valid(old), "Old customer can still be walking out")
 	advance(shift,12)
 	assert(line.waiting.size() == 2, "Queue refills but stays capped")
+	var lost_before: int = shift.lost
+	var cash_before: int = shift.earnings.cash
+	var streak_before: int = shift.earnings.streak
 	shift.shift_remaining = 0
 	shift._process(0.1)
-	assert(shift.closing_time and line.waiting.size() == 2)
-	var served_count := 0
-	while shift.phase != "cleanup" and served_count < 4:
-		advance(shift,1)
-		assert(shift.phase == "waiting")
-		shift.order_taken = true
-		shift.add_item("Coffee")
-		shift.serve_order()
-		served_count += 1
-		if not is_instance_valid(shift.customer): advance(shift,5)
-	assert(served_count == 3 and shift.phase == "cleanup", "All three people already in line are served before cleanup")
+	assert(shift.phase == "cleanup" and line.waiting.is_empty() and not is_instance_valid(shift.customer))
+	assert(line.departing.size() == 3, "Active customer and queued customers walk out immediately")
+	assert(shift.lost == lost_before and shift.earnings.cash == cash_before and shift.earnings.streak == streak_before, "Closing does not penalize pending orders")
+	advance(shift,12)
 	assert(line.waiting.is_empty() and line.departing.is_empty())
 	shift.start_demo()
 	advance(shift,75)
@@ -55,5 +51,5 @@ func check():
 	assert(float(shift.customer.get_meta("queue_wait")) > 60)
 	shift.begin_prep()
 	assert(line.waiting.is_empty() and line.departing.is_empty())
-	print("PASS: visible three-person cap, spaced slots, instant handoff, independent exits, refill, closing drains existing line, generous wait tracking and reset cleanup")
+	print("PASS: three-person queue, handoff, refill, immediate penalty-free closing evacuation, no late arrivals, next-day reset")
 	quit()

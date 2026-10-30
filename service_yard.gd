@@ -18,6 +18,46 @@ static func install(diner: Node3D) -> void:
 	# Layout and dumpster transforms are edited directly in this scene.
 	var yard: Node3D = load("res://service_yard.tscn").instantiate()
 	diner.add_child(yard)
+	_smooth_dumpster(yard)
+	# Player-only boundaries extend above the decorative fence so a jump from
+	# props cannot land outside the walkable rectangle and get clamped there.
+	for wall in [
+		AABB(Vector3(-3.18, -0.2, -20.2), Vector3(0.28, 6, 5.5)),
+		AABB(Vector3(2.3, -0.2, -20.2), Vector3(0.28, 6, 5.5)),
+		AABB(Vector3(-3.18, -0.2, -20.2), Vector3(5.76, 6, 0.6))]:
+		var barrier := StaticBody3D.new()
+		barrier.name = "YardJumpBoundary"
+		barrier.collision_layer = 2
+		yard.add_child(barrier)
+		barrier.global_position = wall.get_center()
+		var collider := CollisionShape3D.new()
+		var shape := BoxShape3D.new()
+		shape.size = wall.size
+		collider.shape = shape
+		barrier.add_child(collider)
+
+static func _smooth_dumpster(yard: Node3D) -> void:
+	var dumpster := yard.get_node("OutdoorDumpster") as Node3D
+	var bounds := AABB()
+	var first := true
+	for mesh in dumpster.find_children("*", "MeshInstance3D", true, false):
+		var box: AABB = mesh.global_transform * mesh.get_aabb()
+		bounds = box if first else bounds.merge(box)
+		first = false
+		mesh.set_meta("nonblocking_decor", true)
+	# Fill the lid seam and the unusable rear/side gaps against the fence.
+	var far := bounds.end
+	bounds.position = Vector3(-3.1, -0.1, -20.02)
+	bounds.size = far - bounds.position
+	var body := StaticBody3D.new()
+	body.name = "SmoothDumpsterCollision"
+	dumpster.add_child(body)
+	body.global_transform = Transform3D(Basis.IDENTITY, bounds.get_center())
+	var collider := CollisionShape3D.new()
+	var shape := BoxShape3D.new()
+	shape.size = bounds.size
+	collider.shape = shape
+	body.add_child(collider)
 
 # Subtract the doorway volume from the wall triangles, keeping UVs and normals.
 # The rebuilt render mesh also produces the matching wall collision at startup.

@@ -65,15 +65,20 @@ func setup(host: Node3D) -> void:
 	add_child(sound)
 	shift._label(self, "RING TO SERVE", Vector3(0,0.31,0), 0.0012)
 
-func ring() -> void:
-	var now := Time.get_ticks_msec()
-	if now < next_ring: return
-	next_ring = now + 450
+func play_ding() -> void:
 	sound.play()
 	var tween := create_tween()
 	tween.tween_property(button, "position:y", -0.013, 0.055)
 	tween.tween_property(button, "position:y", 0.0, 0.12)
-	if shift.phase != "waiting":
+
+func ring() -> void:
+	var now := Time.get_ticks_msec()
+	if now < next_ring: return
+	next_ring = now + 450
+	play_ding()
+	if shift.refusal_required():
+		shift._message("Clothing is required. Face the customer and press E to refuse service.")
+	elif shift.phase != "waiting":
 		shift._message("Ding! Wait for a customer to reach the counter.")
 	elif not shift.order_taken:
 		shift._message("Take the customer's order before ringing to serve.")

@@ -4,6 +4,7 @@ func check():
 	var game = load("res://main.tscn").instantiate()
 	root.add_child(game)
 	game.shift.customer_line.next_arrival = INF
+	game.shift.customer_line.nude_chance = 0.0
 	game.set_physics_process(false)
 	var shift = game.shift
 	shift.set_process(false)
@@ -15,10 +16,7 @@ func check():
 	assert(shift.phase == "waiting")
 	shift.shift_remaining = 0
 	shift._process(0.1)
-	assert(shift.phase == "waiting", "Finish the last customer before chores")
-	shift.order_taken = true
-	shift.add_item("Coffee")
-	shift.serve_order()
+	assert(shift.phase == "cleanup" and not is_instance_valid(shift.customer), "Closing immediately ends service")
 	for frame in range(1200): shift._process(1.0/60.0)
 	assert(shift.phase == "cleanup" and shift.tasks.values().all(func(done): return not done))
 	assert(game.get_node("NightInteriorLights").visible)
@@ -43,5 +41,5 @@ func check():
 	assert(shift.phase == "prep" and not game.get_node("NightInteriorLights").visible)
 	assert(shift.tasks.values().all(func(done): return done))
 	assert(shift.start_shift() and shift.shift_remaining == 300)
-	print("PASS: no morning chores, full service first, final customer completes, nighttime cleanup, board cannot skip chores, trash visual/disposal, summary after chores, daylight next day")
+	print("PASS: immediate nighttime cleanup, board cannot skip chores, trash disposal, summary after chores, daylight next day")
 	quit()

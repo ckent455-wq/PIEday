@@ -7,12 +7,13 @@ func check():
 	game.shift.customer_line.next_arrival = INF
 	game.shift.earnings.save_enabled = false
 	game.set_physics_process(false)
+	game.set_process_unhandled_input(false)
 	game.shift.set_process(false)
 	game.shift.start_demo()
 	game.shift.customer_line.next_arrival = INF
 	for frame in range(620): game.shift._process(1.0 / 60.0)
 	assert(game.shift.limbs.size() == 4)
-	assert(game.shift.customer_skeleton.get_bone_count() == 5)
+	assert(game.shift.customer_skeleton.get_bone_count() >= 30)
 	var at: Vector3 = game.shift.customer.position
 	# Place the customer in clear floor space for a full-body inspection.
 	game.shift.customer.position = Vector3(2, -0.094, 0)
@@ -34,5 +35,5 @@ func check():
 	await create_timer(0.3).timeout
 	await RenderingServer.frame_post_draw
 	root.get_texture().get_image().save_png("res://.godot/customer-fixed-walk.png")
-	print("PASS: connected skinned body, five-bone skeleton, four animated limbs; idle and walk previews saved")
+	print("PASS: downloaded deform rig, relaxed arms and four animated limbs; idle and walk previews saved")
 	quit()

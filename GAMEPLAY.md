@@ -2,8 +2,9 @@
 
 Up to three customers can be in service or waiting in line. Waiting customers
 step forward as soon as the previous order is served, while departing customers
-walk out independently. At closing, arrivals stop and everyone already in line
-is served before nighttime chores begin. Waiting in line has a 60-second grace
+walk out independently. When the timer reaches zero, service ends immediately:
+the active customer and everyone queued walk out while nighttime chores begin.
+Unfinished orders cause no earnings or streak penalty. Waiting in line has a 60-second grace
 period before it can affect tips; nobody abandons the queue in this prototype.
 
 Correct orders earn their menu total: meat pie $8, apple/cherry pie $6,
@@ -22,8 +23,8 @@ at least one correct order earns $100 once per day. Empty days earn no bonus.
 At 6-8 fast, correct orders per day, simulated earnings average roughly $460-$589:
 about 26-33 days toward the $15,000 goal. This is a pacing target, not a deadline.
 
-Open the diner at the shift clipboard. Service lasts five minutes. Finish the
-last customer at closing; then it becomes night and closing chores begin.
+Open the diner at the shift clipboard. Service lasts five minutes. At closing,
+all remaining customers leave and nighttime closing chores begin immediately.
 Hold **E** over the
 bathroom and kitchen stains, collect the trash bag with **E**, and deposit it at
 the dumpster outside the kitchen back door. The door replaces the flat-top grill:
@@ -67,7 +68,28 @@ only repeats the order. Exact item types and quantities must match.
 Wrong orders trigger an angry response and a faster exit. Correct orders trigger
 a thank-you. Another customer arrives after the previous one leaves.
 
-The customer uses the user's downloaded **Base Humanoid Mesh**, converted in
-Blender into a clothed low-poly character with a connected skinned body and a
-five-bone skeleton for procedural walking. Flavor names currently distinguish
-the pies; their pastry mesh is shared.
+Customers randomly use six textured male and female variants from the downloaded
+**PSX Rigged Character Bases 1.2** and **new heads** packs. Each keeps a full
+deform skeleton, relaxed arms, and procedural walking. Consecutive customers use
+different appearances. Editable sources and the conversion script are in
+`art/customer_psx/`. Flavor names distinguish the pies; their pastry mesh is shared.
+
+There is an 8% chance an arriving customer uses the unclothed adult base. These
+customers never arrive back-to-back. At the counter, their prompt changes to
+**E: Refuse service - clothing required**. Refuse them instead of making an
+order; they leave and the queue continues. Refusal preserves your cash, streak,
+and prepared food, and does not count as a wrong order. The bell cannot serve
+these customers. Launch with `-- --refusal-demo` to test one immediately.
+
+During nighttime closing chores, the counter bell may ring by itself and the
+interior lights may briefly flicker. A silent human-sized figure can briefly appear
+at the dark back of the yard when you take out the trash. It disappears
+when you look away or after a short glimpse. Other encounters include three knocks
+from an empty bathroom cubicle, a cooler door creaking open while you look away,
+and six footsteps moving through an empty area behind you. Cooler doors remain
+interactable, so you can close them normally. Footsteps wait until customers leave.
+Each closing has a 30% chance of being quiet; otherwise it selects exactly one
+of the six encounters with equal probability. Timing and location checks vary
+when it happens, so you may miss an encounter. The first closing uses the same
+selection. Effects stop when closing finishes. Press **F7** during gameplay to
+test closing chores directly.

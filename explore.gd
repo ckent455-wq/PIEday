@@ -123,11 +123,6 @@ func _unhandled_input(event: InputEvent) -> void:
 		if event.keycode == KEY_R:
 			player.position = spawn_point
 			player.velocity = Vector3.ZERO
-		if event.keycode == KEY_E and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
-			if is_instance_valid(target_action):
-				shift.interact(target_action)
-			elif is_instance_valid(target_door):
-				_toggle_door(target_door)
 		if event.keycode == KEY_Q:
 			shift.discard_last()
 		if event.keycode == KEY_F6:
@@ -162,6 +157,12 @@ func _physics_process(delta: float) -> void:
 		player.position.x = previous_position.x
 		player.position.z = previous_position.z
 	_update_interaction()
+	# Poll E like movement so UI/subviewport event handling cannot swallow it.
+	if Input.is_action_just_pressed("interact") and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
+		if is_instance_valid(target_action):
+			shift.interact(target_action)
+		elif is_instance_valid(target_door):
+			_toggle_door(target_door)
 	if player.position.y < -100:
 		player.position = spawn_point
 

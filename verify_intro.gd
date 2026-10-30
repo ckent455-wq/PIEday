@@ -26,7 +26,7 @@ func check():
 	if DisplayServer.get_name() != "headless":
 		await create_timer(0.2).timeout
 		await RenderingServer.frame_post_draw
-		root.get_texture().get_image().save_png("res://../work/intro-preview.png")
+		root.get_texture().get_image().save_png("res://.godot/intro-preview.png")
 	intro._continue()
 	assert(paused and root.has_node("IntroTransition"), "Fade blocks gameplay during the transition")
 	await create_timer(2.6).timeout

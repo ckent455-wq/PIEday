@@ -27,13 +27,11 @@ func check():
 	var last_customer = shift.customer
 	shift.shift_remaining = 0.1
 	shift._process(0.2)
-	assert(shift.closing_time and shift.phase == "waiting" and shift.customer == last_customer)
-	assert(shift.shift_clock.text == "CLOSING - FINISH THE LINE")
+	assert(shift.closing_time and shift.phase == "cleanup" and not is_instance_valid(shift.customer))
+	assert(shift.shift_clock.text == "AFTER HOURS - CLEANUP")
+	assert(last_customer.get_node("Interaction").get_meta("action") == "departing_customer")
 	shift._spawn_customer()
-	assert(shift.customer == last_customer, "Closing cannot spawn a new customer")
-	shift.order_taken = true
-	shift.add_item("Soda")
-	shift.serve_order()
+	assert(not is_instance_valid(shift.customer), "Closing cannot spawn a new customer")
 	for frame in range(1200): shift._process(1.0/60.0)
 	assert(shift.phase == "cleanup")
 	for task in shift.tasks: shift.complete_task(task)
@@ -49,5 +47,5 @@ func check():
 	shift.serve_order()
 	for frame in range(1600): shift._process(1.0/60.0)
 	assert(shift.phase == "waiting" and shift.customers_this_shift == 5, "More than four customers allowed before closing")
-	print("PASS: five-minute timer, chores untimed, no late arrivals, last customer finishes, day summary, next-day reset, no four-customer cap")
+	print("PASS: five-minute timer, immediate closing, customers exit, untimed chores, no late arrivals, next-day reset")
 	quit()

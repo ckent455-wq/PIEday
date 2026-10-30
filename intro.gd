@@ -21,7 +21,7 @@ var key_sounds_played := 0
 var sound_rng := RandomNumberGenerator.new()
 
 func _ready() -> void:
-	if "--customer-demo" in OS.get_cmdline_user_args():
+	if "--customer-demo" in OS.get_cmdline_user_args() or "--closing-demo" in OS.get_cmdline_user_args() or "--refusal-demo" in OS.get_cmdline_user_args():
 		_start_game(false)
 		return
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE

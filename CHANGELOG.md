@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.4.0
+
+- Six textured, rigged customer appearances with new heads, varied clothing,
+  relaxed arms and walking. Includes editable source assets and conversion script.
+- Rare unclothed adult customer encounter: refuse service with E. Refusal has
+  no earnings or streak penalty and preserves prepared food.
+- Six random closing encounters: unattended bell, flickering lights, a fleeting
+  yard figure, bathroom knocks, a cooler opening, and moving footsteps.
+  At most one encounter per closing, with a 30% chance of a quiet night.
+- The shift ends immediately at zero. All remaining customers walk out while
+  closing chores begin; unfinished orders cause no earnings or streak penalty.
+- Reliable physical E input checked alongside player movement.
+- Smooth dumpster collision, filled fence gaps, and taller player-only yard
+  boundaries prevent getting stuck after jumping onto the dumpster.
+- Regression checks cover the new customers, refusal, closing encounters,
+  input, immediate closing and dumpster movement.
+
 ## 0.3.0
 
 - Up to three customers form a visible line. The next person steps up while

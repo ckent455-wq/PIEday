@@ -1,5 +1,9 @@
 # PIEday
 
+Current version: **0.4.0**. Includes six rigged customer appearances, a rare
+clothing-required refusal encounter, six possible closing scares, immediate
+end-of-shift departures, and fixes for E input and dumpster movement.
+
 The game opens with a typewriter-style story on a black screen. Press E or
 Space to reveal each passage and advance, then choose Open the Diner. Earn $15,000 toward Grandpa's
 treatment; the upper-left cash display tracks the goal. Existing cash is retained.
@@ -10,8 +14,8 @@ order on the counter tray and **ring the service bell to serve it**. Wrong order
 make customers angry; correct orders make them leave happy.
 
 Up to three customers line up. The next customer steps forward while the
-previous one leaves. At closing, everyone already in line is served before
-nighttime cleanup; new arrivals stop.
+previous one leaves. At closing, all remaining customers walk out and nighttime
+cleanup begins immediately. Unfinished orders have no earnings or streak penalty.
 
 ## Play the Windows release
 
@@ -44,8 +48,8 @@ The separate empty cup stack also works for manual placement. Soda uses
 the cups in the dispenser's **front-mounted cup holders**, with the same cup
 model in your hand, under the nozzle, and on the tray.
 
-Service lasts five minutes after opening; finish the last customer at closing.
-Nighttime closing chores then begin: clean the bathroom
+Service lasts five minutes after opening. At zero, service ends and customers leave.
+Nighttime closing chores begin immediately: clean the bathroom
 and kitchen, collect the trash, and take it through the kitchen back door to
 the dumpster in the fenced service yard. Press E on the back door to open or
 close it, and click or press E at the dumpster to throw away the held bag.

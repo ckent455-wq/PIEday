@@ -1,6 +1,6 @@
 # PIEday
 
-Current version: **0.5.1**. Includes hospital visits and Grandpa's declining
+Current version: **0.5.2**. Includes hospital visits and Grandpa's declining
 health, manual save/load slots, customer conversations and random names, a cleaner
 UI and pause menu, three-minute shifts, cooler restocking, and dine-in customers
 who can leave table trash for closing cleanup.

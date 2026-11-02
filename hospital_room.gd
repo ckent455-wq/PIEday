@@ -285,7 +285,11 @@ func interact() -> void:
 func _physics_process(delta: float) -> void:
 	if leaving: return
 	var direction := Vector2(float(Input.is_physical_key_pressed(KEY_D))-float(Input.is_physical_key_pressed(KEY_A)),float(Input.is_physical_key_pressed(KEY_S))-float(Input.is_physical_key_pressed(KEY_W)))
-	var motion := player.basis * Vector3(direction.x,0,direction.y).normalized()
+	var forward := -camera.global_basis.z
+	forward.y = 0
+	forward = forward.normalized()
+	var right := forward.cross(Vector3.UP)
+	var motion := (right * direction.x - forward * direction.y).normalized()
 	player.velocity.x = motion.x * 3.0
 	player.velocity.z = motion.z * 3.0
 	if not player.is_on_floor(): player.velocity.y -= 18 * delta

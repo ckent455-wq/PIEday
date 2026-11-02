@@ -24,8 +24,9 @@ func check():
 			require(event.health_loss >= 10 and event.health_loss <= 14, "Incident records significant actual loss")
 			require(progress.setback_history.size() == 1, "Each incident is recorded once")
 			if not examples.has(event.event_id): examples[event.event_id] = progress
-		if examples.size() == 4: break
-	require(examples.size() == 4, "All four incident types are possible")
+		if examples.size() == 5: break
+	require(examples.size() == 5, "All five incident types are possible")
+	require(" ".join(examples.wrong_meds.visit_dialogue(0)).contains("They gave me the wrong meds and now my blood is on fire!"), "Wrong-medication setback delivers the requested dialogue")
 	require(" ".join(examples.chemo.visit_dialogue(0)).contains("I asked for less cancer, not less Grandpa."), "Chemo setback delivers the requested bedside dialogue")
 	var sample = examples.mistreatment
 	require(" ".join(sample.visit_dialogue(0)).contains("A nurse hit me"), "Mistreatment is explained at bedside")

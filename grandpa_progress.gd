@@ -1,7 +1,7 @@
 extends RefCounted
 
 const DAILY_DECLINE := 2
-const SETBACKS := ["mistreatment", "fall", "setback", "chemo"]
+const SETBACKS := ["mistreatment", "fall", "setback", "chemo", "wrong_meds"]
 var days := 0
 var health := 100
 var death_day := 0
@@ -114,6 +114,7 @@ func visit_dialogue(cash: int) -> Array[String]:
 			"fall": lines.append("I fell trying to get out of bed. Someone found me and helped me back. They've arranged more help now, but I'm still sore. I didn't want you finding out from someone else.")
 			"setback": lines.append("I had a bad night. They had to keep a closer watch on me, and I've been weaker since. I don't want to pretend everything is fine. I needed to tell you myself.")
 			"chemo": lines.append("Chemo went bad today, kiddo. I think they overdid the chemo part. I asked for less cancer, not less Grandpa. I feel terrible. Please tell me you sold some pies.")
+			"wrong_meds": lines.append("Grandpa's in a lot of pain, boy! They gave me the wrong meds and now my blood is on fire! ooooOOOOooooOOOO! They accidentally gave me more cancer, my boy! Please sell more pies, and quickly, so I can get out of this place!")
 	if health > 75:
 		lines.append("I'm holding steady. A little tired, but I've still got enough energy to complain about the pudding. That's got to count for something.")
 	elif health > 50:

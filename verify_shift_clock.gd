@@ -10,10 +10,10 @@ func check():
 	shift.set_process(false)
 	shift.earnings = preload("res://earnings.gd").new(false)
 	shift._process(600)
-	assert(shift.phase == "prep" and shift.shift_remaining == 300, "Chores do not consume service time")
+	assert(shift.phase == "prep" and shift.shift_remaining == 180, "Chores do not consume service time")
 	shift.start_demo()
 	shift.customer_line.next_arrival = INF
-	assert(shift.shift_clock.text == "SHIFT  5:00")
+	assert(shift.shift_clock.text == "SHIFT  3:00")
 	# Expiry during the gap before an arrival closes without spawning anyone.
 	shift.shift_remaining = 0.1
 	shift._process(0.2)
@@ -37,7 +37,7 @@ func check():
 	for task in shift.tasks: shift.complete_task(task)
 	assert(shift.phase == "closed" and shift.shift_clock.text == "CLOSED")
 	shift.begin_prep()
-	assert(shift.shift_remaining == 300 and not shift.closing_time)
+	assert(shift.shift_remaining == 180 and not shift.closing_time)
 	shift.start_demo()
 	shift.customer_line.next_arrival = INF
 	shift.customers_this_shift = 4
@@ -47,5 +47,5 @@ func check():
 	shift.serve_order()
 	for frame in range(1600): shift._process(1.0/60.0)
 	assert(shift.phase == "waiting" and shift.customers_this_shift == 5, "More than four customers allowed before closing")
-	print("PASS: five-minute timer, immediate closing, customers exit, untimed chores, no late arrivals, next-day reset")
+	print("PASS: three-minute timer, immediate closing, customers exit, untimed chores, no late arrivals, next-day reset")
 	quit()

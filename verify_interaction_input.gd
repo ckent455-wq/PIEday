@@ -28,6 +28,7 @@ func check():
 	await physics_frame
 	await physics_frame
 	print("ORDER TAKEN: ", shift.order_taken, " CAPTURE: ", Input.mouse_mode)
+	shift.dialogue.finish()
 	if not shift.order_taken:
 		quit(1)
 		return

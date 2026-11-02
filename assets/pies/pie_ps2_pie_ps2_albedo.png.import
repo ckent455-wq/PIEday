@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://d0fadact3gllu"
-path="res://.godot/imported/pie_ps2_pie_ps2_albedo.png-34116f1f8ad4537f62b5f438435d6b99.ctex"
+path.s3tc="res://.godot/imported/pie_ps2_pie_ps2_albedo.png-34116f1f8ad4537f62b5f438435d6b99.s3tc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "6cded024a299c97a291f451c87e50768"
@@ -14,11 +15,11 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/pies/pie_ps2_pie_ps2_albedo.png"
-dest_files=["res://.godot/imported/pie_ps2_pie_ps2_albedo.png-34116f1f8ad4537f62b5f438435d6b99.ctex"]
+dest_files=["res://.godot/imported/pie_ps2_pie_ps2_albedo.png-34116f1f8ad4537f62b5f438435d6b99.s3tc.ctex"]
 
 [params]
 
-compress/mode=0
+compress/mode=2
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0
@@ -40,4 +41,4 @@ process/normal_map_invert_y=false
 process/hdr_as_srgb=false
 process/hdr_clamp_exposure=false
 process/size_limit=0
-detect_3d/compress_to=1
+detect_3d/compress_to=0

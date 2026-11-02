@@ -1,4 +1,4 @@
-"""Convert downloaded PSX rigs to six regular customers and one refusal encounter.
+"""Convert downloaded PSX rigs to regular customers and adult refusal encounters.
 Run with Blender --factory-startup -b --python art/customer_psx/build_customers.py.
 Control rigs stay in source; exported meshes retain the original deform weights.
 """
@@ -13,7 +13,9 @@ OUT.mkdir(parents=True, exist_ok=True)
 RENAME = {'DEF-upper_arm.L':'Arm_L', 'DEF-upper_arm.R':'Arm_R',
           'DEF-thigh.L':'Leg_L', 'DEF-thigh.R':'Leg_R'}
 VARIANTS = [
+ ('grandpa','male_pants','m',10,'M_NPC_pants1.png'),
  ('adult_unclothed','male_nude','m',1,'male_body_cauc_D.png'),
+ ('adult_female_unclothed','female_nude','f',2,'female_body_cauc_D.png'),
  ('male_1','male_pants', 'm',1,'M_NPC_pants1.png'),
  ('male_2','male_pants', 'm',2,'M_NPC_pants2.png'),
  ('male_3','male_pants', 'm',3,'M_NPC_pants3.png'),
@@ -100,7 +102,7 @@ for variant,base,gender,index,clothes in VARIANTS:
  mod=head.modifiers.new('Skin','ARMATURE')
  mod.object=rig
  head.data.materials.clear()
- face_index = 9 if variant == 'female_3' else index
+ face_index = 28 if variant == 'grandpa' else (9 if variant == 'female_3' else index)
  head.data.materials.append(texture_material('Face',SOURCE/f'head_{gender.upper()}_D{face_index}.png'))
  head.data.validate()
  head.data.update()

@@ -63,7 +63,6 @@ func setup(host: Node3D) -> void:
 	sound.unit_size = 3
 	sound.max_distance = 12
 	add_child(sound)
-	shift._label(self, "RING TO SERVE", Vector3(0,0.31,0), 0.0012)
 
 func play_ding() -> void:
 	sound.play()

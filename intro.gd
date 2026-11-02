@@ -21,7 +21,20 @@ var key_sounds_played := 0
 var sound_rng := RandomNumberGenerator.new()
 
 func _ready() -> void:
-	if "--customer-demo" in OS.get_cmdline_user_args() or "--closing-demo" in OS.get_cmdline_user_args() or "--refusal-demo" in OS.get_cmdline_user_args():
+	var saved_progress = preload("res://earnings.gd").new()
+	if get_tree().root.has_meta("pie_day_wallet"):
+		saved_progress = get_tree().root.get_meta("pie_day_wallet")
+	if saved_progress.grandpa.is_dead():
+		get_tree().root.set_meta("pie_day_wallet",saved_progress)
+		get_tree().change_scene_to_file.call_deferred("res://grandpa_ending.tscn")
+		return
+	if saved_progress.grandpa.visit_in_progress:
+		get_tree().change_scene_to_file.call_deferred("res://hospital_room.tscn")
+		return
+	if "--hospital-demo" in OS.get_cmdline_user_args():
+		get_tree().change_scene_to_file.call_deferred("res://hospital_room.tscn")
+		return
+	if "--customer-demo" in OS.get_cmdline_user_args() or "--closing-demo" in OS.get_cmdline_user_args() or "--refusal-demo" in OS.get_cmdline_user_args() or "--restock-demo" in OS.get_cmdline_user_args() or "--female-refusal-demo" in OS.get_cmdline_user_args():
 		_start_game(false)
 		return
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
@@ -58,14 +71,17 @@ func _ready() -> void:
 	narrative.visible_characters = 0
 	narrative.scroll_active = false
 	narrative.custom_minimum_size.y = 160
-	var typewriter_font: FontFile = preload("res://assets/typewriter/atwriter.ttf").duplicate()
+	var typewriter_font: FontFile = preload("res://retro_dialogue.gd").font()
 	var fallback := SystemFont.new()
 	fallback.font_names = PackedStringArray(["Courier New", "monospace"])
 	typewriter_font.fallbacks = [fallback]
 	narrative.add_theme_font_override("normal_font", typewriter_font)
-	narrative.add_theme_font_size_override("normal_font_size", 30)
-	narrative.add_theme_color_override("default_color", Color(0.89, 0.88, 0.82))
-	column.add_child(narrative)
+	narrative.add_theme_font_size_override("normal_font_size", 22)
+	narrative.add_theme_color_override("default_color", Color("eeeeee"))
+	var narrative_box := PanelContainer.new()
+	narrative_box.add_theme_stylebox_override("panel",preload("res://retro_dialogue.gd").style())
+	column.add_child(narrative_box)
+	narrative_box.add_child(narrative)
 	var lower_space := Control.new()
 	lower_space.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	column.add_child(lower_space)

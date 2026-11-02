@@ -1,8 +1,9 @@
 # PIEday
 
-Current version: **0.4.0**. Includes six rigged customer appearances, a rare
-clothing-required refusal encounter, six possible closing scares, immediate
-end-of-shift departures, and fixes for E input and dumpster movement.
+Current version: **0.5.0**. Includes hospital visits and Grandpa's declining
+health, manual save/load slots, customer conversations and random names, a cleaner
+UI and pause menu, three-minute shifts, cooler restocking, and dine-in customers
+who can leave table trash for closing cleanup.
 
 The game opens with a typewriter-style story on a black screen. Press E or
 Space to reveal each passage and advance, then choose Open the Diner. Earn $15,000 toward Grandpa's
@@ -14,8 +15,9 @@ order on the counter tray and **ring the service bell to serve it**. Wrong order
 make customers angry; correct orders make them leave happy.
 
 Up to three customers line up. The next customer steps forward while the
-previous one leaves. At closing, all remaining customers walk out and nighttime
-cleanup begins immediately. Unfinished orders have no earnings or streak penalty.
+previous one leaves. At closing, queued customers walk out. You can finish an
+already accepted order before nighttime cleanup; customers whose orders were not
+taken leave without a penalty.
 
 ## Play the Windows release
 
@@ -28,7 +30,7 @@ prompt on a new PC.
 - **WASD / mouse:** move and look. **Shift:** sprint. **Space:** jump.
 - **E / left click:** pick up an item or interact. **E:** open and close doors.
 - **Q:** return or set aside a held item, or remove the last tray item.
-- **Esc:** release the mouse; click to capture it again. **R:** respawn.
+- **Esc:** pause/resume (Resume, Save Game, Load Game, Restart Day, Quit to Desktop). **R:** respawn.
 - **F6:** restart the customer demo. **F7:** jump to nighttime closing chores.
 
 Take an order from the customer. Carry one item at a time and click the stationary
@@ -48,8 +50,16 @@ The separate empty cup stack also works for manual placement. Soda uses
 the cups in the dispenser's **front-mounted cup holders**, with the same cup
 model in your hand, under the nozzle, and on the tray.
 
-Service lasts five minutes after opening. At zero, service ends and customers leave.
-Nighttime closing chores begin immediately: clean the bathroom
+Service lasts three minutes after opening. At zero, new arrivals stop and queued
+customers leave. An already accepted order can be finished before closing chores.
+
+Use **Esc → Save Game / Load Game** for three manual save-state slots. These are
+separate from autosave and retain the current shift, order, food, position and
+Grandpa's health. The death ending also offers **Load Saved Game** alongside
+**Start a New Campaign**. New campaigns keep manual slots. Saves live under
+Godot's user data directory in `manual_saves/`.
+Nighttime closing chores begin after the final accepted order (or immediately if
+there is none): clean the bathroom
 and kitchen, collect the trash, and take it through the kitchen back door to
 the dumpster in the fenced service yard. Press E on the back door to open or
 close it, and click or press E at the dumpster to throw away the held bag.
@@ -119,3 +129,5 @@ Visual checks such as `verify_customer_pose.gd` need a graphical renderer. This
 is a playable prototype; animations, task variety, audio, and final art are still
 in development. Pie flavors currently share the same pastry mesh and are
 identified by shelf labels and the interaction prompt.
+
+Correctly served customers may dine at a booth. Some leave cups and wrappers behind. After closing, clear the tables into the indoor trash can before collecting its bag and taking it to the outdoor dumpster. Dirty tables and seated customers are preserved in manual save states.

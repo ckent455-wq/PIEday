@@ -20,11 +20,12 @@ func check():
 	var line = shift.customer_line
 	line.next_arrival = INF
 	line.force_nude_next = true
+	line.force_nude_model = "adult_female_unclothed"
 	advance(shift, 4)
 	require(shift.phase == "waiting" and shift.refusal_required(), "Adult encounter reaches counter")
 	var actor = shift.customer
 	var action = actor.get_node("Interaction")
-	require(actor.get_meta("customer_model") == "adult_unclothed", "Uses downloaded adult base")
+	require(actor.get_meta("customer_model") == "adult_female_unclothed", "Uses downloaded adult female base")
 	require(shift.action_prompt(action).contains("Refuse service"), "Explicit refusal prompt")
 	require(shift.order.is_empty() and not shift.order_taken, "No food order generated")
 	if DisplayServer.get_name() != "headless":

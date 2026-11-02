@@ -1,8 +1,10 @@
 extends SceneTree
 func _initialize(): call_deferred("check")
 func check():
+	root.set_meta("pie_day_wallet",preload("res://earnings.gd").new(false))
 	var game = load("res://main.tscn").instantiate()
 	root.add_child(game)
+	current_scene = game
 	game.shift.customer_line.next_arrival = INF
 	game.shift.customer_line.nude_chance = 0.0
 	game.set_physics_process(false)
@@ -18,7 +20,8 @@ func check():
 	shift._process(0.1)
 	assert(shift.phase == "cleanup" and not is_instance_valid(shift.customer), "Closing immediately ends service")
 	for frame in range(1200): shift._process(1.0/60.0)
-	assert(shift.phase == "cleanup" and shift.tasks.values().all(func(done): return not done))
+	assert(shift.phase == "cleanup" and not shift.tasks.bathroom and not shift.tasks.kitchen and not shift.tasks.trash)
+	assert(shift.tasks.restock, "An untouched cooler needs no replenishment")
 	assert(game.get_node("NightInteriorLights").visible)
 	shift.interact(shift.get_node("Station_clock"))
 	assert(shift.phase == "cleanup", "Cannot skip closing chores at the board")
@@ -38,8 +41,13 @@ func check():
 	assert(shift.phase == "closed" and not shift.held_trash.visible)
 	assert(shift.notice.text.contains("SHIFT COMPLETE"))
 	shift.interact(shift.get_node("Station_clock"))
-	assert(shift.phase == "prep" and not game.get_node("NightInteriorLights").visible)
-	assert(shift.tasks.values().all(func(done): return done))
-	assert(shift.start_shift() and shift.shift_remaining == 300)
+	assert(shift.phase == "closed" and shift.hospital_visits.menu.is_open,"Board offers evening departure instead of skipping it")
+	shift.hospital_visits.menu.typewriter.reveal()
+	shift.hospital_visits.menu._choose(1 if shift.hospital_visits.offered_visit else 0)
+	await create_timer(1.5).timeout
+	var morning = current_scene
+	assert(morning.shift.phase == "prep" and not morning.get_node("NightInteriorLights").visible)
+	assert(morning.shift.tasks.values().all(func(done): return done))
+	assert(morning.shift.start_shift() and morning.shift.shift_remaining == 180)
 	print("PASS: immediate nighttime cleanup, board cannot skip chores, trash disposal, summary after chores, daylight next day")
 	quit()

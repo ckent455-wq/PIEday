@@ -6,7 +6,7 @@ var last_shirt_color := -1
 const ORDERS := [["Meat pie", "Donut", "Coffee"], ["Apple pie", "Soda"], ["Cherry pie", "Donut", "Coffee"], ["Apple pie", "Donut", "Coffee"], ["Meat pie", "Soda"], ["Cherry pie", "Soda"]]
 var game: Node3D
 var phase := "prep"
-var tasks := {"bathroom": false, "kitchen": false, "trash": false}
+var tasks := {"bathroom": false, "kitchen": false, "trash": false, "restock": false, "tables": false}
 var tray: Array[String] = []
 var tray_sources: Array[Node3D] = []
 var order: Array[String] = []
@@ -51,15 +51,33 @@ var service_seconds := 0.0
 var payment_label: Label
 var payment_time := 0.0
 var cash_label: Label
-const SHIFT_SECONDS := 300.0
+const SHIFT_SECONDS := 180.0
 var shift_remaining := SHIFT_SECONDS
 var closing_time := false
 var shift_clock: Label
 var customer_line: Node
 var closing_events: Node3D
+const UI := preload("res://diner_ui.gd")
+var notice_panel: PanelContainer
+var payment_panel: PanelContainer
+var order_panel: PanelContainer
+var order_text: RichTextLabel
+var order_heading: Label
+var goal_bar: ProgressBar
+var dialogue: CanvasLayer
+var health_heading: Label
+var health_label: Label
+var health_bar: ProgressBar
+var visit_hint: Label
+var restock: Node3D
+var hospital_visits: Node
+var dine_in: Node3D
 
 func setup(host: Node3D) -> void:
 	game = host
+	if get_tree().root.has_meta("pie_day_wallet"):
+		earnings = get_tree().root.get_meta("pie_day_wallet")
+		get_tree().root.remove_meta("pie_day_wallet")
 	name = "ShiftScenario"
 	_build_hud()
 	_tag_pies()
@@ -168,86 +186,257 @@ func setup(host: Node3D) -> void:
 	closing_events = preload("res://closing_events.gd").new()
 	add_child(closing_events)
 	closing_events.setup(self)
-	if "--closing-demo" in OS.get_cmdline_user_args():
+	dialogue = preload("res://customer_dialogue.gd").new()
+	add_child(dialogue)
+	dialogue.setup(self)
+	restock = preload("res://pie_restock.gd").new()
+	add_child(restock)
+	restock.setup(self)
+	dine_in = preload("res://dine_in.gd").new()
+	add_child(dine_in)
+	dine_in.setup(self)
+	hospital_visits = preload("res://hospital_visits.gd").new()
+	add_child(hospital_visits)
+	hospital_visits.setup(self)
+	if get_tree().root.has_meta("restore_manual_state"):
+		return
+	if "--restock-demo" in OS.get_cmdline_user_args():
+		for flavor in PIE_NAMES:
+			for pie in all_pies:
+				if pie.get_meta("item") == flavor:
+					_set_pickup_visible(pie, false)
+					break
+		begin_cleanup()
+		game.spawn_point = Vector3(5.7, 0.03, -11.9)
+		game.player.position = game.spawn_point
+		game.player.rotation.y = -PI / 2
+		game.camera.rotation = Vector3.ZERO
+		_message("RESTOCKING: Open the freezer room door ahead. Collect the missing flavors from the labeled crates, then replenish the kitchen cooler with both doors open.")
+	elif "--closing-demo" in OS.get_cmdline_user_args():
 		begin_cleanup()
 		game.spawn_point = Vector3(-0.6, 0.03, -11.7)
 		game.player.position = game.spawn_point
 		game.player.rotation = Vector3.ZERO
 		game.camera.rotation = Vector3.ZERO
-	elif "--refusal-demo" in OS.get_cmdline_user_args():
+	elif "--refusal-demo" in OS.get_cmdline_user_args() or "--female-refusal-demo" in OS.get_cmdline_user_args():
 		start_demo()
 		customer_line.force_nude_next = true
+		customer_line.force_nude_model = "adult_female_unclothed" if "--female-refusal-demo" in OS.get_cmdline_user_args() else "adult_unclothed"
 		_message("REFUSAL DEMO: Wait for the customer to reach the counter, then face them and press E to refuse service. Clothing is required.")
 	elif "--customer-demo" in OS.get_cmdline_user_args():
 		start_demo()
+	elif earnings.grandpa.evening_pending:
+		begin_prep(false)
+		earnings.day_completed = true
+		phase = "closed"
+		game.set_night(true)
+		_update_shift_clock()
+		_message("Closing duties are complete. " + ("Hospital visiting hours are open. " if earnings.grandpa.visit_available() else "") + "Use the diner exit to head out.")
 	else:
 		begin_prep()
 
 func _build_hud() -> void:
 	var canvas := CanvasLayer.new()
 	add_child(canvas)
-	notice = Label.new()
-	notice.position = Vector2(24, 598)
-	notice.size = Vector2(1190, 100)
-	notice.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	notice.add_theme_font_size_override("font_size", 23)
-	notice.add_theme_color_override("font_shadow_color", Color.BLACK)
-	notice.add_theme_constant_override("shadow_offset_x", 2)
-	notice.add_theme_constant_override("shadow_offset_y", 2)
-	canvas.add_child(notice)
-	payment_label = Label.new()
-	payment_label.position = Vector2(24, 510)
-	payment_label.add_theme_font_size_override("font_size", 25)
-	payment_label.add_theme_color_override("font_color", Color(0.55, 1.0, 0.65))
-	payment_label.add_theme_color_override("font_shadow_color", Color.BLACK)
-	payment_label.add_theme_constant_override("shadow_offset_x", 2)
-	payment_label.add_theme_constant_override("shadow_offset_y", 2)
-	payment_label.visible = false
-	canvas.add_child(payment_label)
-	cash_label = Label.new()
-	cash_label.position = Vector2(24, 20)
-	cash_label.add_theme_font_size_override("font_size", 30)
-	cash_label.add_theme_color_override("font_color", Color(0.65, 1.0, 0.70))
-	cash_label.add_theme_color_override("font_shadow_color", Color.BLACK)
-	cash_label.add_theme_constant_override("shadow_offset_x", 2)
-	cash_label.add_theme_constant_override("shadow_offset_y", 2)
-	cash_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	canvas.add_child(cash_label)
+	var root := Control.new()
+	root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	root.theme = UI.theme()
+	canvas.add_child(root)
+	var wallet := UI.card()
+	root.add_child(wallet)
+	wallet.position = Vector2(24, 24)
+	wallet.size = Vector2(300, 106)
+	var money := VBoxContainer.new()
+	money.add_theme_constant_override("separation", 8)
+	wallet.add_child(money)
+	money.add_child(UI.label("GRANDPA'S TREATMENT", 12, UI.MUTED))
+	cash_label = UI.label("", 22)
+	money.add_child(cash_label)
+	goal_bar = ProgressBar.new()
+	goal_bar.custom_minimum_size.y = 3
+	goal_bar.max_value = earnings.TREATMENT_GOAL
+	goal_bar.show_percentage = false
+	goal_bar.add_theme_stylebox_override("background", UI.box(Color("3c3c38"), 0))
+	goal_bar.add_theme_stylebox_override("fill", UI.box(UI.GOLD, 0))
+	money.add_child(goal_bar)
 	_update_cash_display()
-	shift_clock = Label.new()
-	shift_clock.position = Vector2(24, 58)
-	shift_clock.add_theme_font_size_override("font_size", 21)
-	shift_clock.add_theme_color_override("font_shadow_color", Color.BLACK)
-	shift_clock.add_theme_constant_override("shadow_offset_x", 2)
-	shift_clock.add_theme_constant_override("shadow_offset_y", 2)
-	shift_clock.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	canvas.add_child(shift_clock)
+	var clock_card := UI.card()
+	var health_card := UI.card()
+	root.add_child(health_card)
+	health_card.set_anchors_and_offsets_preset(Control.PRESET_CENTER_TOP)
+	health_card.offset_left = -150
+	health_card.offset_right = 150
+	health_card.offset_top = 24
+	health_card.offset_bottom = 130
+	var health_column := VBoxContainer.new()
+	health_column.add_theme_constant_override("separation", 6)
+	health_card.add_child(health_column)
+	health_heading = UI.label("", 12, UI.MUTED)
+	health_column.add_child(health_heading)
+	health_label = UI.label("", 16)
+	health_column.add_child(health_label)
+	health_bar = ProgressBar.new()
+	health_bar.max_value = 100
+	health_bar.show_percentage = false
+	health_bar.custom_minimum_size.y = 6
+	health_bar.add_theme_stylebox_override("background", UI.box(Color("3c3c38"), 0))
+	health_column.add_child(health_bar)
+	visit_hint = UI.label("Visit Grandpa after closing", 12, UI.MUTED)
+	health_column.add_child(visit_hint)
+	_update_grandpa_hud()
+	root.add_child(clock_card)
+	clock_card.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT)
+	clock_card.offset_left = -284
+	clock_card.offset_right = -24
+	clock_card.offset_top = 24
+	clock_card.offset_bottom = 112
+	var clock := VBoxContainer.new()
+	clock.add_theme_constant_override("separation", 6)
+	clock_card.add_child(clock)
+	clock.add_child(UI.label("PIEday  /  DINER", 12, UI.MUTED))
+	shift_clock = UI.label("", 19)
+	clock.add_child(shift_clock)
 	_update_shift_clock()
+	order_panel = UI.card()
+	root.add_child(order_panel)
+	order_panel.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT)
+	order_panel.offset_left = -284
+	order_panel.offset_right = -24
+	order_panel.offset_top = 124
+	order_panel.offset_bottom = 124
+	var order_column := VBoxContainer.new()
+	order_column.add_theme_constant_override("separation", 12)
+	order_panel.add_child(order_column)
+	order_heading = UI.label("CURRENT ORDER", 12, UI.MUTED)
+	order_column.add_child(order_heading)
+	order_text = RichTextLabel.new()
+	order_text.bbcode_enabled = true
+	order_text.fit_content = true
+	order_text.scroll_active = false
+	order_text.add_theme_font_size_override("normal_font_size", 18)
+	order_column.add_child(order_text)
+	notice_panel = UI.card()
+	root.add_child(notice_panel)
+	notice_panel.set_anchors_and_offsets_preset(Control.PRESET_CENTER_BOTTOM)
+	notice_panel.anchor_left = 0.17
+	notice_panel.anchor_right = 0.83
+	notice_panel.offset_left = 0
+	notice_panel.offset_right = 0
+	notice_panel.offset_top = -24
+	notice_panel.offset_bottom = -24
+	notice_panel.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	notice = UI.label("", 18)
+	notice.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	notice_panel.add_child(notice)
+	payment_panel = UI.card()
+	root.add_child(payment_panel)
+	payment_panel.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_LEFT)
+	payment_panel.offset_left = 24
+	payment_panel.offset_right = 460
+	payment_panel.offset_top = -202
+	payment_panel.offset_bottom = -134
+	payment_label = UI.label("", 16, UI.GREEN)
+	payment_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	payment_panel.add_child(payment_label)
+	payment_label.visible = false
+	payment_panel.hide()
+	UI.passive(root)
+
+func _refresh_hud() -> void:
+	notice_panel.visible = not notice.text.is_empty()
+	payment_panel.visible = payment_label.visible
+	order_panel.visible = phase in ["arriving", "waiting", "leaving", "cleanup"] and not (is_instance_valid(dialogue) and dialogue.is_open)
+	var lines := PackedStringArray()
+	if phase == "cleanup":
+		order_heading.text = "CLOSING CHECKLIST"
+		for id in ["bathroom", "kitchen", "tables", "trash", "restock"]:
+			var title: String = {"bathroom": "Clean the bathroom", "kitchen": "Clean the kitchen", "tables": "Clear table trash", "trash": "Take out the trash", "restock": "Replenish cooler"}[id]
+			if id == "tables" and not tasks[id]: title += " (%d left)" % dine_in.dirty_count()
+			if id == "restock" and not tasks[id]: title += " (%d left)" % restock.missing.size()
+			lines.append(("[color=#a9c6a0]✓  " + title + "[/color]") if tasks[id] else "○  " + title)
+	elif refusal_required():
+		order_heading.text = "SERVICE NOTICE"
+		lines.append(str(customer.get_meta("display_name", "Customer")) + "\nClothing is required.\nRefuse service at the counter.")
+	elif order_taken:
+		order_heading.text = "ORDER / " + str(customer.get_meta("display_name", "Customer")).to_upper() if is_instance_valid(customer) else "CURRENT ORDER"
+		var shown: Array[String] = []
+		for item in order:
+			if item in shown: continue
+			shown.append(item)
+			var done := tray.count(item) >= order.count(item)
+			var title := item + (" ×%d" % order.count(item) if order.count(item) > 1 else "")
+			lines.append(("[color=#a9c6a0]✓  " + title + "[/color]") if done else "○  " + title)
+		lines.append("\n[color=#ada89d]Ring the bell when ready.[/color]")
+	else:
+		order_heading.text = "COUNTER"
+		lines.append(("Speak to " + str(customer.get_meta("display_name", "the customer")) + ".") if phase == "waiting" and is_instance_valid(customer) else "Waiting for the next customer.")
+	order_text.text = "\n".join(lines)
 
 func _update_shift_clock() -> void:
 	if phase == "prep": shift_clock.text = "READY TO OPEN"
 	elif phase == "cleanup": shift_clock.text = "AFTER HOURS - CLEANUP"
 	elif phase == "closed": shift_clock.text = "CLOSED"
+	elif closing_time and phase == "waiting" and order_taken: shift_clock.text = "CLOSED · LAST ORDER"
 	else:
 		var seconds := int(ceil(shift_remaining))
 		shift_clock.text = "SHIFT  %d:%02d" % [seconds / 60, seconds % 60]
-	shift_clock.modulate = Color(1, 0.7, 0.4) if closing_time else Color.WHITE
+	shift_clock.modulate = UI.GOLD if closing_time else Color.WHITE
 
 func _finish_day() -> void:
-	begin_cleanup()
+	close_service()
+
+func close_service() -> void:
+	if phase == "waiting" and order_taken and is_instance_valid(customer) and not refusal_required():
+		closing_time = true
+		shift_remaining = 0
+		arrival_delay = 0
+		customer_line.evacuate(true)
+		dine_in.close_for_night()
+		game.set_night(true)
+		_update_shift_clock()
+		_message("DINER CLOSED! Finish this customer's order and ring the bell. Everyone else is heading home; closing duties begin after this order.")
+	else:
+		begin_cleanup()
 
 func _show_day_summary() -> void:
 	earnings.finish_day()
 	_update_cash_display()
+	if earnings.grandpa.is_dead():
+		_end_campaign()
+		return
 	phase = "closed"
 	closing_events.reset()
 	arrival_delay = 0
-	_message("SHIFT COMPLETE! Sales: $%d | Tips: $%d | Service: $%d | Streak: $%d\nClosing bonus: $%d | Today: $%d | Cash: $%d\n%s" % [earnings.sales, earnings.tips, earnings.service_rewards, earnings.streak_rewards, earnings.closing_bonus, earnings.day_total(), earnings.cash, "TREATMENT FUNDED! You have saved enough for Grandpa." if earnings.cash >= earnings.TREATMENT_GOAL else "Use the shift clipboard to begin the next day."])
+	_message("SHIFT COMPLETE! Sales: $%d | Tips: $%d | Service: $%d | Streak: $%d\nClosing bonus: $%d | Today: $%d | Cash: $%d\n%s" % [earnings.sales, earnings.tips, earnings.service_rewards, earnings.streak_rewards, earnings.closing_bonus, earnings.day_total(), earnings.cash, ("HOSPITAL VISITING HOURS ARE OPEN. Visit Grandpa or go home using the diner exit." if earnings.grandpa.visit_available() else "Use the diner exit to head home for the night.")])
 	notice_time = 0
 	_update_shift_clock()
 
+func _end_campaign() -> void:
+	phase = "game_over"
+	closing_events.reset()
+	customer_line.clear_all()
+	dine_in.reset()
+	arrival_delay = 0
+	if is_instance_valid(dialogue): dialogue.finish()
+	if is_instance_valid(hospital_visits): hospital_visits.menu.finish()
+	preload("res://grandpa_ending.gd").present(game,earnings)
+
 func _update_cash_display() -> void:
 	if is_instance_valid(cash_label): cash_label.text = "CASH  $%d / $15,000" % earnings.cash
+	if is_instance_valid(goal_bar): goal_bar.value = earnings.cash
+	_update_grandpa_hud()
+
+func _update_grandpa_hud() -> void:
+	if not is_instance_valid(health_bar): return
+	var progress = earnings.grandpa
+	health_heading.text = "GRANDPA'S HEALTH"
+	var recent: bool = progress.last_setback_day == progress.days
+	health_label.text = "0% · Deceased" if progress.is_dead() else "Surgery funded · Stable" if earnings.cash >= earnings.TREATMENT_GOAL else "%d%% · %s" % [progress.health, "Recent setback" if recent else progress.condition()]
+	health_bar.value = progress.health
+	var color: Color = Color("dc8c82") if recent else UI.GREEN if progress.health > 50 else UI.GOLD if progress.health > 25 else Color("dc8c82")
+	health_bar.add_theme_stylebox_override("fill", UI.box(color, 0))
+	visit_hint.text = "Campaign ended" if progress.is_dead() else "Visiting hours open after closing" if progress.visit_available() else "Visit Grandpa after closing"
+	visit_hint.add_theme_color_override("font_color",UI.GOLD if progress.visit_available() else UI.MUTED)
 
 func _tag_pies() -> void:
 	all_pies.clear()
@@ -336,7 +525,15 @@ func _make_task(id: String, title: String, location: Vector3) -> void:
 	_label(node, title, Vector3(0, 1.0 if id == "trash" else 0.65, 0), 0.0015)
 	task_nodes[id] = node
 
-func begin_prep() -> void:
+func begin_prep(resolve_evening := true) -> void:
+	if earnings.grandpa.is_dead(): return
+	if resolve_evening and earnings.grandpa.evening_pending:
+		earnings.grandpa.finish_evening()
+		earnings._save()
+	if is_instance_valid(dialogue): dialogue.finish()
+	if is_instance_valid(dine_in):
+		dine_in.reset()
+		dine_in.dine_chance = .55
 	if is_instance_valid(customer_line): customer_line.nude_chance = 0.08
 	if is_instance_valid(closing_events): closing_events.reset()
 	if is_instance_valid(customer_line): customer_line.clear_all()
@@ -359,6 +556,9 @@ func begin_prep() -> void:
 	_message("Ready for the day. Use the shift clipboard to open the diner.")
 
 func begin_cleanup() -> void:
+	if earnings.grandpa.is_dead(): return
+	if is_instance_valid(dialogue): dialogue.finish()
+	if is_instance_valid(dine_in): dine_in.close_for_night()
 	if is_instance_valid(customer_line): customer_line.evacuate()
 	_reset_customer()
 	walking = false
@@ -374,14 +574,23 @@ func begin_cleanup() -> void:
 		tasks[id] = false
 		task_nodes[id].visible = true
 		task_nodes[id].collision_layer = 4
+	if is_instance_valid(oven): oven.reset_oven()
+	restock.begin()
+	dine_in.begin_cleanup()
 	game.set_night(true)
 	closing_events.begin()
 	_update_shift_clock()
-	_message("DINER CLOSED! Customers are heading out. Clean the bathroom and kitchen, then take the trash outside to the dumpster.")
+	_message("DINER CLOSED! Clean the bathroom and kitchen, clear table trash into the indoor bin, then take the bag to the dumpster. Replenish missing cooler pies from the freezer.")
 
 func start_demo() -> void:
+	if earnings.grandpa.is_dead(): return
+	if is_instance_valid(dialogue): dialogue.finish()
+	if is_instance_valid(dine_in):
+		dine_in.reset()
+		dine_in.dine_chance = 0
 	customer_line.nude_chance = 0.0
 	customer_line.force_nude_next = false
+	customer_line.force_nude_model = ""
 	if is_instance_valid(closing_events): closing_events.reset()
 	if is_instance_valid(customer_line): customer_line.clear_all()
 	game.set_night(false)
@@ -413,10 +622,11 @@ func _open_staff_doors() -> void:
 			game._toggle_door(door)
 
 func start_shift() -> bool:
+	if earnings.grandpa.is_dead(): return false
 	if phase != "prep": return false
 	for done in tasks.values():
 		if not done:
-			_message("Finish all three daily tasks before opening the shift.")
+			_message("Finish all closing duties before opening the next shift.")
 			return false
 	phase = "arriving"
 	closing_time = false
@@ -439,11 +649,22 @@ func _spawn_customer() -> void:
 	order_taken = false
 	angry = false
 	customer = customer_line.pop_front() if queued else customer_line.make_actor(Vector3(0.76,-0.094,5))
+	_bind_customer_actor(customer)
+	phase = "arriving"
+	if customer.position.z <= 0.2:
+		_set_route([Vector3(-2.4,-0.094,-3.6)])
+	else:
+		_set_route([Vector3(0.76,-0.094,0.2),Vector3(-2.4,-0.094,-3.6)])
+	for door in game.doors:
+		if door.name == "Door_03" and not door.get_meta("open"):
+			game._toggle_door(door)
+
+func _bind_customer_actor(actor: Node3D) -> void:
+	customer = actor
 	customer.name = "Customer"
 	if customer.get_meta("requires_refusal", false): order.clear()
 	customer_visual = customer.get_node("Visual")
 	customer_visual.rotation.z = 0
-	phase = "arriving"
 	limbs.clear()
 	limb_rest_rotations.clear()
 	for node in customer_visual.find_children("*", "Node3D", true, false):
@@ -456,13 +677,7 @@ func _spawn_customer() -> void:
 					limb_rest_rotations[bone_id] = node.get_bone_pose_rotation(bone_id)
 	customer.get_node("Interaction").set_meta("action", "customer")
 	speech = _label(customer, "CUSTOMER", Vector3(0, 2.45, 0), 0.0021)
-	if customer.position.z <= 0.2:
-		_set_route([Vector3(-2.4,-0.094,-3.6)])
-	else:
-		_set_route([Vector3(0.76,-0.094,0.2),Vector3(-2.4,-0.094,-3.6)])
-	for door in game.doors:
-		if door.name == "Door_03" and not door.get_meta("open"):
-			game._toggle_door(door)
+	speech.visible = false
 
 func _randomize_customer_shirt(visual: Node3D = null) -> void:
 	if not is_instance_valid(visual): visual = customer_visual
@@ -484,14 +699,16 @@ func _set_route(points: Array[Vector3]) -> void:
 	walking = true
 
 func _process(delta: float) -> void:
+	if phase == "game_over": return
 	if not is_instance_valid(game):
 		return
 	animation_time += delta
+	dine_in.tick(delta)
 	closing_events.tick(delta)
 	if phase in ["arriving", "waiting", "leaving"] and not closing_time:
 		shift_remaining = maxf(0.0, shift_remaining - delta)
 		if shift_remaining <= 0:
-			begin_cleanup()
+			close_service()
 	customer_line.tick(delta)
 	if phase in ["arriving","waiting","leaving"] and not is_instance_valid(customer):
 		if not customer_line.waiting.is_empty(): _spawn_customer()
@@ -531,6 +748,7 @@ func _process(delta: float) -> void:
 		customer_visual.position.y = 0
 		_pose_customer(0)
 	_update_cleaning(delta)
+	_refresh_hud()
 
 func _pose_customer(stride: float) -> void:
 	if not is_instance_valid(customer_skeleton): return
@@ -569,6 +787,9 @@ func complete_task(id: String) -> void:
 func action_prompt(node: Node) -> String:
 	var action: String = node.get_meta("action", "")
 	match action:
+		"table_trash", "trash_bin", "dining_customer": return dine_in.prompt(action)
+		"freezer_stock", "restock_cooler": return restock.prompt(action, node)
+		"pie" when phase == "cleanup": return restock.prompt("restock_cooler", node)
 		"pie": return "[Click / E] Pick up " + str(node.get_meta("item"))
 		"donut": return "[Click / E] Grab a donut" if carried_item.is_empty() and not has_empty_cup() else "Hands full - place or return your item first"
 		"tray": return "[Click / E] Place " + carried_item + " on tray" if not carried_item.is_empty() else "[Click / E] Take last item off tray" if not tray.is_empty() else "Serving tray - bring the customer's items here"
@@ -586,15 +807,23 @@ func action_prompt(node: Node) -> String:
 		"dispose": return "[Click / E] Throw trash into dumpster" if carrying_trash else "Dumpster - collect the morning trash bag first"
 		"clock":
 			if phase == "prep": return "[E] Open shift"
-			if phase == "closed": return "[E] Begin the next day"
+			if phase == "closed": return "[E] Visit Grandpa / Go Home" if earnings.grandpa.visit_available() else "[E] Go Home"
 			if phase == "cleanup": return "Finish closing chores to end the day"
 			return "Shift is open - serve customers at the counter"
 	return ""
 
 func interact(node: Node) -> void:
+	if earnings.grandpa.is_dead(): return
 	var action: String = node.get_meta("action", "")
 	match action:
-		"pie": pickup_item(str(node.get_meta("item")), node)
+		"table_trash": dine_in.pick_trash(int(node.get_meta("table")))
+		"trash_bin": dine_in.use_bin()
+		"dining_customer": _message("They're enjoying their meal.")
+		"freezer_stock": restock.take(node)
+		"restock_cooler": restock.deliver()
+		"pie":
+			if phase == "cleanup": restock.deliver()
+			else: pickup_item(str(node.get_meta("item")), node)
 		"donut": pickup_item(action.capitalize())
 		"tray":
 			if not carried_item.is_empty(): place_carried()
@@ -612,13 +841,21 @@ func interact(node: Node) -> void:
 			if refusal_required():
 				refuse_service()
 				return
+			var reminder := order_taken
 			if not order_taken: service_seconds = 0.0
 			order_taken = true
 			speech.text = "I'd like " + ", ".join(order) + ", please."
 			_message("CUSTOMER: " + ", ".join(order) + ". Place everything on the counter tray, then ring the bell to serve.")
+			dialogue.begin(customer, order, reminder)
 		"task":
 			if phase != "cleanup": return
 			if node.get_meta("task") == "trash":
+				if not tasks.tables:
+					_message("Clear all table trash into the indoor bin before taking out the bag.")
+					return
+				if not carried_item.is_empty() or has_empty_cup():
+					_message("Free your hands before collecting the trash.")
+					return
 				_set_carrying_trash(true)
 				node.visible = false
 				node.collision_layer = 0
@@ -629,8 +866,8 @@ func interact(node: Node) -> void:
 				complete_task("trash")
 		"clock":
 			if phase == "prep": start_shift()
-			elif phase == "closed": begin_prep()
-			elif phase == "cleanup": _message("Finish cleaning and take the trash to the dumpster before starting the next day.")
+			elif phase == "closed": hospital_visits.open_departure()
+			elif phase == "cleanup": _message("Finish cleaning, take out the trash, and replenish the cooler before starting the next day.")
 			else: _message("Your shift is already open. Customers are waiting at the counter.")
 
 func _set_carrying_trash(value: bool) -> void:
@@ -679,9 +916,12 @@ func refuse_service() -> void:
 	customers_this_shift += 1
 	_depart_customer(false)
 
-func _depart_customer(angry_exit: bool) -> void:
+func _depart_customer(angry_exit: bool, meal_items: Array = []) -> void:
+	if is_instance_valid(dialogue): dialogue.finish()
 	phase = "leaving"
-	if is_instance_valid(customer): customer_line.leave(customer, angry_exit)
+	if is_instance_valid(customer):
+		if angry_exit or meal_items.is_empty() or not dine_in.try_seat(customer,meal_items):
+			customer_line.leave(customer, angry_exit)
 	customer = null
 	customer_visual = null
 	customer_skeleton = null
@@ -689,7 +929,9 @@ func _depart_customer(angry_exit: bool) -> void:
 	walking = false
 	order_taken = false
 	arrival_delay = 0.15
-	if not customer_line.waiting.is_empty(): _spawn_customer()
+	if closing_time:
+		begin_cleanup()
+	elif not customer_line.waiting.is_empty(): _spawn_customer()
 
 func serve_order() -> bool:
 	if refusal_required():
@@ -732,7 +974,7 @@ func serve_order() -> bool:
 	phase = "leaving"
 	customers_this_shift += 1
 	order_index += 1
-	_depart_customer(angry)
+	_depart_customer(angry,order.duplicate() if correct else [])
 	return correct
 
 func _clear_tray(restore: bool) -> void:
@@ -763,6 +1005,7 @@ func _set_pickup_visible(node: Node3D, shown: bool) -> void:
 		body.collision_layer = 1 if shown else 0
 
 func _reset_stock() -> void:
+	if is_instance_valid(restock): restock.reset()
 	if is_instance_valid(oven): oven.reset_oven()
 	if is_instance_valid(coffee_station): coffee_station.reset_station()
 	if is_instance_valid(soda_station): soda_station.reset_station()
@@ -791,7 +1034,14 @@ func _item_model(parent: Node3D, item: String, at: Vector3, size: float, source:
 	parent.add_child(holder)
 	holder.position = at
 	holder.scale = Vector3.ONE * size
-	if item.ends_with("pie"):
+	if item == "Table trash":
+		dine_in.trash_visual(holder)
+	elif item.ends_with(" stock"):
+		_box(holder, Vector3(0, 0.08, 0), Vector3(0.45, 0.16, 0.35), Color(0.5, 0.39, 0.24))
+		var pie = preload("res://assets/pies/pie_ps2.glb").instantiate()
+		holder.add_child(pie)
+		pie.position.y = 0.17
+	elif item.ends_with("pie"):
 		var quality: String = str(source.get_meta("bake_quality", "raw")) if is_instance_valid(source) else "raw"
 		var path := "res://assets/pies/pie_ps2_toasted.glb" if quality in ["perfect", "burnt"] else "res://assets/pies/pie_ps2.glb"
 		if quality == "burnt": path = "res://assets/pies/pie_ps2_burnt.glb"
@@ -881,12 +1131,16 @@ func pickup_item(item: String, source: Node3D = null) -> bool:
 
 func place_carried() -> bool:
 	if carried_item.is_empty(): return false
+	if carried_item.ends_with(" stock"):
+		_message("Take the replacement crate to the kitchen cooler, not the serving tray.")
+		return false
 	if not add_item(carried_item, carried_source): return false
 	_clear_carried(false)
 	_message("Item placed on the counter tray. Ring the bell when the order is complete.")
 	return true
 
 func _clear_carried(restore: bool) -> void:
+	if restore and carried_item == "Table trash" and is_instance_valid(dine_in): dine_in.return_trash()
 	if restore and is_instance_valid(carried_source): _set_pickup_visible(carried_source, true)
 	carried_item = ""
 	carried_source = null

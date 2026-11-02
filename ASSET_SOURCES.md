@@ -34,9 +34,9 @@ This file records provenance; it does not relicense third-party material.
   was found in the supplied archives. The older humanoid remains the source
   for the closing encounter figure.
 
-- **Refusal encounter:** the same user-provided PSX pack's adult male nude rig
-  and matching body texture, retained in `art/customer_psx/source/`, exported as
-  `assets/customers/adult_unclothed.glb`. Used for the clothing-required refusal
+- **Refusal encounter:** the same user-provided PSX pack's adult male and female nude rigs
+  and matching body textures, retained in `art/customer_psx/source/`, exported as
+  `assets/customers/adult_unclothed.glb` and `adult_female_unclothed.glb`. Used for the clothing-required refusal
   event; uses the same skeleton and walking implementation as regular customers.
 
 - **Intro typewriter:** user-provided `Text Typerwriter.zip`. The included
@@ -62,3 +62,11 @@ This file records provenance; it does not relicense third-party material.
   `assets/trashbag/` with the supplied black texture and 0.55m height.
   Variant A replaces the morning-duty placeholder; variant B is also available.
   No license or attribution file was included in the supplied ZIP.
+
+- **Hospital room:** user-provided Hospital_assets.zip, downloaded November 2, 2026. Bed, IV equipment, furniture and modular room kit exported from hospital.blend into assets/hospital/ with embedded 256 px textures. Rebuild notes: art/hospital/README.md.
+
+- **Grandpa:** PSX rigged male body with the new-heads pack's bald m_head10 mesh and selected elderly D28 face texture. Exported as assets/customers/grandpa.glb; grandpa.tscn stores his resting arm pose and is instanced under Furniture/Bed in hospital_room.tscn.
+
+- **Dialogue font:** Press Start 2P by the Press Start 2P Project Authors, distributed under SIL Open Font License 1.1. Font and full license are in assets/ui/. Source: https://github.com/google/fonts/tree/main/ofl/pressstart2p .
+
+- **Death-ending background:** generated for PIEday with the imagegen skill, November 2, 2026; anatomy-corrected morgue image with a Grandpa toe tag. Runtime asset: assets/ui/death_grandpa_morgue.png.

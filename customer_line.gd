@@ -6,16 +6,19 @@ var departing: Array[Dictionary] = []
 var next_arrival := 6.0
 var time := 0.0
 const CUSTOMER_MODELS := ["male_1", "female_1", "male_2", "female_2", "male_3", "female_3"]
+const ADULT_MODELS := ["adult_unclothed", "adult_female_unclothed"]
 var last_model := -1
 var nude_chance := 0.08
 var last_was_nude := false
 var force_nude_next := false
+var force_nude_model := ""
 
-func make_actor(at: Vector3) -> Node3D:
+func make_actor(at: Vector3, saved_model := "") -> Node3D:
 	var actor := Node3D.new()
 	actor.name = "DinerCustomer"
 	shift.add_child(actor)
 	actor.position = at
+	actor.set_meta("display_name", preload("res://customer_names.gd").generate())
 	var model_index := randi_range(0, CUSTOMER_MODELS.size() - 1)
 	if last_model >= 0:
 		model_index = (last_model + randi_range(1, CUSTOMER_MODELS.size() - 1)) % CUSTOMER_MODELS.size()
@@ -23,7 +26,13 @@ func make_actor(at: Vector3) -> Node3D:
 	var unclothed := force_nude_next or (not last_was_nude and randf() < nude_chance)
 	force_nude_next = false
 	last_was_nude = unclothed
-	var model_name: String = "adult_unclothed" if unclothed else CUSTOMER_MODELS[model_index]
+	var model_name: String = CUSTOMER_MODELS[model_index]
+	if unclothed:
+		model_name = force_nude_model if force_nude_model in ADULT_MODELS else ADULT_MODELS[randi_range(0, ADULT_MODELS.size() - 1)]
+		force_nude_model = ""
+	if saved_model in CUSTOMER_MODELS or saved_model in ADULT_MODELS:
+		model_name = saved_model
+		unclothed = saved_model in ADULT_MODELS
 	var visual: Node3D = load("res://assets/customers/" + model_name + ".glb").instantiate()
 	visual.name = "Visual"
 	actor.add_child(visual)
@@ -72,8 +81,8 @@ func leave(actor: Node3D, angry: bool, closing := false) -> void:
 		route = [Vector3(0.76,-0.094,0.2),Vector3(0.76,-0.094,6.1)] if actor.position.z < 0.2 else [Vector3(0.76,-0.094,6.1)]
 	departing.append({"actor":actor,"route":route,"step":0,"speed":6.5 if angry else 5.5})
 
-func evacuate() -> void:
-	if is_instance_valid(shift.customer):
+func evacuate(keep_active := false) -> void:
+	if not keep_active and is_instance_valid(shift.customer):
 		if is_instance_valid(shift.speech): shift.speech.text = "Diner's closed. Good night."
 		leave(shift.customer, false, true)
 		shift.customer = null

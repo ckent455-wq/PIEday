@@ -14,6 +14,7 @@ var closing_bonus := 0
 var day_completed := false
 var save_enabled := true
 var rng := RandomNumberGenerator.new()
+var grandpa := preload("res://grandpa_progress.gd").new()
 
 func _init(persist := true) -> void:
 	save_enabled = persist
@@ -22,8 +23,10 @@ func _init(persist := true) -> void:
 		var config := ConfigFile.new()
 		if config.load(SAVE_PATH) == OK:
 			cash = maxi(0, int(config.get_value("earnings", "cash", 0)))
+			grandpa.read_config(config)
 
 func start_day() -> void:
+	if grandpa.is_dead(): return
 	sales = 0
 	tips = 0
 	service_rewards = 0
@@ -41,6 +44,7 @@ func tip_chance(seconds: float, perfect_pie: bool) -> float:
 	return clampf(chance, 0.0, 0.80)
 
 func payout(items: Array, correct: bool, seconds: float, perfect_pie: bool) -> Dictionary:
+	if grandpa.is_dead(): return {"sale":0,"tip":0,"service":0,"streak_bonus":0,"total":0}
 	if not correct:
 		streak = 0
 		return {"sale": 0, "tip": 0, "service": 0, "streak_bonus": 0, "total": 0}
@@ -61,10 +65,11 @@ func payout(items: Array, correct: bool, seconds: float, perfect_pie: bool) -> D
 	return {"sale": sale, "tip": tip, "service": service, "streak_bonus": streak_bonus, "total": sale + tip + service + streak_bonus}
 
 func finish_day() -> int:
-	if day_completed: return 0
+	if day_completed or grandpa.is_dead(): return 0
 	day_completed = true
 	closing_bonus = 100 if correct_orders > 0 else 0
 	cash += closing_bonus
+	grandpa.advance_day(cash >= TREATMENT_GOAL)
 	_save()
 	return closing_bonus
 
@@ -75,4 +80,5 @@ func _save() -> void:
 	if save_enabled:
 		var config := ConfigFile.new()
 		config.set_value("earnings", "cash", cash)
-		if config.save(SAVE_PATH) != OK: push_warning("Could not save earnings.")
+		grandpa.write_config(config)
+		if config.save(SAVE_PATH) != OK: push_warning("Could not save game progress.")

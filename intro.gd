@@ -21,6 +21,10 @@ var key_sounds_played := 0
 var sound_rng := RandomNumberGenerator.new()
 
 func _ready() -> void:
+	if "--scare-test" in OS.get_cmdline_user_args():
+		get_tree().root.set_meta("pie_day_wallet", preload("res://earnings.gd").new(false))
+		_start_game(false)
+		return
 	var saved_progress = preload("res://earnings.gd").new()
 	if get_tree().root.has_meta("pie_day_wallet"):
 		saved_progress = get_tree().root.get_meta("pie_day_wallet")
@@ -34,7 +38,7 @@ func _ready() -> void:
 	if "--hospital-demo" in OS.get_cmdline_user_args():
 		get_tree().change_scene_to_file.call_deferred("res://hospital_room.tscn")
 		return
-	if "--customer-demo" in OS.get_cmdline_user_args() or "--closing-demo" in OS.get_cmdline_user_args() or "--refusal-demo" in OS.get_cmdline_user_args() or "--restock-demo" in OS.get_cmdline_user_args() or "--female-refusal-demo" in OS.get_cmdline_user_args():
+	if "--doorway-demo" in OS.get_cmdline_user_args() or "--customer-demo" in OS.get_cmdline_user_args() or "--closing-demo" in OS.get_cmdline_user_args() or "--refusal-demo" in OS.get_cmdline_user_args() or "--restock-demo" in OS.get_cmdline_user_args() or "--female-refusal-demo" in OS.get_cmdline_user_args():
 		_start_game(false)
 		return
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE

@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.6.0
+
+- Strawberry icing, chocolate icing and plain glazed donuts, with labeled case sections and flavor-specific orders.
+- Cola, Lemon Fizz and Dr. Paw Paw fountain drinks, three flush-mounted labeled buttons and three aligned nozzles; matching colored cups and orders.
+- Pies become perfectly baked after five seconds, with a one-time oven-ready bell. They burn at thirteen seconds.
+- Selected Freesound recordings for coffee/soda pouring, cooler opening and floor scrubbing. Pouring follows fill progress; scrub audio stops on release, look-away or completion.
+- Original BeepBox music: Counter Service for daytime, Last Customer for closing, and Still Here for hospital visits. Music continues through dialogue and pauses with Esc.
+- Restored animated monster waits in the back doorway after trash disposal. It starts dissipating immediately on sight, with soft textures, drifting shadow wisps and spatial audio.
+- Haunted cooler doors open while watched; normal cooler openings share the selected sound.
+- Save-free scare adjustment mode exposes all six encounters, direct selection, replay and next controls.
+- Camera-relative diner movement fixes the test camera/control mismatch. Expanded gameplay, audio, music, save and encounter checks.
+
 ## 0.4.0
 
 - Six textured, rigged customer appearances with new heads, varied clothing,

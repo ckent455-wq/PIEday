@@ -37,12 +37,19 @@ func check():
 			game._set_door_open(door, false)
 			cooler = door
 	at = (cooler.global_transform * cooler.get_aabb()).get_center()
-	game.player.global_position = at + Vector3(0, 0, 3)
-	game.camera.look_at(game.camera.global_position + Vector3(0, 0, 1))
+	game.player.global_position = Vector3(at.x, 0.03, at.z - 2.5)
+	game.face_point(game.camera.global_position + Vector3(0, 0, -1))
+	await physics_frame
+	await physics_frame
+	events.tick(.1)
+	require(not events.extra_done and not is_instance_valid(events.opened_cooler), "Looking away does not trigger the cooler")
+	game.face_point(at)
+	await physics_frame
 	events.tick(0.1)
-	require(events.extra_done and is_instance_valid(events.opened_cooler), "Cooler opens while player looks away")
+	require(events.extra_done and is_instance_valid(events.opened_cooler), "Cooler opens while player watches")
 	var opened = events.opened_cooler
 	require(opened.get_meta("open"), "Normal door state tracks haunted opening")
+	require(opened.get_node("OpeningSound").playing and not events.effect_audio.playing, "Haunted opening uses the same door audio once")
 	game._toggle_door(opened)
 	require(not opened.get_meta("open"), "Player can close haunted door normally")
 	game._toggle_door(opened)

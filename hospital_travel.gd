@@ -6,7 +6,10 @@ static func go(host: Node, destination: String, wallet: RefCounted = null) -> vo
 	if wallet != null: tree.root.set_meta("pie_day_wallet",wallet)
 	tree.root.set_meta("hospital_travel_busy",true)
 	var previous_scene := tree.current_scene
-	if is_instance_valid(previous_scene): previous_scene.process_mode = Node.PROCESS_MODE_DISABLED
+	if is_instance_valid(previous_scene):
+		var music := previous_scene.get_node_or_null("HospitalMusic")
+		if is_instance_valid(music): music.fade_out(.35)
+		previous_scene.process_mode = Node.PROCESS_MODE_DISABLED
 	var layer := CanvasLayer.new()
 	layer.layer = 120
 	layer.process_mode = Node.PROCESS_MODE_ALWAYS

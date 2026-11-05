@@ -19,12 +19,12 @@ func check():
 	assert(soda.reference_cup_mesh.get_faces().size() == 57, "Use the exact 19-triangle source cup")
 	assert(absf(soda.reference_cup_mesh.get_aabb().size.y - 0.2255) < 0.001)
 	var coffee = shift.coffee_station
-	soda.interact("soda")
+	soda.choose_flavor("Lemon Fizz")
 	assert(soda.state == "empty" and shift.carried_item.is_empty())
 	coffee.interact("cup_stack")
 	soda.interact("soda_cup_stack")
 	assert(soda.cups_left == 10 and not soda.holding_empty)
-	soda.interact("soda")
+	soda.choose_flavor("Lemon Fizz")
 	assert(soda.state == "empty", "Coffee cup cannot be used as soda cup")
 	coffee.return_empty()
 	soda.interact("soda_cup_stack")
@@ -32,9 +32,9 @@ func check():
 	coffee.interact("cup_stack")
 	assert(coffee.cups_left == 10)
 	assert(not shift.pickup_item("Donut"))
-	soda.interact("soda")
+	soda.choose_flavor("Lemon Fizz")
 	assert(soda.state == "brewing" and not soda.holding_empty and soda.stream.visible)
-	soda.interact("soda")
+	soda.choose_flavor("Lemon Fizz")
 	assert(shift.carried_item.is_empty())
 	coffee.interact("cup_stack")
 	coffee.interact("coffee")
@@ -54,10 +54,10 @@ func check():
 		await create_timer(0.2).timeout
 		await RenderingServer.frame_post_draw
 		root.get_texture().get_image().save_png("res://.godot/soda-station-preview.png")
-	soda.interact("soda")
-	assert(shift.carried_item == "Soda" and shift.tray.is_empty() and soda.state == "empty")
+	soda.choose_flavor("Lemon Fizz")
+	assert(shift.carried_item == "Lemon Fizz" and shift.tray.is_empty() and soda.state == "empty")
 	coffee.interact("coffee")
-	assert(coffee.state == "ready" and shift.carried_item == "Soda")
+	assert(coffee.state == "ready" and shift.carried_item == "Lemon Fizz")
 	shift.place_carried()
 	var apple: Node3D
 	for pie in shift.all_pies:

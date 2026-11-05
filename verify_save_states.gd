@@ -48,6 +48,10 @@ func run() -> void:
 	shift.coffee_station.fill = .4
 	shift.coffee_station.cups_left = 9
 	shift.coffee_station.status.text = "FILLING COFFEE..."
+	shift.soda_station.drink_name = "Dr. Paw Paw"
+	shift.soda_station.state = "brewing"
+	shift.soda_station.fill = .4
+	shift.soda_station.apply_flavor()
 	shift.customer_line.waiting.append({"actor":shift.customer_line.make_actor(Vector3(0.2,-.094,1)),"seconds":22.0,"junction":true})
 	var data := SAVES.capture(game)
 	require(SAVES.write(1,data,directory) == OK,"Write a manual slot")
@@ -85,6 +89,7 @@ func run() -> void:
 	require(shift.carried_source == shift.all_pies[1] and shift.carried_item == data.shift.carried_item,"Held pie restores its source")
 	require(shift.all_pies[0].get_meta("bake_quality") == "perfect" and not shift.all_pies[0].visible,"Pie stock and baking quality survive")
 	require(shift.earnings.streak == 4 and shift.earnings.correct_orders == 3,"Daily earnings counters survive")
+	require(shift.soda_station.drink_name == "Dr. Paw Paw" and shift.soda_station.liquid_color == shift.soda_station.LIQUIDS[2],"Soda flavor and appearance survive loading while pouring")
 	require(shift.oven.pie_source == shift.all_pies[2] and shift.oven.elapsed >= 8.7 and shift.oven.elapsed < 9,"Oven restores source and bake timer")
 	require(shift.coffee_station.state == "brewing" and shift.coffee_station.fill >= .4 and shift.coffee_station.fill < .7 and shift.coffee_station.cups_left == 9,"Coffee fill tween resumes from saved progress")
 	require(not paused and not shift.earnings.save_enabled,"Loading leaves input enabled without modifying the actual user save in tests")

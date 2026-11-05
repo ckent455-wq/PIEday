@@ -70,6 +70,9 @@ func run_checks() -> void:
 	assert(shift.phase == "leaving" and shift.tasks.values().all(func(done): return done), "Board cannot reset an active shift")
 	shift.phase = "closed"
 	shift.interact(board)
-	assert(shift.phase == "prep" and shift.tasks.values().all(func(done): return done), "Next duties are available only after closing")
+	assert(shift.phase == "closed" and shift.hospital_visits.menu.is_open, "Closed shift board opens evening departure choices")
+	shift.hospital_visits.menu.finish()
+	shift.begin_prep(false)
+	assert(shift.phase == "prep" and shift.tasks.values().all(func(done): return done), "Next morning starts clean after evening flow")
 	print("PASS: daily task gate, trash disposal, customer arrival, humanoid animation, counter interaction, pickup/return, correct order, angry wrong order, and next customer")
 	quit()

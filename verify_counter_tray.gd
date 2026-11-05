@@ -26,13 +26,14 @@ func check():
 		if node.has_meta("action"): tray_target = node
 	for child in shift.customer.get_children():
 		if child.has_meta("action"): shift.interact(child)
+	shift.dialogue.finish()
 	var station = shift.coffee_station
 	station.interact("cup_stack")
 	station.interact("coffee")
 	await create_timer(2.7).timeout
 	station.interact("coffee")
 	assert(shift.carried_item == "Coffee" and shift.tray.is_empty())
-	assert(not shift.pickup_item("Donut"), "Only one item can be held")
+	assert(not shift.pickup_item("Strawberry donut"), "Only one item can be held")
 	shift.interact(tray_target)
 	assert(shift.carried_item.is_empty() and shift.tray == ["Coffee"])
 	var pie: Node3D
@@ -45,11 +46,11 @@ func check():
 	assert(not shift.serve_order(), "Held food must be placed before serving")
 	pie.set_meta("bake_quality", "perfect") # Oven flow is covered by verify_oven.gd.
 	shift.interact(tray_target)
-	shift.pickup_item("Donut")
+	shift.pickup_item("Strawberry donut")
 	shift.interact(tray_target)
 	assert(shift.tray.size() == 3)
 	shift.interact(tray_target)
-	assert(shift.carried_item == "Donut" and shift.tray.size() == 2)
+	assert(shift.carried_item == "Strawberry donut" and shift.tray.size() == 2)
 	shift.interact(tray_target)
 	game.player.position = Vector3(-2.0, -0.09, -5.85)
 	game.camera.look_at(shift.held_tray.global_position + Vector3(0, 0.06, 0))

@@ -29,6 +29,7 @@ var stream: MeshInstance3D
 var status: Label3D
 var brew_tween: Tween
 var fill := 0.0
+var coffee_audio: AudioStreamPlayer3D
 
 func setup(host: Node3D) -> void:
 	shift = host
@@ -58,6 +59,15 @@ func setup(host: Node3D) -> void:
 	liquid = _cylinder(machine_cup, fill_radius, 0.003, Vector3(0, 0.012, 0), liquid_color)
 	var cup_surface := cup_position + Vector3(0, fill_height, 0)
 	stream = _cylinder(self, 0.004, spout_position.y - cup_surface.y, (spout_position + cup_surface) * 0.5, liquid_color)
+	if machine_action == "coffee":
+		coffee_audio = AudioStreamPlayer3D.new()
+		coffee_audio.name = "CoffeePourSound"
+		coffee_audio.stream = preload("res://assets/audio/coffee_pour.wav")
+		coffee_audio.volume_db = -7.0
+		coffee_audio.unit_size = 2.5
+		coffee_audio.max_distance = 12.0
+		coffee_audio.position = spout_position
+		add_child(coffee_audio)
 	reset_station()
 
 func prompt(action: String) -> String:
@@ -125,11 +135,14 @@ func interact(action: String) -> void:
 	_say("Cup placed. Coffee is filling - collect the full cup when ready.")
 
 func _fill_cup(amount: float) -> void:
+	if is_instance_valid(coffee_audio) and state == "brewing" and amount < 1.0 and not coffee_audio.playing:
+		coffee_audio.play(amount * fill_seconds)
 	fill = amount
 	liquid.position.y = lerpf(0.012, fill_height, amount)
 	if easy_coffee: status.text = "COFFEE: FILLING %d%%" % int(amount * 100)
 
 func _finish_brewing() -> void:
+	if is_instance_valid(coffee_audio): coffee_audio.stop()
 	state = "ready"
 	stream.visible = false
 	status.text = drink_name.to_upper() + " READY - PICK UP CUP"
@@ -145,6 +158,7 @@ func return_empty() -> bool:
 	return true
 
 func reset_station() -> void:
+	if is_instance_valid(coffee_audio): coffee_audio.stop()
 	if brew_tween and brew_tween.is_valid(): brew_tween.kill()
 	state = "empty"
 	fill = 0

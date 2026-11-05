@@ -46,7 +46,11 @@ func check():
 	assert(oven.elapsed == 4, "Opening either door stops heat immediately")
 	game._toggle_door(oven.doors[0])
 	await create_timer(0.5).timeout
-	oven._process(3)
+	oven._process(1)
+	assert(is_equal_approx(oven.elapsed, 5.0) and oven.ready_audio.playing, "Bell rings when cooking reaches five seconds")
+	oven.ready_audio.stop()
+	oven._process(.1)
+	assert(not oven.ready_audio.playing, "Ready bell does not repeat")
 	assert(oven.quality() == "perfect")
 	oven.interact()
 	assert(shift.carried_item.is_empty(), "Closed doors prevent retrieval")
@@ -62,7 +66,7 @@ func check():
 	oven.interact()
 	assert(pie.get_meta("bake_quality") == "perfect" and oven.pie_item.is_empty())
 	assert(shift.place_carried())
-	for item in ["Donut", "Coffee"]: assert(shift.add_item(item))
+	for item in ["Strawberry donut", "Coffee"]: assert(shift.add_item(item))
 	shift.order_taken = true
 	assert(shift.serve_order(), "Perfect pie plus correct sides satisfies customer")
 	shift.start_demo()
@@ -81,7 +85,7 @@ func check():
 	oven.interact()
 	assert(pie.get_meta("bake_quality") == "burnt")
 	assert(shift.place_carried())
-	for item in ["Donut", "Coffee"]: shift.add_item(item)
+	for item in ["Strawberry donut", "Coffee"]: shift.add_item(item)
 	shift.phase = "waiting"
 	shift.order_taken = true
 	assert(not shift.serve_order(), "Burnt pie fails even with correct flavor and sides")

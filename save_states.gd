@@ -4,7 +4,7 @@ const SLOTS := 3
 const WALLET_FIELDS := ["cash","sales","tips","service_rewards","streak_rewards","streak","correct_orders","closing_bonus","day_completed"]
 const SHIFT_FIELDS := ["phase","tasks","tray","order","order_taken","route","route_index","walking","angry","served","lost","order_index","arrival_delay","shift_number","customers_this_shift","service_seconds","shift_remaining","closing_time","cleaning_progress","cleaning_task","carried_item","animation_time"]
 const LINE_FIELDS := ["next_arrival","time","last_model","nude_chance","last_was_nude","force_nude_next","force_nude_model"]
-const EVENT_FIELDS := ["active","encounter","elapsed","bell_at","flicker_at","figure_at","bell_done","flicker_done","figure_done","figure_seen","seen_seconds","away_seconds","flicker_time","extra_at","extra_done","steps_left","step_timer","step_position","step_direction"]
+const EVENT_FIELDS := ["active","encounter","elapsed","bell_at","flicker_at","figure_at","bell_done","flicker_done","figure_done","figure_seen","trash_disposed","dissolve_elapsed","seen_seconds","away_seconds","flicker_time","extra_at","extra_done","steps_left","step_timer","step_position","step_direction"]
 
 static func restore_pending(scene: Node) -> void:
 	if not scene.get_tree().root.has_meta("restore_manual_state"): return
@@ -72,7 +72,7 @@ static func capture(scene: Node) -> Dictionary:
 	data.oven["source"] = source_id(shift,shift.oven.pie_source)
 	data["drinks"] = []
 	for station in [shift.coffee_station,shift.soda_station]:
-		var drink := properties(station,["state","holding_empty","cups_left","fill"])
+		var drink := properties(station,["state","holding_empty","cups_left","fill","drink_name"])
 		drink["status"] = station.status.text
 		data.drinks.append(drink)
 	data["doors"] = []
@@ -182,7 +182,8 @@ static func restore(scene: Node, data: Dictionary) -> void:
 	for i in range(2):
 		var station = [shift.coffee_station,shift.soda_station][i]
 		station.reset_station()
-		apply(station,data.drinks[i],["state","holding_empty","cups_left","fill"])
+		apply(station,data.drinks[i],["state","holding_empty","cups_left","fill","drink_name"])
+		if station.has_method("apply_flavor"): station.apply_flavor()
 		station._rebuild_stack()
 		station.held_cup.visible = station.holding_empty
 		station.machine_cup.visible = station.state != "empty"
@@ -201,9 +202,14 @@ static func restore(scene: Node, data: Dictionary) -> void:
 	apply(shift.customer_line,data.line,LINE_FIELDS)
 	scene.set_night(shift.closing_time or shift.phase == "closed")
 	apply(shift.closing_events,data.events,EVENT_FIELDS)
+	shift.closing_events._set_dissolve(clampf(shift.closing_events.dissolve_elapsed / shift.closing_events.DISSOLVE_SECONDS, 0.0, 1.0))
 	shift.closing_events.rng.state = data.events.rng_state
 	shift.closing_events.figure.visible = data.events.figure_visible
 	shift.closing_events.figure.transform = data.events.figure_transform
+	# Older saves stored scale and position for the previous shadow-person model.
+	shift.closing_events.figure.scale = Vector3.ONE
+	if shift.closing_events.figure.visible:
+		shift.closing_events.figure.visible = shift.closing_events._place_figure()
 	var cooler_index: int = data.events.get("opened_cooler",-1)
 	shift.closing_events.opened_cooler = scene.doors[cooler_index] if cooler_index >= 0 and cooler_index < scene.doors.size() else null
 	for i in mini(data.events.energies.size(),shift.closing_events.lights.size()): shift.closing_events.lights[i].light_energy = data.events.energies[i]

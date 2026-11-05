@@ -47,7 +47,14 @@ func check():
 	require(light.light_energy < 0.2, "Interior lights dim")
 	events.tick(1.3)
 	require(is_equal_approx(light.light_energy, 1.6), "Lights recover")
-	game.player.position = Vector3(-0.6, -0.09, -15.7)
+	game.player.position = Vector3(1.0, -0.09, -18.2)
+	events.encounter = "figure"
+	events.figure_done = false
+	game._set_door_open(game.find_child("BackDoor",true,false),true)
+	await create_timer(.6).timeout
+	game.camera.rotation = Vector3.ZERO
+	events.on_trash_disposed()
+	events.tick(.1)
 	game.camera.look_at(events.figure.global_position + Vector3(0, 1.7, 0))
 	events.figure_done = false
 	await physics_frame
@@ -59,14 +66,18 @@ func check():
 		root.get_texture().get_image().save_png("res://builds/closing-figure.png")
 	game.camera.rotate_y(PI)
 	events.tick(0.3)
+	events.tick(.75)
 	require(not events.figure.visible and events.figure_done, "Figure disappears after looking away")
 	events.tick(10)
 	require(not events.figure.visible, "Figure does not respawn that night")
 	events.figure_done = false
 	events.figure_seen = false
 	events.seen_seconds = 0
+	game.camera.rotation = Vector3.ZERO
+	events.tick(.1)
 	game.camera.look_at(events.figure.global_position + Vector3(0, 1.7, 0))
 	events.tick(2.1)
+	events.tick(.75)
 	require(events.figure_done and not events.figure.visible, "Staring only gives a short glimpse")
 	events.flicker_done = false
 	events.flicker_at = 0

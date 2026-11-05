@@ -1,6 +1,6 @@
 extends StaticBody3D
 
-const PERFECT_AT := 7.0
+const PERFECT_AT := 5.0
 const BURNS_AT := 13.0
 var shift: Node3D
 var doors: Array[MeshInstance3D] = []
@@ -11,6 +11,7 @@ var display: Label3D
 var visual: Node3D
 var shown_quality := ""
 var heat: OmniLight3D
+var ready_audio: AudioStreamPlayer3D
 
 func setup(host: Node3D) -> void:
 	shift = host
@@ -44,6 +45,13 @@ func setup(host: Node3D) -> void:
 	heat.light_energy = 0.6
 	heat.omni_range = 1.0
 	add_child(heat)
+	ready_audio = AudioStreamPlayer3D.new()
+	ready_audio.name = "OvenReadyBell"
+	ready_audio.stream = preload("res://assets/audio/oven_ready.wav")
+	ready_audio.volume_db = -7.0
+	ready_audio.unit_size = 5.0
+	ready_audio.max_distance = 22.0
+	add_child(ready_audio)
 	_update_display()
 
 func all_open() -> bool:
@@ -64,7 +72,9 @@ func quality() -> String:
 func _process(delta: float) -> void:
 	if not is_instance_valid(shift): return
 	if not pie_item.is_empty() and sealed():
+		var was_ready := elapsed >= PERFECT_AT
 		elapsed = minf(elapsed + delta, BURNS_AT)
+		if not was_ready and elapsed >= PERFECT_AT: ready_audio.play()
 	if not pie_item.is_empty() and shown_quality != quality():
 		_refresh_visual()
 	_update_display()
@@ -91,7 +101,7 @@ func interact() -> void:
 		elapsed = float(pie_source.get_meta("bake_seconds", 0.0))
 		shift._clear_carried(false)
 		_refresh_visual()
-		shift._message("Pie loaded. Close BOTH oven doors. Perfect bake: 7-13 seconds; open the doors to stop cooking.")
+		shift._message("Pie loaded. Close BOTH oven doors. Perfect bake: 5-13 seconds; open the doors to stop cooking.")
 	else:
 		if not shift.carried_item.is_empty() or shift.has_empty_cup():
 			shift._message("Free your hand before taking the pie out.")
@@ -120,7 +130,7 @@ func _refresh_visual() -> void:
 func _update_display() -> void:
 	heat.visible = not pie_item.is_empty() and sealed()
 	if pie_item.is_empty():
-		display.text = "PIE OVEN\nPERFECT: 7-13 SECONDS"
+		display.text = "PIE OVEN\nPERFECT: 5-13 SECONDS"
 		display.modulate = Color.WHITE
 		return
 	var state := quality().to_upper()
@@ -130,6 +140,7 @@ func _update_display() -> void:
 	display.modulate = Color(1, 0.3, 0.15) if quality() == "burnt" else Color(0.5, 1, 0.55) if quality() == "perfect" else Color(1, 0.85, 0.5)
 
 func reset_oven() -> void:
+	if is_instance_valid(ready_audio): ready_audio.stop()
 	pie_item = ""
 	pie_source = null
 	elapsed = 0

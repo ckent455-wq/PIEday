@@ -1,9 +1,10 @@
 extends Node3D
 
+const DONUTS := preload("res://donut_types.gd")
 const PIE_NAMES := ["Meat pie", "Apple pie", "Cherry pie"]
 const SHIRT_COLORS := [Color(0.12,0.32,0.42), Color(0.48,0.12,0.10), Color(0.18,0.35,0.17), Color(0.48,0.32,0.10), Color(0.32,0.18,0.40), Color(0.60,0.53,0.39), Color(0.21,0.22,0.25), Color(0.57,0.30,0.23)]
 var last_shirt_color := -1
-const ORDERS := [["Meat pie", "Donut", "Coffee"], ["Apple pie", "Soda"], ["Cherry pie", "Donut", "Coffee"], ["Apple pie", "Donut", "Coffee"], ["Meat pie", "Soda"], ["Cherry pie", "Soda"]]
+const ORDERS := [["Meat pie", "Strawberry donut", "Coffee"], ["Apple pie", "Lemon Fizz"], ["Cherry pie", "Chocolate donut", "Coffee"], ["Apple pie", "Glazed donut", "Coffee"], ["Meat pie", "Cola"], ["Cherry pie", "Dr. Paw Paw"]]
 var game: Node3D
 var phase := "prep"
 var tasks := {"bathroom": false, "kitchen": false, "trash": false, "restock": false, "tables": false}
@@ -33,6 +34,7 @@ var carrying_trash := false
 var held_trash: Node3D
 var cleaning_progress := 0.0
 var cleaning_task := ""
+var scrubbing_audio: AudioStreamPlayer3D
 var all_pies: Array[Node3D] = []
 var notice_time := 0.0
 var target: Node
@@ -80,6 +82,16 @@ func setup(host: Node3D) -> void:
 		get_tree().root.remove_meta("pie_day_wallet")
 	name = "ShiftScenario"
 	_build_hud()
+	scrubbing_audio = AudioStreamPlayer3D.new()
+	scrubbing_audio.name = "MopScrubbing"
+	var scrub: AudioStreamWAV = preload("res://assets/audio/mop_scrub.wav").duplicate()
+	scrub.loop_mode = AudioStreamWAV.LOOP_FORWARD
+	scrub.loop_end = int(round(scrub.get_length() * scrub.mix_rate))
+	scrubbing_audio.stream = scrub
+	scrubbing_audio.volume_db = -5.0
+	scrubbing_audio.unit_size = 2.0
+	scrubbing_audio.max_distance = 10.0
+	add_child(scrubbing_audio)
 	_tag_pies()
 	_setup_donut_case()
 	_make_shift_board()
@@ -150,7 +162,7 @@ func setup(host: Node3D) -> void:
 	coffee_station.easy_coffee = true
 	add_child(coffee_station)
 	coffee_station.setup(self)
-	soda_station = preload("res://coffee_station.gd").new()
+	soda_station = preload("res://soda_station.gd").new()
 	soda_station.drink_name = "Soda"
 	soda_station.machine_action = "soda"
 	soda_station.stack_action = "soda_cup_stack"
@@ -200,7 +212,28 @@ func setup(host: Node3D) -> void:
 	hospital_visits.setup(self)
 	if get_tree().root.has_meta("restore_manual_state"):
 		return
-	if "--restock-demo" in OS.get_cmdline_user_args():
+	if "--scare-test" in OS.get_cmdline_user_args():
+		earnings.save_enabled = false
+		begin_cleanup()
+	elif "--doorway-demo" in OS.get_cmdline_user_args():
+		earnings.save_enabled = false
+		begin_cleanup()
+		closing_events.encounter = "figure"
+		closing_events.figure_done = false
+		closing_events.bell_done = true
+		closing_events.flicker_done = true
+		closing_events.extra_done = true
+		tasks.tables = true
+		_set_carrying_trash(true)
+		task_nodes.trash.visible = false
+		task_nodes.trash.collision_layer = 0
+		game._set_door_open(game.find_child("BackDoor", true, false), true)
+		game.spawn_point = Vector3(0.7, 0.03, -18.0)
+		game.player.position = game.spawn_point
+		game.player.rotation = Vector3.ZERO
+		game.face_point(game.find_child("OutdoorDumpster", true, false).global_position + Vector3(0, 0.65, 0))
+		_message("TEST: Throw the bag into the dumpster, then turn around toward the diner doorway.")
+	elif "--restock-demo" in OS.get_cmdline_user_args():
 		for flavor in PIE_NAMES:
 			for pie in all_pies:
 				if pie.get_meta("item") == flavor:
@@ -405,7 +438,7 @@ func _show_day_summary() -> void:
 		_end_campaign()
 		return
 	phase = "closed"
-	closing_events.reset()
+	if not closing_events.awaiting_doorway_scare(): closing_events.reset()
 	arrival_delay = 0
 	_message("SHIFT COMPLETE! Sales: $%d | Tips: $%d | Service: $%d | Streak: $%d\nClosing bonus: $%d | Today: $%d | Cash: $%d\n%s" % [earnings.sales, earnings.tips, earnings.service_rewards, earnings.streak_rewards, earnings.closing_bonus, earnings.day_total(), earnings.cash, ("HOSPITAL VISITING HOURS ARE OPEN. Visit Grandpa or go home using the diner exit." if earnings.grandpa.visit_available() else "Use the diner exit to head home for the night.")])
 	notice_time = 0
@@ -453,6 +486,33 @@ func _tag_pies() -> void:
 			_label(interior, PIE_NAMES[column].to_upper(), Vector3(0.68 + column * 0.56, 0.17 + row * 0.52, -8.91), 0.0012)
 
 func _setup_donut_case() -> void:
+	var case_light := OmniLight3D.new()
+	case_light.name = "PastryCaseLight"
+	case_light.position = Vector3(0.2, 1.72, -4.43)
+	case_light.light_color = Color(1.0, 0.88, 0.72)
+	case_light.light_energy = 0.7
+	case_light.omni_range = 1.3
+	add_child(case_light)
+	# Flavors are grouped left to right across both shelves.
+	for mesh in game.find_children("Donus*", "MeshInstance3D", true, false):
+		var flavor: String = DONUTS.flavor_at(mesh.global_position.x)
+		mesh.set_meta("item", flavor)
+		mesh.mesh = DONUTS.dough()
+		mesh.scale = Vector3.ONE
+		for child in mesh.get_children():
+			if child is StaticBody3D:
+				mesh.remove_child(child)
+				child.queue_free()
+		mesh.create_trimesh_collision()
+		var dough := StandardMaterial3D.new()
+		dough.albedo_color = Color(0.65, 0.31, 0.095)
+		dough.roughness = 0.8
+		mesh.material_override = dough
+		DONUTS.coating(mesh, flavor)
+	for i in range(3):
+		var label := _label(self, ["STRAWBERRY", "CHOCOLATE", "GLAZED"][i], Vector3(-0.27 + i * 0.49, 1.65, -4.31), 0.00065)
+		label.outline_size = 5
+		label.modulate = Color(1.0, 0.92, 0.76)
 	# Use the actual case, trays and displayed donuts as pickup targets.
 	for mesh in game.find_children("*", "MeshInstance3D", true, false):
 		if mesh.name == "Showcase" or mesh.name.begins_with("Donus") or mesh.name in ["Tray_04", "Tray_03", "Tray_02", "Tray_01_001"]:
@@ -526,6 +586,7 @@ func _make_task(id: String, title: String, location: Vector3) -> void:
 	task_nodes[id] = node
 
 func begin_prep(resolve_evening := true) -> void:
+	if is_instance_valid(scrubbing_audio): scrubbing_audio.stop()
 	if earnings.grandpa.is_dead(): return
 	if resolve_evening and earnings.grandpa.evening_pending:
 		earnings.grandpa.finish_evening()
@@ -556,6 +617,7 @@ func begin_prep(resolve_evening := true) -> void:
 	_message("Ready for the day. Use the shift clipboard to open the diner.")
 
 func begin_cleanup() -> void:
+	if is_instance_valid(scrubbing_audio): scrubbing_audio.stop()
 	if earnings.grandpa.is_dead(): return
 	if is_instance_valid(dialogue): dialogue.finish()
 	if is_instance_valid(dine_in): dine_in.close_for_night()
@@ -583,6 +645,7 @@ func begin_cleanup() -> void:
 	_message("DINER CLOSED! Clean the bathroom and kitchen, clear table trash into the indoor bin, then take the bag to the dumpster. Replenish missing cooler pies from the freezer.")
 
 func start_demo() -> void:
+	if is_instance_valid(scrubbing_audio): scrubbing_audio.stop()
 	if earnings.grandpa.is_dead(): return
 	if is_instance_valid(dialogue): dialogue.finish()
 	if is_instance_valid(dine_in):
@@ -761,15 +824,19 @@ func _pose_customer(stride: float) -> void:
 		customer_skeleton.set_bone_pose_rotation(bone_id, baseline * rest.inverse() * Quaternion(Vector3.RIGHT, angle) * rest)
 
 func _update_cleaning(delta: float) -> void:
-	if phase != "cleanup" or not is_instance_valid(target) or not target.has_meta("task") or not Input.is_physical_key_pressed(KEY_E) or Input.mouse_mode != Input.MOUSE_MODE_CAPTURED:
+	if phase != "cleanup" or not is_instance_valid(target) or not target.has_meta("task") or not Input.is_action_pressed("interact") or Input.mouse_mode != Input.MOUSE_MODE_CAPTURED:
 		cleaning_progress = 0
+		scrubbing_audio.stop()
 		return
 	var id: String = target.get_meta("task")
-	if id == "trash" or tasks[id]:
+	if id not in ["bathroom", "kitchen"] or tasks[id]:
+		scrubbing_audio.stop()
 		return
 	if cleaning_task != id:
 		cleaning_task = id
 		cleaning_progress = 0
+	scrubbing_audio.global_position = target.global_position + Vector3(0, 0.1, 0)
+	if not scrubbing_audio.playing: scrubbing_audio.play()
 	cleaning_progress += delta
 	game.interaction_label.text = "Cleaning %s... %d%%" % [id, mini(100, int(cleaning_progress / 1.5 * 100))]
 	if cleaning_progress >= 1.5:
@@ -777,6 +844,7 @@ func _update_cleaning(delta: float) -> void:
 
 func complete_task(id: String) -> void:
 	if phase != "cleanup": return
+	if id == cleaning_task: scrubbing_audio.stop()
 	tasks[id] = true
 	task_nodes[id].visible = false
 	task_nodes[id].collision_layer = 0
@@ -791,10 +859,11 @@ func action_prompt(node: Node) -> String:
 		"freezer_stock", "restock_cooler": return restock.prompt(action, node)
 		"pie" when phase == "cleanup": return restock.prompt("restock_cooler", node)
 		"pie": return "[Click / E] Pick up " + str(node.get_meta("item"))
-		"donut": return "[Click / E] Grab a donut" if carried_item.is_empty() and not has_empty_cup() else "Hands full - place or return your item first"
+		"donut": return "[Click / E] Grab " + str(node.get_meta("item", "Glazed donut")) if carried_item.is_empty() and not has_empty_cup() else "Hands full - place or return your item first"
 		"tray": return "[Click / E] Place " + carried_item + " on tray" if not carried_item.is_empty() else "[Click / E] Take last item off tray" if not tray.is_empty() else "Serving tray - bring the customer's items here"
 		"coffee", "cup_stack": return coffee_station.prompt(action)
-		"soda", "soda_cup_stack": return soda_station.prompt(action)
+		"soda": return soda_station.flavor_prompt(str(node.get_meta("flavor", "Cola")))
+		"soda_cup_stack": return soda_station.prompt(action)
 		"bell": return "Refuse this customer service first" if refusal_required() else "[Click / E] Ding bell and serve the tray"
 		"oven": return oven.prompt()
 		"customer":
@@ -824,7 +893,7 @@ func interact(node: Node) -> void:
 		"pie":
 			if phase == "cleanup": restock.deliver()
 			else: pickup_item(str(node.get_meta("item")), node)
-		"donut": pickup_item(action.capitalize())
+		"donut": pickup_item(str(node.get_meta("item", "Glazed donut")))
 		"tray":
 			if not carried_item.is_empty(): place_carried()
 			elif not tray.is_empty() and not has_empty_cup():
@@ -833,7 +902,8 @@ func interact(node: Node) -> void:
 				_refresh_tray()
 				_refresh_carried()
 		"coffee", "cup_stack": coffee_station.interact(action)
-		"soda", "soda_cup_stack": soda_station.interact(action)
+		"soda": soda_station.choose_flavor(str(node.get_meta("flavor", "Cola")))
+		"soda_cup_stack": soda_station.interact(action)
 		"bell": service_bell.ring()
 		"oven": oven.interact()
 		"customer":
@@ -863,6 +933,7 @@ func interact(node: Node) -> void:
 		"dispose":
 			if carrying_trash:
 				_set_carrying_trash(false)
+				closing_events.on_trash_disposed()
 				complete_task("trash")
 		"clock":
 			if phase == "prep": start_shift()
@@ -1047,17 +1118,14 @@ func _item_model(parent: Node3D, item: String, at: Vector3, size: float, source:
 		if quality == "burnt": path = "res://assets/pies/pie_ps2_burnt.glb"
 		var pie = load(path).instantiate()
 		holder.add_child(pie)
+	elif item in preload("res://soda_station.gd").FLAVORS:
+		soda_station.drink_model(holder, item)
 	elif item in ["Coffee", "Soda"] and is_instance_valid(coffee_station):
 		var station: StaticBody3D = coffee_station if item == "Coffee" else soda_station
 		var cup: Node3D = station._cup(holder)
 		station._cylinder(cup, station.fill_radius, 0.003, Vector3(0, station.fill_height, 0), station.liquid_color)
-	elif item == "Donut":
-		var mesh := TorusMesh.new()
-		mesh.inner_radius = 0.035
-		mesh.outer_radius = 0.10
-		mesh.rings = 16
-		mesh.ring_segments = 8
-		_mesh(holder, mesh, Vector3(0, 0.03, 0), Color(0.68, 0.33, 0.10))
+	elif item == "Donut" or item in DONUTS.TYPES:
+		DONUTS.model(holder, "Glazed donut" if item == "Donut" else item)
 	else:
 		var mesh := CylinderMesh.new()
 		mesh.top_radius = 0.055

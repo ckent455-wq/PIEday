@@ -12,6 +12,7 @@ var furnishings: Node3D
 var fixtures: Node3D
 var earnings := preload("res://earnings.gd").new()
 var conversation: CanvasLayer
+var hospital_music: AudioStreamPlayer
 var interaction_release_required := false
 var leaving := false
 
@@ -41,6 +42,8 @@ func _ready() -> void:
 	ensure_furniture_collisions()
 	_build_player()
 	_build_hud()
+	hospital_music = preload("res://hospital_music.gd").new()
+	add_child(hospital_music)
 	conversation = preload("res://visit_modal.gd").new()
 	add_child(conversation)
 	conversation.setup(self)

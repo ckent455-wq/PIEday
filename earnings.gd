@@ -1,6 +1,6 @@
 extends RefCounted
 
-const PRICES := {"Meat pie": 8, "Apple pie": 6, "Cherry pie": 6, "Donut": 2, "Coffee": 3, "Soda": 2}
+const PRICES := {"Meat pie": 8, "Apple pie": 6, "Cherry pie": 6, "Donut": 2, "Strawberry donut": 2, "Chocolate donut": 2, "Glazed donut": 2, "Coffee": 3, "Soda": 2, "Cola": 2, "Lemon Fizz": 2, "Dr. Paw Paw": 2}
 const SAVE_PATH := "user://earnings.cfg"
 const TREATMENT_GOAL := 15000
 var cash := 0

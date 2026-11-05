@@ -10,6 +10,7 @@ var doors: Array[MeshInstance3D] = []
 var target_action: Node
 var shift: Node3D
 var pause_menu: CanvasLayer
+var diner_music: AudioStreamPlayer
 var interaction_release_required := false
 
 func _ready() -> void:
@@ -106,14 +107,21 @@ func _ready() -> void:
 	crosshair.add_theme_stylebox_override("panel", preload("res://diner_ui.gd").box(Color("eee6d8"), 0))
 	preload("res://diner_ui.gd").passive(ui)
 	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
+	diner_music = preload("res://diner_music.gd").new()
+	add_child(diner_music)
 	shift = preload("res://shift.gd").new()
 	add_child(shift)
 	shift.setup(self)
 	pause_menu = preload("res://pause_menu.gd").new()
 	add_child(pause_menu)
 	preload("res://save_states.gd").restore_pending(self)
+	if "--scare-test" in OS.get_cmdline_user_args():
+		var showcase := preload("res://scare_showcase.gd").new()
+		add_child(showcase)
+		showcase.setup(self)
 
 func set_night(night: bool) -> void:
+	if is_instance_valid(diner_music): diner_music.set_night(night)
 	for child in get_children():
 		if child is DirectionalLight3D: child.light_energy = 0.035 if night else 1.2
 		if child is WorldEnvironment:
@@ -159,11 +167,24 @@ func _unhandled_input(event: InputEvent) -> void:
 			return
 		Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 
+func _movement_direction(input: Vector2) -> Vector3:
+	var right := camera.global_basis.x
+	var backward := camera.global_basis.z
+	right.y = 0
+	backward.y = 0
+	return (right.normalized() * input.x + backward.normalized() * input.y).normalized()
+
+func face_point(target: Vector3) -> void:
+	var direction := target - camera.global_position
+	player.rotation.y = atan2(-direction.x, -direction.z)
+	pitch = clampf(atan2(direction.y, Vector2(direction.x, direction.z).length()), -1.5, 1.5)
+	camera.rotation = Vector3(pitch, 0, 0)
+
 func _physics_process(delta: float) -> void:
 	if not is_instance_valid(player):
 		return
 	var direction := Vector3(float(Input.is_physical_key_pressed(KEY_D)) - float(Input.is_physical_key_pressed(KEY_A)), 0, float(Input.is_physical_key_pressed(KEY_S)) - float(Input.is_physical_key_pressed(KEY_W)))
-	direction = (player.basis * direction).normalized()
+	direction = _movement_direction(Vector2(direction.x, direction.z))
 	var speed := 6.0 if Input.is_physical_key_pressed(KEY_SHIFT) else 3.2
 	player.velocity.x = direction.x * speed
 	player.velocity.z = direction.z * speed
@@ -199,6 +220,15 @@ func _setup_door(door: MeshInstance3D) -> void:
 	doors.append(door)
 	door.set_meta("closed_rotation", door.rotation.y)
 	door.set_meta("open", false)
+	if door.has_meta("cooler"):
+		var sound := AudioStreamPlayer3D.new()
+		sound.name = "OpeningSound"
+		sound.stream = preload("res://assets/audio/cooler_open.wav")
+		sound.volume_db = -5.0
+		sound.unit_size = 3.0
+		sound.max_distance = 15.0
+		sound.position = door.mesh.get_aabb().get_center()
+		door.add_child(sound)
 	var swing := deg_to_rad(95)
 	if "Refrigerator_Door" in door.name or "Oven_Door" in door.name:
 		# Appliance fronts face +Z. Each leaf swings away from its cabinet,
@@ -251,6 +281,9 @@ func _toggle_door(door: MeshInstance3D) -> void:
 		_set_door_open(door, opened)
 
 func _set_door_open(door: MeshInstance3D, opened: bool) -> void:
+	if opened and not door.get_meta("open", false) and door.has_meta("cooler"):
+		var sound := door.get_node_or_null("OpeningSound") as AudioStreamPlayer3D
+		if sound: sound.play()
 	if door.has_meta("tween"):
 		var old_tween: Tween = door.get_meta("tween")
 		if old_tween.is_valid():
@@ -272,6 +305,8 @@ func _update_interaction() -> void:
 		var node: Node = hit.collider
 		while is_instance_valid(node):
 			if node.has_meta("action"):
+				if node.get_meta("action") == "donut" and not node.name.begins_with("Donus"):
+					node.set_meta("item", preload("res://donut_types.gd").flavor_at(hit.position.x))
 				target_action = node
 				break
 			if node.has_meta("door"):

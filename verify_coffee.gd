@@ -38,7 +38,7 @@ func check():
 	station.interact("coffee")
 	assert(game.shift.tray.is_empty())
 	await create_timer(2.7).timeout
-	assert(station.state == "ready" and station.machine_cup.visible)
+	assert(station.state == "ready" and station.machine_cup.visible and not station.coffee_audio.playing)
 	game.player.position = Vector3(-2.4, -0.09, -5.5)
 	game.camera.look_at(Vector3(-2.3, 1.5, -6.9))
 	for action in ["coffee", "cup_stack"]:
@@ -83,6 +83,6 @@ func check():
 	station.interact("coffee")
 	station.reset_station()
 	await create_timer(2.7).timeout
-	assert(station.state == "empty" and station.cups_left == 10 and not station.held_cup.visible)
+	assert(station.state == "empty" and station.cups_left == 10 and not station.held_cup.visible and not station.coffee_audio.playing)
 	print("PASS: one-click brew, stock and full-hand guards, soda cup guard, manual cup option, timed fill, no early pickup, wider physical targeting, full cup to tray, full-tray retention, return cup, reset during brewing")
 	quit()

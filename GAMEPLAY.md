@@ -105,13 +105,13 @@ tray (or press E) to place it. Collect the exact items:
 - Pies: open the kitchen cooler. Left column is meat, middle apple, right cherry.
   Carry a pie to the double-door kitchen oven. Press E on either oven door to open both, then click
   inside to load it. Close both doors to bake; the timer starts once they shut.
-  Open the doors at 7 seconds and before 13 seconds for a perfect toasted pie.
+  Open the doors at 5 seconds and before 13 seconds for a perfect toasted pie.
   Opening the oven doors pauses cooking. With both doors open and an empty hand,
   click inside to take out the pie, then place it on the customer tray.
   Undercooked pies can go back in to finish. At 13 seconds the pie burns.
   Customers reject undercooked or burnt pies; raw pies cannot go on the tray.
   The oven display shows elapsed time and baking status. One pie fits at a time.
-- Donuts: marked staff-side pickup behind the pastry display.
+- Donuts: strawberry icing, chocolate icing, and plain glazed, grouped left to right in the glass display. Aim at a flavor and click or press E to pick it up. Customers request a specific flavor; all three cost $2.
 - Coffee: click the machine (or press E) with an empty hand to automatically
   place a cup and start filling. Click the machine again when READY to collect
   the coffee, then click the counter tray to set it down. You can also take an
@@ -145,16 +145,17 @@ these customers. Launch with `-- --refusal-demo` for the male variant or
 `-- --female-refusal-demo` for the female variant immediately.
 
 During nighttime closing chores, the counter bell may ring by itself and the
-interior lights may briefly flicker. A silent human-sized figure can briefly appear
-at the dark back of the yard when you take out the trash. It disappears
-when you look away or after a short glimpse. Other encounters include three knocks
-from an empty bathroom cubicle, a cooler door creaking open while you look away,
+interior lights may briefly flicker. After you dispose of the trash, an animated shadowy monster may appear in the
+back doorway while you face away. Turning toward it immediately starts a short
+shadow-wisp dissolution with spatial sound. It stays clear of the dumpster. Other encounters include three knocks
+from an empty bathroom cubicle, a cooler door opening on its own while you watch,
 and six footsteps moving through an empty area behind you. Cooler doors remain
 interactable, so you can close them normally. Footsteps wait until customers leave.
 Each closing has a 30% chance of being quiet; otherwise it selects exactly one
 of the six encounters with equal probability. Timing and location checks vary
 when it happens, so you may miss an encounter. The first closing uses the same
-selection. Effects stop when closing finishes. Press **F7** during gameplay to
+selection. Effects stop when closing finishes, except an armed doorway encounter can finish
+after trash completes the final chore. Press **F7** during gameplay to
 test closing chores directly.
 
 After all closing duties, use E at the diner front exit (or the shift clipboard)
@@ -173,3 +174,19 @@ Dialogue uses black panels with square white borders, pixel lettering and a blin
 About 55% of correctly served customers choose an available clean booth. They carry their meal over, sit and eat for 18-35 seconds, then leave. About 45% of diners leave a used cup and wrappers. Dirty or occupied tables cannot be assigned to another customer. Wrong orders and the final after-hours order are takeout departures. Closing sends seated diners home immediately and preserves their litter.
 
 During closing, use E on table litter, carry it to the labeled indoor trash can by the kitchen-side trash pickup, and use E to deposit it. Q returns litter to its original table. The Clear table trash chore tracks how many dirty tables remain. Once every table is cleared into the bin, use E on the bin to collect the bag and take it to the outdoor dumpster. A clean dining room auto-completes the table chore, but the nightly bag still has to go out. Dining customers, meal progress, dirty tables and carried litter are included in manual save states.
+
+
+Fountain soda flavors: Cola (red), Lemon Fizz (yellow-green), and Dr. Paw Paw (purple). Pull an empty cup, click a labeled flavor button, then collect the full cup and place it on the tray. Each flavor is $2, and customer orders require the exact flavor.
+
+On nights selected for the figure encounter, disposing of the outdoor trash triggers the monster in the back doorway while the player is looking away. It begins dissipating immediately when seen or approached. This also works when trash is the final closing chore.
+
+
+Counter Service, the original BeepBox diner loop, plays quietly during the daytime and service. It continues during dialogue, pauses in the Esc menu, and crossfades to the night track at closing; returning to daylight restores it.
+
+Night music: Last Customer crossfades in over two seconds when closing begins, replacing Counter Service. The ominous loop continues during nighttime dialogue and pauses with the Esc menu. Daylight returns to Counter Service.
+
+Scare adjustment mode: launch with -- --scare-test. Keys 1-6 select bell, flicker, doorway monster, stall knocks, cooler opening, and footsteps. R replays; N advances. This mode uses a temporary unsaved campaign and the real encounter effects. The doorway sequence still requires trash disposal and turning back toward the diner.
+
+Both kitchen cooler doors play the selected refrigerator-opening sound during normal use as well as the haunted opening. It plays once on each closed-to-open transition.
+
+Hospital visits play Still Here quietly on a loop, including while Grandpa's dialogue is open. Esc pauses the music, and leaving the room fades it out.

@@ -107,6 +107,7 @@ func pause_game() -> void:
 	is_open = true
 	overlay.show()
 	get_tree().paused = true
+	_set_music_paused(true)
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 	resume_button.grab_focus()
 
@@ -116,7 +117,13 @@ func resume_game() -> void:
 	is_open = false
 	overlay.hide()
 	get_tree().paused = false
+	_set_music_paused(false)
 	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
+
+func _set_music_paused(value: bool) -> void:
+	var music := get_parent().get_node_or_null("DinerMusic") as AudioStreamPlayer
+	if not is_instance_valid(music): music = get_parent().get_node_or_null("HospitalMusic") as AudioStreamPlayer
+	if music: music.set_music_paused(value)
 
 func restart_day() -> void:
 	resume_game()

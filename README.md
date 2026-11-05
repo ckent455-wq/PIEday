@@ -1,9 +1,11 @@
 # PIEday
 
-Current version: **0.5.2**. Includes hospital visits and Grandpa's declining
-health, manual save/load slots, customer conversations and random names, a cleaner
-UI and pause menu, three-minute shifts, cooler restocking, and dine-in customers
-who can leave table trash for closing cleanup.
+Current version: **0.6.0**. Includes strawberry, chocolate and glazed donuts;
+Cola, Lemon Fizz and Dr. Paw Paw; five-second pie baking with a ready bell;
+recorded pouring, cooler and scrubbing sounds; original diner, night and hospital
+music; and the revised doorway monster. Hospital visits, Grandpa's health,
+manual save/load slots, customer dialogue, three-minute shifts, restocking,
+dine-in customers and closing cleanup are included.
 
 The game opens with a typewriter-style story on a black screen. Press E or
 Space to reveal each passage and advance, then choose Open the Diner. Earn $15,000 toward Grandpa's
@@ -39,7 +41,7 @@ counter tray to set it down. The customer interaction repeats the order;
 
 Pies from the cooler must be baked in the double-door kitchen oven. Open both
 doors, click inside with a pie in hand to load it, then close both doors.
-Open the doors at 7 seconds and before 13 seconds for a perfect toasted pie.
+Open the doors at 5 seconds and before 13 seconds for a perfect toasted pie.
 Press E on either oven door to open or close both together; opening pauses heat. Open both and click inside with an empty hand
 to collect the pie, then put it on the counter tray. At 13 seconds it burns;
 customers reject burnt or undercooked pies. The timer is above the oven doors.
@@ -131,3 +133,15 @@ in development. Pie flavors currently share the same pastry mesh and are
 identified by shelf labels and the interaction prompt.
 
 Correctly served customers may dine at a booth. Some leave cups and wrappers behind. After closing, clear the tables into the indoor trash can before collecting its bag and taking it to the outdoor dumpster. Dirty tables and seated customers are preserved in manual save states.
+
+
+## Encounter adjustment mode
+
+Run `PIEday.exe -- --scare-test` to test all six nighttime encounters without
+writing campaign progress. Keys **1–6** select bell, flicker, doorway monster,
+stall knocks, cooler opening, and footsteps. **R** replays; **N** advances.
+The doorway test starts with a trash bag: dispose of it and turn toward the diner.
+
+Editable BeepBox music projects and song URLs are in `art/music/`.
+
+Run the gameplay checks with PowerShell: .\run_checks.ps1 -Godot 'C:\path\to\Godot_console.exe'. Some checks open a window to verify input and layout; reports are written to .godot/verification/.

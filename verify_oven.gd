@@ -48,6 +48,7 @@ func check():
 	await create_timer(0.5).timeout
 	oven._process(1)
 	assert(is_equal_approx(oven.elapsed, 5.0) and oven.ready_audio.playing, "Bell rings when cooking reaches five seconds")
+	assert(oven.display.text.contains("BURNS IN 5.0s"), "Ready display warns how much time remains")
 	oven.ready_audio.stop()
 	oven._process(.1)
 	assert(not oven.ready_audio.playing, "Ready bell does not repeat")
@@ -56,6 +57,8 @@ func check():
 	assert(shift.carried_item.is_empty(), "Closed doors prevent retrieval")
 	game._toggle_door(oven.doors[1])
 	assert(oven.all_open(), "The other oven door also controls both leaves")
+	oven._process(0)
+	assert(not oven.display.text.contains("BURNS IN") and oven.display.text.contains("HEAT OFF"), "Opening the doors stops the burn warning")
 	await create_timer(0.5).timeout
 	# Confirm a player can aim at the pie through the actual open doors.
 	game.player.position = Vector3(4.25, -0.09, -12.6)
@@ -78,7 +81,9 @@ func check():
 	oven.interact()
 	game._toggle_door(oven.doors[0])
 	await create_timer(0.5).timeout
-	oven._process(14)
+	oven._process(9.5)
+	assert(oven.quality() == "perfect")
+	oven._process(0.5)
 	assert(oven.quality() == "burnt")
 	game._toggle_door(oven.doors[1])
 	await create_timer(0.5).timeout

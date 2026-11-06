@@ -61,7 +61,9 @@ func check() -> void:
 	game.shift._process(.1)
 	require(game.shift.phase == "closed" and not paused,"Closing finishes without a letter popup")
 	require(game.find_children("GrandpaLetters","",true,false).is_empty(),"Letter reader is removed")
-	require(not game.shift.visit_hint.text.contains("[L]"),"Health HUD has no letter shortcut")
+	var clipboard = game.shift.get_node("Station_clock")
+	var prompt: String = game.shift.action_prompt(clipboard)
+	require(prompt.contains("98%") and not prompt.contains("[L]"),"Clipboard shows current health without a letter shortcut")
 	var key := InputEventKey.new()
 	key.keycode = KEY_L
 	key.pressed = true

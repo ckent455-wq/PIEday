@@ -25,6 +25,13 @@ func _init(persist := true) -> void:
 			cash = maxi(0, int(config.get_value("earnings", "cash", 0)))
 			grandpa.read_config(config)
 
+func health_status() -> String:
+	if grandpa.is_dead(): return "Grandpa: 0% · Deceased"
+	if cash >= TREATMENT_GOAL: return "Grandpa: Surgery funded · Stable"
+	var condition: String = grandpa.condition()
+	if grandpa.last_setback_day == grandpa.days: condition = "Recent setback"
+	return "Grandpa: %d%% · %s" % [grandpa.health, condition]
+
 func start_day() -> void:
 	if grandpa.is_dead(): return
 	sales = 0

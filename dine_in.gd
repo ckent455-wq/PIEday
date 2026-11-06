@@ -2,7 +2,9 @@ extends Node3D
 var shift: Node3D
 var tables: Array[Dictionary] = []
 var diners: Array[Dictionary] = []
-var dine_chance := .55
+const DEFAULT_DINE_CHANCE := 0.75
+const COUNTER_AISLE := Vector3(-2.4, -0.094, -0.2)
+var dine_chance := DEFAULT_DINE_CHANCE
 var mess_chance := .45
 var carried_table := -1
 var bin: Node3D
@@ -22,7 +24,20 @@ func setup(host: Node3D) -> void:
 			seat = Vector3(center.x,-.094,center.z+.48+bounds.size.z/2)
 			approach = Vector3(bounds.end.x+.65,-.094,seat.z)
 		var facing := atan2(center.x-seat.x,center.z-seat.z)
-		tables.append({"name":table_name,"top":Vector3(center.x,bounds.end.y+.015,center.z),"seat":seat,"approach":approach,"facing":facing,"busy":false,"dirty":false,"trash":null,"meal":null})
+		var inward := Vector3(center.x - seat.x, 0, center.z - seat.z).normalized()
+		var walk_end := seat + inward * 0.30
+		approach += inward * 0.30
+		var route: Array[Vector3] = [COUNTER_AISLE]
+		# Turn in the open aisle before entering each narrow booth gap.
+		match table_name:
+			"Table_01", "Table_02", "Table_03", "Table_04":
+				route.append(Vector3(approach.x, seat.y, COUNTER_AISLE.z))
+			"Table_05":
+				# A partition blocks the north end of this booth.
+				approach.z = COUNTER_AISLE.z
+		if route.back() != approach: route.append(approach)
+		route.append(walk_end)
+		tables.append({"name":table_name,"top":Vector3(center.x,bounds.end.y+.015,center.z),"seat":seat,"route":route,"facing":facing,"busy":false,"dirty":false,"trash":null,"meal":null})
 	var task := StaticBody3D.new()
 	task.name = "ClearTablesTask"
 	add_child(task)
@@ -47,7 +62,7 @@ func try_seat(actor: Node3D, items: Array, force := false) -> bool:
 	var meal := meal_visual(items)
 	actor.add_child(meal)
 	meal.position = Vector3(0,1.05,.4)
-	var route: Array[Vector3] = [Vector3(-2.4,-.094,-.2),table.approach,table.seat]
+	var route: Array[Vector3] = table.route.duplicate()
 	diners.append({"actor":actor,"table":index,"state":"walking","route":route,"step":0,"remaining":randf_range(18,35),"mess":randf()<mess_chance,"items":items.duplicate(),"meal":meal})
 	return true
 
@@ -129,8 +144,19 @@ func finish_meal(entry: Dictionary) -> void:
 	table.meal = null
 	stand(entry.actor)
 	shift.customer_line.leave(entry.actor,false,true)
-	# Leave the booth along the same clear aisle used to enter it.
-	shift.customer_line.departing.back().route.push_front(table.approach)
+	var exit_route: Array = []
+	if entry.state == "eating":
+		# Stand in the booth gap, then retrace the inbound path.
+		entry.actor.position = table.route.back()
+		exit_route = table.route.duplicate()
+		exit_route.reverse()
+	elif entry.step > 0:
+		exit_route = entry.route.slice(0, entry.step)
+		exit_route.reverse()
+	else:
+		exit_route = [COUNTER_AISLE]
+	var departure: Dictionary = shift.customer_line.departing.back()
+	departure.route = exit_route + [Vector3(0.76, -0.094, 0.2), Vector3(0.76, -0.094, 6.1)]
 	diners.erase(entry)
 
 func make_trash(index: int) -> void:
@@ -250,7 +276,8 @@ func snapshot() -> Dictionary:
 
 func restore(data: Dictionary) -> void:
 	reset()
-	dine_chance = data.get("dine_chance",.55)
+	dine_chance = data.get("dine_chance", DEFAULT_DINE_CHANCE)
+	if is_equal_approx(dine_chance, 0.55): dine_chance = DEFAULT_DINE_CHANCE
 	mess_chance = data.get("mess_chance",.45)
 	var dirty: Array = data.get("dirty",[])
 	for i in mini(dirty.size(),tables.size()):
@@ -260,6 +287,12 @@ func restore(data: Dictionary) -> void:
 		if saved.table < 0 or saved.table >= tables.size(): continue
 		var actor = preload("res://save_states.gd").restore_actor(shift.customer_line,saved.actor)
 		var entry: Dictionary = saved.duplicate(true)
+		var route: Array = tables[entry.table].route
+		if entry.route != route:
+			# Rejoin the corrected path when loading an older walking route.
+			entry.route = route.duplicate()
+			entry.step = 0
+			if entry.state == "walking": actor.position = COUNTER_AISLE
 		entry.actor = actor
 		entry.meal = meal_visual(saved.items)
 		actor.add_child(entry.meal)

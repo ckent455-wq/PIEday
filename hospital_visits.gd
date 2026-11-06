@@ -13,6 +13,9 @@ func setup(host: Node3D) -> void:
 func open_departure() -> void:
 	if shift.phase != "closed": return
 	offered_visit = shift.earnings.grandpa.visit_available()
+	if preload("res://playable_demo.gd").session(self) != null:
+		menu.show_choices("TIME TO VISIT GRANDPA", "The diner is closed. Grandpa is waiting at the hospital.", ["Visit Grandpa", "Stay a little longer"])
+		return
 	if offered_visit:
 		menu.show_choices("HOSPITAL VISITING HOURS ARE OPEN", "Closing duties are finished. Visit Grandpa at the hospital, or head home and rest for tomorrow.", ["Visit Grandpa","Go Home","Stay a little longer"])
 	else:
@@ -20,6 +23,7 @@ func open_departure() -> void:
 
 func _selected(index: int) -> void:
 	if shift.phase != "closed": return
+	if preload("res://playable_demo.gd").session(self) != null and index != 0: return
 	if offered_visit and index == 0:
 		if not shift.earnings.grandpa.start_visit(): return
 		shift.earnings._save()

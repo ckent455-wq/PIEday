@@ -78,6 +78,13 @@ func _ready() -> void:
 	saves.setup(get_parent(),self)
 	save_button.pressed.connect(func(): saves.open(true))
 	load_button.pressed.connect(func(): saves.open(false))
+	if preload("res://playable_demo.gd").session(self) != null:
+		save_button.disabled = true
+		load_button.disabled = true
+		save_button.tooltip_text = "The demo uses a separate temporary session."
+		load_button.tooltip_text = save_button.tooltip_text
+		restart_button.text = "Restart Demo"
+		restart_dialog.dialog_text = "Replay the demo from the intro? Demo earnings will reset."
 	overlay.hide()
 
 func _button(parent: Control, text: String) -> Button:
@@ -127,6 +134,10 @@ func _set_music_paused(value: bool) -> void:
 
 func restart_day() -> void:
 	resume_game()
+	var demo = preload("res://playable_demo.gd").session(self)
+	if demo != null:
+		demo.restart()
+		return
 	get_tree().reload_current_scene()
 
 func _exit_tree() -> void:

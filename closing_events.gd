@@ -191,6 +191,7 @@ func begin() -> void:
 	active = true
 	# One independent roll per closing, including the first: 30% quiet nights.
 	encounter = "" if rng.randf() < 0.3 else ENCOUNTERS[rng.randi_range(0, ENCOUNTERS.size() - 1)]
+	if preload("res://playable_demo.gd").session(self) != null: encounter = "figure"
 	bell_done = encounter != "bell"
 	flicker_done = encounter != "flicker"
 	figure_done = encounter != "figure"

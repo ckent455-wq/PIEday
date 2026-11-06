@@ -1,7 +1,7 @@
 extends StaticBody3D
 
 const PERFECT_AT := 5.0
-const BURNS_AT := 13.0
+const BURNS_AT := 10.0
 var shift: Node3D
 var doors: Array[MeshInstance3D] = []
 var pie_source: Node3D
@@ -86,7 +86,7 @@ func prompt() -> String:
 	return "[Click / E] Take " + quality() + " " + pie_item + " (%.1fs)" % elapsed
 
 func interact() -> void:
-	if shift.phase not in ["waiting", "arriving"]:
+	if shift.phase not in ["waiting", "arriving"] and not shift.is_practicing():
 		shift._message("Open the shift before baking pies.")
 		return
 	if not all_open():
@@ -101,7 +101,7 @@ func interact() -> void:
 		elapsed = float(pie_source.get_meta("bake_seconds", 0.0))
 		shift._clear_carried(false)
 		_refresh_visual()
-		shift._message("Pie loaded. Close BOTH oven doors. Perfect bake: 5-13 seconds; open the doors to stop cooking.")
+		shift._message("Close both doors. Pie is ready at %d seconds and burns at %d. Open either door to stop cooking." % [PERFECT_AT, BURNS_AT])
 	else:
 		if not shift.carried_item.is_empty() or shift.has_empty_cup():
 			shift._message("Free your hand before taking the pie out.")
@@ -130,11 +130,12 @@ func _refresh_visual() -> void:
 func _update_display() -> void:
 	heat.visible = not pie_item.is_empty() and sealed()
 	if pie_item.is_empty():
-		display.text = "PIE OVEN\nPERFECT: 5-13 SECONDS"
+		display.text = "PIE OVEN\nREADY: %ds  |  BURNS: %ds" % [PERFECT_AT, BURNS_AT]
 		display.modulate = Color.WHITE
 		return
 	var state := quality().to_upper()
 	if elapsed < PERFECT_AT: state = "READY IN %.1fs" % (PERFECT_AT - elapsed)
+	elif quality() == "perfect" and sealed(): state = "READY! BURNS IN %.1fs" % maxf(0.1, BURNS_AT - elapsed)
 	display.text = "%s  %.1fs\n%s" % [pie_item.to_upper(), elapsed, state]
 	if not sealed(): display.text += "\nHEAT OFF - TAKE PIE" if quality() in ["perfect", "burnt"] else "\nHEAT PAUSED"
 	display.modulate = Color(1, 0.3, 0.15) if quality() == "burnt" else Color(0.5, 1, 0.55) if quality() == "perfect" else Color(1, 0.85, 0.5)

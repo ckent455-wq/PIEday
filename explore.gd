@@ -14,6 +14,7 @@ var diner_music: AudioStreamPlayer
 var interaction_release_required := false
 
 func _ready() -> void:
+	preload("res://playable_demo.gd").prepare(self)
 	var saved_wallet = get_tree().root.get_meta("pie_day_wallet") if get_tree().root.has_meta("pie_day_wallet") else null
 	if saved_wallet == null: saved_wallet = preload("res://earnings.gd").new()
 	if saved_wallet.grandpa.is_dead():
@@ -157,9 +158,9 @@ func _unhandled_input(event: InputEvent) -> void:
 			player.velocity = Vector3.ZERO
 		if event.keycode == KEY_Q:
 			shift.discard_last()
-		if event.keycode == KEY_F6:
+		if event.keycode == KEY_F6 and preload("res://playable_demo.gd").session(self) == null:
 			shift.start_demo()
-		if event.keycode == KEY_F7:
+		if event.keycode == KEY_F7 and preload("res://playable_demo.gd").session(self) == null:
 			shift.begin_cleanup()
 	if event is InputEventMouseButton and event.pressed:
 		if event.button_index == MOUSE_BUTTON_LEFT and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED and is_instance_valid(target_action) and target_action.get_meta("action", "") in ["coffee", "cup_stack", "tray", "pie", "donut", "soda", "soda_cup_stack", "customer", "bell", "oven", "dispose", "freezer_stock", "restock_cooler"]:

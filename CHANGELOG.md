@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.7.0
+
+- Compact diner HUD with treatment savings and the shift clock. Grandpa's condition appears at the clipboard and bedside.
+- Coffee requires an empty cup before brewing. Pies are ready at five seconds and burn at ten, with a countdown after the ding.
+- Correctly served customers have a 75% dine-in chance when a clean booth is available. Customers follow the aisles to and from all six booths.
+- The separate demo preset includes practice orders for coffee, donuts, fountain soda and baking.
+
+- Separate playable demo: intro, one shift, guaranteed doorway encounter during closing, hospital conversation, earnings ending and replay. Temporary progress stays separate from campaign saves.
+- Bathroom and kitchen doors stay closed until player interaction.
+- Customers open the front door only while passing through, wait for its swing, and close it behind the last person. Front-door state is preserved in manual saves.
+
 ## 0.6.0
 
 - Strawberry icing, chocolate icing and plain glazed donuts, with labeled case sections and flavor-specific orders.

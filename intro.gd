@@ -21,6 +21,7 @@ var key_sounds_played := 0
 var sound_rng := RandomNumberGenerator.new()
 
 func _ready() -> void:
+	preload("res://playable_demo.gd").prepare(self)
 	if "--scare-test" in OS.get_cmdline_user_args():
 		get_tree().root.set_meta("pie_day_wallet", preload("res://earnings.gd").new(false))
 		_start_game(false)

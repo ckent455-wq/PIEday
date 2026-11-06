@@ -61,8 +61,11 @@ func check():
 		game.set_physics_process(false)
 		game.shift.earnings.save_enabled = false
 		game.shift.earnings.grandpa = sample
-		game.shift._update_grandpa_hud()
-		require(game.shift.health_label.text.contains("Recent setback"), "HUD flags sudden decline")
+		var clipboard = game.shift.get_node("Station_clock")
+		var prompt: String = game.shift.action_prompt(clipboard)
+		require(prompt.contains("Recent setback"), "Clipboard flags sudden decline")
+		game.interaction_label.text = prompt
+		game.interaction_label.show()
 		await create_timer(0.15).timeout
 		await RenderingServer.frame_post_draw
 		root.get_texture().get_image().save_png("res://builds/grandpa-setback-hud.png")

@@ -23,6 +23,7 @@ func check():
 	shift.set_process(false)
 	shift.start_demo()
 	for frame in range(620): shift._process(1.0 / 60.0)
+	shift.coffee_station.interact("cup_stack")
 	shift.coffee_station.interact("coffee")
 	game.camera.look_at(shift.customer.global_position + Vector3(0, 1.65, 0))
 	await physics_frame

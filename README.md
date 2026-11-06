@@ -1,6 +1,6 @@
 # PIEday
 
-Current version: **0.6.0**. Includes strawberry, chocolate and glazed donuts;
+Current version: **0.7.0**. Includes strawberry, chocolate and glazed donuts;
 Cola, Lemon Fizz and Dr. Paw Paw; five-second pie baking with a ready bell;
 recorded pouring, cooler and scrubbing sounds; original diner, night and hospital
 music; and the revised doorway monster. Hospital visits, Grandpa's health,
@@ -41,14 +41,13 @@ counter tray to set it down. The customer interaction repeats the order;
 
 Pies from the cooler must be baked in the double-door kitchen oven. Open both
 doors, click inside with a pie in hand to load it, then close both doors.
-Open the doors at 5 seconds and before 13 seconds for a perfect toasted pie.
+Open the doors at 5 seconds and before 10 seconds for a perfect toasted pie.
 Press E on either oven door to open or close both together; opening pauses heat. Open both and click inside with an empty hand
-to collect the pie, then put it on the counter tray. At 13 seconds it burns;
+to collect the pie, then put it on the counter tray. At 10 seconds it burns;
 customers reject burnt or undercooked pies. The timer is above the oven doors.
 
-Click the coffee machine with an empty hand to automatically place a cup and
-start filling. Click again when READY to collect it, then put it on the tray.
-The separate empty cup stack also works for manual placement. Soda uses
+Take an empty cup from the stack beside the coffee machine. Use the machine
+to fill it, collect it when READY, then put it on the tray. Soda uses
 the cups in the dispenser's **front-mounted cup holders**, with the same cup
 model in your hand, under the nozzle, and on the tray.
 

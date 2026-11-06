@@ -16,6 +16,7 @@ func check():
 	current_scene = game
 	game.shift.earnings.save_enabled = false
 	game.shift.start_demo()
+	game.shift.coffee_station.interact("cup_stack")
 	game.shift.coffee_station.interact("coffee")
 	await create_timer(0.15).timeout
 	var menu = game.pause_menu

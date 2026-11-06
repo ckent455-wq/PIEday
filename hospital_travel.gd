@@ -31,5 +31,5 @@ static func go(host: Node, destination: String, wallet: RefCounted = null) -> vo
 	reveal.tween_property(shade,"color:a",0.0,.4)
 	await reveal.finished
 	tree.root.remove_meta("hospital_travel_busy")
-	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE if destination in ["res://grandpa_ending.tscn","res://intro.tscn"] else Input.MOUSE_MODE_CAPTURED
+	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE if destination in ["res://grandpa_ending.tscn","res://intro.tscn","res://demo_ending.tscn"] else Input.MOUSE_MODE_CAPTURED
 	layer.queue_free()

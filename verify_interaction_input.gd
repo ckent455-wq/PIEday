@@ -41,6 +41,7 @@ func check():
 	var station = shift.get_node("Station_coffee")
 	game.player.global_position = station.global_position + Vector3(0, 0, 1.1)
 	game.player.position.y = -0.09
+	station.interact("cup_stack")
 	game.camera.look_at(station.global_position)
 	await physics_frame
 	await physics_frame

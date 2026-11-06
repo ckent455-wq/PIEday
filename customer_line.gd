@@ -5,6 +5,8 @@ var waiting: Array[Dictionary] = []
 var departing: Array[Dictionary] = []
 var next_arrival := 6.0
 var time := 0.0
+var front_door_auto_opened := false
+var front_door_open_for := 0.0
 const CUSTOMER_MODELS := ["male_1", "female_1", "male_2", "female_2", "male_3", "female_3"]
 const ADULT_MODELS := ["adult_unclothed", "adult_female_unclothed"]
 var last_model := -1
@@ -114,7 +116,46 @@ func tick(delta: float) -> void:
 				entry.actor.queue_free()
 				departing.erase(entry)
 
+	_tick_front_door(delta)
+
+func _tick_front_door(delta: float) -> void:
+	var front: MeshInstance3D
+	for door in shift.game.doors:
+		if door.name == "Door_03": front = door; break
+	if not is_instance_valid(front): return
+	var center := _front_door_center(front)
+	front_door_open_for = front_door_open_for + delta if front.get_meta("open", false) else 0.0
+	var actors: Array[Node3D] = []
+	if is_instance_valid(shift.customer): actors.append(shift.customer)
+	for entry in waiting + departing:
+		if is_instance_valid(entry.actor): actors.append(entry.actor)
+	var passing := false
+	for actor in actors:
+		var at := actor.global_position
+		if absf(at.z - center.z) < 2.0 and absf(at.x - center.x) < 1.2:
+			passing = true
+			break
+	if passing and not front.get_meta("open", false):
+		front_door_auto_opened = true
+		shift.game._set_door_open(front, true)
+	elif not passing and front_door_auto_opened:
+		if front.get_meta("open", false): shift.game._set_door_open(front, false)
+		front_door_auto_opened = false
+
+func _front_door_center(front: MeshInstance3D) -> Vector3:
+	var closed := Transform3D(Basis(Vector3.UP, float(front.get_meta("closed_rotation"))), front.position)
+	return front.get_parent().global_transform * closed * front.mesh.get_aabb().get_center()
+
+func front_door_passage_ready(actor: Node3D, goal: Vector3) -> bool:
+	var front: MeshInstance3D = shift.game.find_child("Door_03", true, false)
+	if not is_instance_valid(front): return true
+	var center := _front_door_center(front)
+	if (actor.position.z - center.z) * (goal.z - center.z) >= 0: return true
+	if absf(actor.position.z - center.z) >= 2.0: return true
+	return front.get_meta("open", false) and front_door_open_for >= 0.45
+
 func _move(actor: Node3D, goal: Vector3, speed: float, delta: float) -> bool:
+	if not front_door_passage_ready(actor, goal): return true
 	var offset := goal - actor.position
 	if offset.length() <= speed*delta:
 		actor.position = goal
@@ -136,6 +177,11 @@ func _pose(actor: Node3D, stride: float) -> void:
 		skeleton.set_bone_pose_rotation(id,baselines[id]*rest.inverse()*Quaternion(Vector3.RIGHT,angle)*rest)
 
 func clear_all() -> void:
+	front_door_open_for = 0.0
+	if front_door_auto_opened:
+		for door in shift.game.doors:
+			if door.name == "Door_03": shift.game._set_door_open(door, false)
+		front_door_auto_opened = false
 	for entry in waiting + departing:
 		if is_instance_valid(entry.actor): entry.actor.queue_free()
 	waiting.clear()

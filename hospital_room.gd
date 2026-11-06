@@ -17,6 +17,7 @@ var interaction_release_required := false
 var leaving := false
 
 func _ready() -> void:
+	preload("res://playable_demo.gd").prepare(self)
 	if get_tree().root.has_meta("pie_day_wallet"):
 		earnings = get_tree().root.get_meta("pie_day_wallet")
 		get_tree().root.remove_meta("pie_day_wallet")
@@ -48,6 +49,8 @@ func _ready() -> void:
 	add_child(conversation)
 	conversation.setup(self)
 	conversation.dialogue_completed.connect(func():
+		var demo = preload("res://playable_demo.gd").session(self)
+		if demo != null: demo.talked_to_grandpa = true
 		earnings.grandpa.finish_visit_conversation()
 		earnings._save()
 	)
@@ -279,6 +282,14 @@ func interact() -> void:
 	if target == "light": bedside_light.visible = not bedside_light.visible
 	if target == "grandpa": conversation.show_dialogue(earnings.grandpa.visit_dialogue(earnings.cash))
 	if target == "exit":
+		var demo = preload("res://playable_demo.gd").session(self)
+		if demo != null:
+			if not demo.talked_to_grandpa:
+				conversation.show_choices("BEFORE YOU GO", "Talk to Grandpa at his bedside before heading home.", ["Okay"])
+				return
+			leaving = true
+			preload("res://hospital_travel.gd").go(self,"res://demo_ending.tscn",earnings)
+			return
 		leaving = true
 		if earnings.grandpa.visit_in_progress:
 			earnings.grandpa.finish_evening()
@@ -301,7 +312,7 @@ func _physics_process(delta: float) -> void:
 	var ray := PhysicsRayQueryParameters3D.create(camera.global_position,camera.global_position-camera.global_basis.z*2.6,5,[player.get_rid()])
 	var hit := get_world_3d().direct_space_state.intersect_ray(ray)
 	target = str(hit.collider.get_meta("action","")) if not hit.is_empty() else ""
-	prompt.text = ("E: Go home / Start next morning" if earnings.grandpa.visit_in_progress else "E: Return to diner") if target == "exit" else ("E: Talk to Grandpa" if target == "grandpa" else ("E: Toggle bedside light" if target == "light" else ""))
+	prompt.text = ("E: Go home / Start next morning" if earnings.grandpa.visit_in_progress else "E: Return to diner") if target == "exit" else (("E: Talk to Grandpa\n" + earnings.health_status()) if target == "grandpa" else ("E: Toggle bedside light" if target == "light" else ""))
 	if interaction_release_required and not Input.is_action_pressed("interact"):
 		interaction_release_required = false
 	elif Input.is_action_just_pressed("interact") and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED and not interaction_release_required:

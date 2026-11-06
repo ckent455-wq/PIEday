@@ -65,12 +65,7 @@ var payment_panel: PanelContainer
 var order_panel: PanelContainer
 var order_text: RichTextLabel
 var order_heading: Label
-var goal_bar: ProgressBar
 var dialogue: CanvasLayer
-var health_heading: Label
-var health_label: Label
-var health_bar: ProgressBar
-var visit_hint: Label
 var restock: Node3D
 var hospital_visits: Node
 var dine_in: Node3D
@@ -159,7 +154,6 @@ func setup(host: Node3D) -> void:
 	tray_model.scale = Vector3.ONE * 1.95
 	held_tray.visible = true
 	coffee_station = preload("res://coffee_station.gd").new()
-	coffee_station.easy_coffee = true
 	add_child(coffee_station)
 	coffee_station.setup(self)
 	soda_station = preload("res://soda_station.gd").new()
@@ -194,6 +188,7 @@ func setup(host: Node3D) -> void:
 	oven.setup(self)
 	customer_line = preload("res://customer_line.gd").new()
 	customer_line.shift = self
+	if preload("res://playable_demo.gd").session(self) != null: customer_line.nude_chance = 0.0
 	add_child(customer_line)
 	closing_events = preload("res://closing_events.gd").new()
 	add_child(closing_events)
@@ -275,68 +270,27 @@ func _build_hud() -> void:
 	root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	root.theme = UI.theme()
 	canvas.add_child(root)
-	var wallet := UI.card()
-	root.add_child(wallet)
-	wallet.position = Vector2(24, 24)
-	wallet.size = Vector2(300, 106)
-	var money := VBoxContainer.new()
-	money.add_theme_constant_override("separation", 8)
-	wallet.add_child(money)
-	money.add_child(UI.label("GRANDPA'S TREATMENT", 12, UI.MUTED))
-	cash_label = UI.label("", 22)
-	money.add_child(cash_label)
-	goal_bar = ProgressBar.new()
-	goal_bar.custom_minimum_size.y = 3
-	goal_bar.max_value = earnings.TREATMENT_GOAL
-	goal_bar.show_percentage = false
-	goal_bar.add_theme_stylebox_override("background", UI.box(Color("3c3c38"), 0))
-	goal_bar.add_theme_stylebox_override("fill", UI.box(UI.GOLD, 0))
-	money.add_child(goal_bar)
+	cash_label = UI.label("", 18, UI.GOLD)
+	root.add_child(cash_label)
+	cash_label.position = Vector2(24, 20)
 	_update_cash_display()
-	var clock_card := UI.card()
-	var health_card := UI.card()
-	root.add_child(health_card)
-	health_card.set_anchors_and_offsets_preset(Control.PRESET_CENTER_TOP)
-	health_card.offset_left = -150
-	health_card.offset_right = 150
-	health_card.offset_top = 24
-	health_card.offset_bottom = 130
-	var health_column := VBoxContainer.new()
-	health_column.add_theme_constant_override("separation", 6)
-	health_card.add_child(health_column)
-	health_heading = UI.label("", 12, UI.MUTED)
-	health_column.add_child(health_heading)
-	health_label = UI.label("", 16)
-	health_column.add_child(health_label)
-	health_bar = ProgressBar.new()
-	health_bar.max_value = 100
-	health_bar.show_percentage = false
-	health_bar.custom_minimum_size.y = 6
-	health_bar.add_theme_stylebox_override("background", UI.box(Color("3c3c38"), 0))
-	health_column.add_child(health_bar)
-	visit_hint = UI.label("Visit Grandpa after closing", 12, UI.MUTED)
-	health_column.add_child(visit_hint)
-	_update_grandpa_hud()
-	root.add_child(clock_card)
-	clock_card.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT)
-	clock_card.offset_left = -284
-	clock_card.offset_right = -24
-	clock_card.offset_top = 24
-	clock_card.offset_bottom = 112
-	var clock := VBoxContainer.new()
-	clock.add_theme_constant_override("separation", 6)
-	clock_card.add_child(clock)
-	clock.add_child(UI.label("PIEday  /  DINER", 12, UI.MUTED))
-	shift_clock = UI.label("", 19)
-	clock.add_child(shift_clock)
+	shift_clock = UI.label("", 18)
+	root.add_child(shift_clock)
+	shift_clock.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT)
+	shift_clock.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+	shift_clock.offset_right = -24
+	shift_clock.offset_top = 20
+	for label in [cash_label, shift_clock]:
+		label.add_theme_color_override("font_outline_color", Color("111113"))
+		label.add_theme_constant_override("outline_size", 6)
 	_update_shift_clock()
 	order_panel = UI.card()
 	root.add_child(order_panel)
 	order_panel.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT)
 	order_panel.offset_left = -284
 	order_panel.offset_right = -24
-	order_panel.offset_top = 124
-	order_panel.offset_bottom = 124
+	order_panel.offset_top = 56
+	order_panel.offset_bottom = 56
 	var order_column := VBoxContainer.new()
 	order_column.add_theme_constant_override("separation", 12)
 	order_panel.add_child(order_column)
@@ -455,21 +409,7 @@ func _end_campaign() -> void:
 	preload("res://grandpa_ending.gd").present(game,earnings)
 
 func _update_cash_display() -> void:
-	if is_instance_valid(cash_label): cash_label.text = "CASH  $%d / $15,000" % earnings.cash
-	if is_instance_valid(goal_bar): goal_bar.value = earnings.cash
-	_update_grandpa_hud()
-
-func _update_grandpa_hud() -> void:
-	if not is_instance_valid(health_bar): return
-	var progress = earnings.grandpa
-	health_heading.text = "GRANDPA'S HEALTH"
-	var recent: bool = progress.last_setback_day == progress.days
-	health_label.text = "0% · Deceased" if progress.is_dead() else "Surgery funded · Stable" if earnings.cash >= earnings.TREATMENT_GOAL else "%d%% · %s" % [progress.health, "Recent setback" if recent else progress.condition()]
-	health_bar.value = progress.health
-	var color: Color = Color("dc8c82") if recent else UI.GREEN if progress.health > 50 else UI.GOLD if progress.health > 25 else Color("dc8c82")
-	health_bar.add_theme_stylebox_override("fill", UI.box(color, 0))
-	visit_hint.text = "Campaign ended" if progress.is_dead() else "Visiting hours open after closing" if progress.visit_available() else "Visit Grandpa after closing"
-	visit_hint.add_theme_color_override("font_color",UI.GOLD if progress.visit_available() else UI.MUTED)
+	if is_instance_valid(cash_label): cash_label.text = "Treatment  $%d / $15,000" % earnings.cash
 
 func _tag_pies() -> void:
 	all_pies.clear()
@@ -594,8 +534,8 @@ func begin_prep(resolve_evening := true) -> void:
 	if is_instance_valid(dialogue): dialogue.finish()
 	if is_instance_valid(dine_in):
 		dine_in.reset()
-		dine_in.dine_chance = .55
-	if is_instance_valid(customer_line): customer_line.nude_chance = 0.08
+		dine_in.dine_chance = dine_in.DEFAULT_DINE_CHANCE
+	if is_instance_valid(customer_line): customer_line.nude_chance = 0.0 if preload("res://playable_demo.gd").session(self) != null else 0.08
 	if is_instance_valid(closing_events): closing_events.reset()
 	if is_instance_valid(customer_line): customer_line.clear_all()
 	if phase != "prep": shift_number += 1
@@ -612,9 +552,12 @@ func begin_prep(resolve_evening := true) -> void:
 		task_nodes[id].visible = false
 		task_nodes[id].collision_layer = 0
 	_reset_stock()
-	_open_staff_doors()
 	game.set_night(false)
-	_message("Ready for the day. Use the shift clipboard to open the diner.")
+	var demo = preload("res://playable_demo.gd").session(self)
+	if demo != null and demo.tutorial_state == "welcome":
+		_message("Use the shift clipboard behind the counter to start training.")
+	else:
+		_message("Ready for the day. Use the shift clipboard to open the diner.")
 
 func begin_cleanup() -> void:
 	if is_instance_valid(scrubbing_audio): scrubbing_audio.stop()
@@ -669,7 +612,6 @@ func start_demo() -> void:
 	shift_number = 1
 	served = 0
 	lost = 0
-	_open_staff_doors()
 	phase = "prep"
 	start_shift()
 	game.spawn_point = Vector3(-2.4, 0.03, -5.8)
@@ -678,11 +620,6 @@ func start_demo() -> void:
 	game.camera.rotation = Vector3.ZERO
 	game.pitch = 0.0
 	_message("CUSTOMER DEMO: E to take the order. Pick up each item and click the counter tray to place it. Ring the counter bell to submit the completed tray.")
-
-func _open_staff_doors() -> void:
-	for door in game.doors:
-		if door.name in ["Door", "Door_01"] and not door.get_meta("open"):
-			game._toggle_door(door)
 
 func start_shift() -> bool:
 	if earnings.grandpa.is_dead(): return false
@@ -708,7 +645,8 @@ func _spawn_customer() -> void:
 	if is_instance_valid(customer): return
 	var queued: bool = not customer_line.waiting.is_empty()
 	_reset_customer()
-	order.assign(ORDERS[order_index % ORDERS.size()])
+	var demo_orders := [["Glazed donut", "Coffee"], ["Apple pie", "Cola"], ["Chocolate donut", "Lemon Fizz"], ["Cherry pie", "Dr. Paw Paw"]]
+	order.assign(demo_orders[order_index % demo_orders.size()] if preload("res://playable_demo.gd").session(self) != null else ORDERS[order_index % ORDERS.size()])
 	order_taken = false
 	angry = false
 	customer = customer_line.pop_front() if queued else customer_line.make_actor(Vector3(0.76,-0.094,5))
@@ -718,9 +656,6 @@ func _spawn_customer() -> void:
 		_set_route([Vector3(-2.4,-0.094,-3.6)])
 	else:
 		_set_route([Vector3(0.76,-0.094,0.2),Vector3(-2.4,-0.094,-3.6)])
-	for door in game.doors:
-		if door.name == "Door_03" and not door.get_meta("open"):
-			game._toggle_door(door)
 
 func _bind_customer_actor(actor: Node3D) -> void:
 	customer = actor
@@ -792,7 +727,10 @@ func _process(delta: float) -> void:
 		var goal := route[route_index]
 		var speed := (6.5 if angry else 5.5) if phase == "leaving" else 4.0
 		var movement := goal - customer.position
-		if movement.length() < speed * delta:
+		var passage_ready: bool = customer_line.front_door_passage_ready(customer, goal)
+		if not passage_ready:
+			pass
+		elif movement.length() < speed * delta:
 			customer.position = goal
 			route_index += 1
 			if route_index >= route.size():
@@ -805,8 +743,8 @@ func _process(delta: float) -> void:
 			customer.rotation.y = atan2(movement.x, movement.z)
 		if is_instance_valid(customer_visual):
 			var gait_speed := minf(speed, 2.5)
-			customer_visual.position.y = absf(sin(animation_time * gait_speed * 8)) * 0.018
-			_pose_customer(sin(animation_time * gait_speed * 7))
+			customer_visual.position.y = absf(sin(animation_time * gait_speed * 8)) * 0.018 if passage_ready else 0.0
+			_pose_customer(sin(animation_time * gait_speed * 7) if passage_ready else 0.0)
 	elif is_instance_valid(customer_visual):
 		customer_visual.position.y = 0
 		_pose_customer(0)
@@ -875,10 +813,13 @@ func action_prompt(node: Node) -> String:
 		"task": return "[E] Collect trash bag" if node.get_meta("task") == "trash" else "Hold [E] to clean " + str(node.get_meta("task"))
 		"dispose": return "[Click / E] Throw trash into dumpster" if carrying_trash else "Dumpster - collect the morning trash bag first"
 		"clock":
-			if phase == "prep": return "[E] Open shift"
-			if phase == "closed": return "[E] Visit Grandpa / Go Home" if earnings.grandpa.visit_available() else "[E] Go Home"
+			if phase == "prep":
+				var demo = preload("res://playable_demo.gd").session(self)
+				if demo != null and demo.tutorial_state != "done": return "[E] Training\n" + earnings.health_status()
+				return "[E] Open shift\n" + earnings.health_status()
+			if phase == "closed": return ("[E] Visit Grandpa / Go Home" if earnings.grandpa.visit_available() else "[E] Go Home") + "\n" + earnings.health_status()
 			if phase == "cleanup": return "Finish closing chores to end the day"
-			return "Shift is open - serve customers at the counter"
+			return earnings.health_status()
 	return ""
 
 func interact(node: Node) -> void:
@@ -936,7 +877,11 @@ func interact(node: Node) -> void:
 				closing_events.on_trash_disposed()
 				complete_task("trash")
 		"clock":
-			if phase == "prep": start_shift()
+			if phase == "prep":
+				var demo = preload("res://playable_demo.gd").session(self)
+				if demo == null or demo.tutorial_state == "done": start_shift()
+				elif demo.tutorial_state == "welcome": demo.open_tutorial(self)
+				else: _message("Finish the practice order at the serving bell before opening.")
 			elif phase == "closed": hospital_visits.open_departure()
 			elif phase == "cleanup": _message("Finish cleaning, take out the trash, and replenish the cooler before starting the next day.")
 			else: _message("Your shift is already open. Customers are waiting at the counter.")
@@ -945,11 +890,15 @@ func _set_carrying_trash(value: bool) -> void:
 	carrying_trash = value
 	if is_instance_valid(held_trash): held_trash.visible = value
 
+func is_practicing() -> bool:
+	var demo = preload("res://playable_demo.gd").session(self)
+	return phase == "prep" and demo != null and demo.tutorial_state == "practice"
+
 func add_item(item: String, source: Node3D = null) -> bool:
 	if item.ends_with("pie") and (not is_instance_valid(source) or source.get_meta("bake_quality", "raw") == "raw"):
 		_message("Bake the pie in the kitchen oven before putting it on the serving tray.")
 		return false
-	if phase not in ["waiting", "arriving"]:
+	if phase not in ["waiting", "arriving"] and not is_practicing():
 		_message("Start a shift before preparing orders.")
 		return false
 	if tray.size() >= 6:
@@ -966,6 +915,9 @@ func add_item(item: String, source: Node3D = null) -> bool:
 func discard_last() -> void:
 	if coffee_station.return_empty() or soda_station.return_empty(): return
 	if not carried_item.is_empty():
+		if is_practicing() and carried_item.ends_with("pie") and is_instance_valid(carried_source):
+			carried_source.set_meta("bake_quality", "raw")
+			carried_source.set_meta("bake_seconds", 0.0)
 		_clear_carried(true)
 		_message("Held item returned / set aside.")
 		return
@@ -1184,7 +1136,7 @@ func _place_counter_tray() -> void:
 	if not hit.is_empty(): held_tray.global_position.y = hit.position.y + 0.006
 
 func pickup_item(item: String, source: Node3D = null) -> bool:
-	if phase not in ["waiting", "arriving"]:
+	if phase not in ["waiting", "arriving"] and not is_practicing():
 		_message("Open the shift before preparing an order.")
 		return false
 	if not carried_item.is_empty() or has_empty_cup():

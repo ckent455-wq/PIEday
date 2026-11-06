@@ -105,18 +105,16 @@ tray (or press E) to place it. Collect the exact items:
 - Pies: open the kitchen cooler. Left column is meat, middle apple, right cherry.
   Carry a pie to the double-door kitchen oven. Press E on either oven door to open both, then click
   inside to load it. Close both doors to bake; the timer starts once they shut.
-  Open the doors at 5 seconds and before 13 seconds for a perfect toasted pie.
+  Open the doors at 5 seconds and before 10 seconds for a perfect toasted pie.
   Opening the oven doors pauses cooking. With both doors open and an empty hand,
   click inside to take out the pie, then place it on the customer tray.
-  Undercooked pies can go back in to finish. At 13 seconds the pie burns.
+  Undercooked pies can go back in to finish. At 10 seconds the pie burns.
   Customers reject undercooked or burnt pies; raw pies cannot go on the tray.
   The oven display shows elapsed time and baking status. One pie fits at a time.
 - Donuts: strawberry icing, chocolate icing, and plain glazed, grouped left to right in the glass display. Aim at a flavor and click or press E to pick it up. Customers request a specific flavor; all three cost $2.
-- Coffee: click the machine (or press E) with an empty hand to automatically
-  place a cup and start filling. Click the machine again when READY to collect
-  the coffee, then click the counter tray to set it down. You can also take an
-  empty cup from the stack first and place it in the machine manually.
-  Filling takes 2.5 seconds. E also works. Q returns a held empty cup.
+- Coffee: take an empty cup from the stack beside the machine. Use the machine
+  to place and fill the cup, collect it when READY, then put it on the serving tray.
+  Filling takes 2.5 seconds. Click or press E to interact. Q returns a held empty cup.
 - Soda: pull an empty soda cup from the dispenser's built-in front cup holder, click
   the dispenser to fill it, then pick up the full cup and click the counter tray
   to place it. Soda filling takes 1.8 seconds. The soda cup uses the same mesh
@@ -171,7 +169,7 @@ Use -- --hospital-demo or open hospital_room.tscn for a standalone room preview.
 
 Dialogue uses black panels with square white borders, pixel lettering and a blinking continuation arrow. Customer conversations, Grandpa visits and departure choices type out gradually while gameplay stays paused. E/Space/Enter or the dialogue button first reveals the current text; the next press continues. Esc closes dialogue.
 
-About 55% of correctly served customers choose an available clean booth. They carry their meal over, sit and eat for 18-35 seconds, then leave. About 45% of diners leave a used cup and wrappers. Dirty or occupied tables cannot be assigned to another customer. Wrong orders and the final after-hours order are takeout departures. Closing sends seated diners home immediately and preserves their litter.
+About 75% of correctly served customers choose an available clean booth. They carry their meal over, sit and eat for 18-35 seconds, then leave. About 45% of diners leave a used cup and wrappers. Dirty or occupied tables cannot be assigned to another customer. Wrong orders and the final after-hours order are takeout departures. Closing sends seated diners home immediately and preserves their litter.
 
 During closing, use E on table litter, carry it to the labeled indoor trash can by the kitchen-side trash pickup, and use E to deposit it. Q returns litter to its original table. The Clear table trash chore tracks how many dirty tables remain. Once every table is cleared into the bin, use E on the bin to collect the bag and take it to the outdoor dumpster. A clean dining room auto-completes the table chore, but the nightly bag still has to go out. Dining customers, meal progress, dirty tables and carried litter are included in manual save states.
 
@@ -190,3 +188,13 @@ Scare adjustment mode: launch with -- --scare-test. Keys 1-6 select bell, flicke
 Both kitchen cooler doors play the selected refrigerator-opening sound during normal use as well as the haunted opening. It plays once on each closed-to-open transition.
 
 Hospital visits play Still Here quietly on a loop, including while Grandpa's dialogue is open. Esc pauses the music, and leaving the room fades it out.
+
+Door behavior: bathroom and kitchen doors start closed and open only through player interaction. Customers use the front door when entering or leaving, wait for its swing, and close it after the doorway clears, including the last departure at closing. A front door explicitly opened by the player remains under player control.
+# Playable demo
+
+Export the **Windows Demo** preset or launch source with `-- --play-demo`.
+The demo follows the intro, one service shift, closing duties and doorway encounter,
+then a visit to Grandpa and a final earnings screen. Talk to Grandpa before leaving
+his room. Replay starts a fresh demo. Campaign autosaves and manual slots are kept
+separate; saving/loading is disabled during the demo. Small contextual hints guide
+new players. The full Windows Desktop preset retains the campaign.

@@ -17,6 +17,18 @@ func run() -> void:
 	shift.customer_line.next_arrival = INF
 	var dining = shift.dine_in
 	require(dining.tables.size() == 6,"All six booths are available")
+	await physics_frame
+	await physics_frame
+	var space := game.get_world_3d().direct_space_state as PhysicsDirectSpaceState3D
+	for table in dining.tables:
+		var start := Vector3(-2.4, -0.094, -3.6)
+		for target: Vector3 in table.route:
+			var side := start.direction_to(target).cross(Vector3.UP)
+			for offset in [Vector3.UP * 0.4, Vector3.UP * 1.15 + side * 0.15, Vector3.UP * 1.15 - side * 0.15]:
+				var ray := PhysicsRayQueryParameters3D.create(start + offset, target + offset, 1, [game.player.get_rid()])
+				var hit := space.intersect_ray(ray)
+				require(hit.is_empty(), "%s route hits diner geometry from %s to %s" % [table.name, start, target])
+			start = target
 	dining.dine_chance = 1
 	dining.mess_chance = 1
 	# Use the near booth for repeatable visual inspection.
@@ -52,6 +64,9 @@ func run() -> void:
 		root.get_texture().get_image().save_png("res://builds/dine-in-customer.png")
 	dining.tick(11)
 	require(dining.diners.is_empty() and dining.dirty_count() == 1,"Messy customer leaves cups and wrappers")
+	var return_route: Array = dining.tables[0].route.duplicate()
+	return_route.reverse()
+	require(shift.customer_line.departing.back().route.slice(0, return_route.size()) == return_route, "Departing diner retraces the booth route")
 	require(shift.earnings.cash == paid,"Eating does not award payment twice")
 	shift.begin_cleanup()
 	require(not shift.tasks.tables,"Dirty tables become a nightly chore")

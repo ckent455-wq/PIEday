@@ -1,0 +1,18 @@
+[gd_scene format=3]
+
+[ext_resource type="PackedScene" path="res://assets/pistol/pistol.glb" id="1_grvsf"]
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_bbjfh"]
+size = Vector3(0.44430172, 0.1394996, 0.38495275)
+
+[node name="KitchenPistolPickup" type="StaticBody3D" unique_id=215206067]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 5.86499, 1.1803702, -9.342496)
+collision_layer = 4
+metadata/action = "pistol"
+
+[node name="pistol" type="Node3D" parent="." unique_id=1022604729 instance=ExtResource("1_grvsf")]
+transform = Transform3D(0.10589365, 0.30104533, 0.166608, -0.30104533, -0.00334476, 0.19738404, 0.166608, -0.19738404, 0.25076124, -0.0051604956, 0.039274644, 0.03581786)
+
+[node name="_CollisionShape3D_236" type="CollisionShape3D" parent="." unique_id=1402201029]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.0397498, 0)
+shape = SubResource("BoxShape3D_bbjfh")

@@ -46,6 +46,7 @@ func make_actor(at: Vector3, saved_model := "") -> Node3D:
 	body.collision_layer = 5
 	body.set_meta("action", "queued_customer")
 	actor.add_child(body)
+	if is_instance_valid(shift.corpses): shift.corpses.ignore_customer(body)
 	var collider := CollisionShape3D.new()
 	var shape := CapsuleShape3D.new()
 	shape.radius = 0.28

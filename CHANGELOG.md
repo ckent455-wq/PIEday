@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.8.0
+
+- Editable kitchen pistol centered on the right-hand table, with firing sound and muzzle flash. Only available during clothing-required encounters.
+- Shot customers become jointed ragdolls that collide with the diner and remain for closing cleanup.
+- Pick up bodies with E, carry them to the outdoor dumpster, and press E to dispose; Q sets them down. Bodies hold a fixed pose while carried and resume physics when set down.
+- Body disposal is required before completing closing duties. Manual saves preserve body poses and the carried body; older saves remain supported.
+- Ragdolls ignore character contact and use constrained joints to prevent contact instability.
+
 ## 0.7.0
 
 - Compact diner HUD with treatment savings and the shift clock. Grandpa's condition appears at the clipboard and bedside.

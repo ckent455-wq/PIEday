@@ -1,11 +1,9 @@
 # PIEday
 
-Current version: **0.7.0**. Includes strawberry, chocolate and glazed donuts;
-Cola, Lemon Fizz and Dr. Paw Paw; five-second pie baking with a ready bell;
-recorded pouring, cooler and scrubbing sounds; original diner, night and hospital
-music; and the revised doorway monster. Hospital visits, Grandpa's health,
-manual save/load slots, customer dialogue, three-minute shifts, restocking,
-dine-in customers and closing cleanup are included.
+Current version: **0.8.0**. Adds a kitchen pistol for clothing-required encounters,
+jointed customer ragdolls, and a closing chore to pick up bodies and carry them
+to the dumpster. Includes the full campaign, hospital visits, save/load, donut
+and soda varieties, music, and closing scares.
 
 The game opens with a typewriter-style story on a black screen. Press E or
 Space to reveal each passage and advance, then choose Open the Diner. Earn $15,000 toward Grandpa's

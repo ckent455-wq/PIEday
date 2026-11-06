@@ -90,3 +90,6 @@ This file records provenance; it does not relicense third-party material.
 - **Haunted cooler opening:** fridge_door_open.WAV by naxxfish, Freesound 121210, https://freesound.org/people/naxxfish/sounds/121210/ , CC0 https://creativecommons.org/publicdomain/zero/1.0/ . User selected option 1. HQ MP3 preview preserved in art/cooler_audio/; mono/gain adjusted with leading silence trimmed by prepare_open.py. Runtime assets/audio/cooler_open.wav replaces the synthesized haunted cooler creak.
 
 - **Hospital music — Still Here:** original sentimental piano composition for PIEday, created with BeepBox, 58 BPM in 3/4, sixteen bars (about fifty seconds). Grand piano melody and broken chords with a quiet string-like layer. Editable JSON and BeepBox URL are in art/music/; runtime assets/music/still_here.wav. No third-party musical recordings.
+
+## Kitchen pistol
+Long Slide Magnum Pistol from 3D Low-Poly Guns Pack 2 by Polyy (https://polyy.ai), user-provided download. CC0; license and pack readme included under assets/pistol/. Gunshot is generated procedurally by pistol_encounter.gd.

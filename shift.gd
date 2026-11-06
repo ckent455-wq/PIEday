@@ -69,6 +69,8 @@ var dialogue: CanvasLayer
 var restock: Node3D
 var hospital_visits: Node
 var dine_in: Node3D
+var pistol: Node3D
+var corpses: Node3D
 
 func setup(host: Node3D) -> void:
 	game = host
@@ -202,6 +204,12 @@ func setup(host: Node3D) -> void:
 	dine_in = preload("res://dine_in.gd").new()
 	add_child(dine_in)
 	dine_in.setup(self)
+	pistol = preload("res://pistol_encounter.gd").new()
+	add_child(pistol)
+	pistol.setup(self)
+	corpses = preload("res://corpse_cleanup.gd").new()
+	add_child(corpses)
+	corpses.setup(self)
 	hospital_visits = preload("res://hospital_visits.gd").new()
 	add_child(hospital_visits)
 	hospital_visits.setup(self)
@@ -336,8 +344,9 @@ func _refresh_hud() -> void:
 	var lines := PackedStringArray()
 	if phase == "cleanup":
 		order_heading.text = "CLOSING CHECKLIST"
-		for id in ["bathroom", "kitchen", "tables", "trash", "restock"]:
-			var title: String = {"bathroom": "Clean the bathroom", "kitchen": "Clean the kitchen", "tables": "Clear table trash", "trash": "Take out the trash", "restock": "Replenish cooler"}[id]
+		for id in ["bathroom", "kitchen", "tables", "trash", "restock", "bodies"]:
+			if id == "bodies" and tasks.bodies: continue
+			var title: String = {"bathroom": "Clean the bathroom", "kitchen": "Clean the kitchen", "tables": "Clear table trash", "trash": "Take out the trash", "restock": "Replenish cooler", "bodies":"Dispose of bodies (%d left)" % corpses.bodies.size()}[id]
 			if id == "tables" and not tasks[id]: title += " (%d left)" % dine_in.dirty_count()
 			if id == "restock" and not tasks[id]: title += " (%d left)" % restock.missing.size()
 			lines.append(("[color=#a9c6a0]✓  " + title + "[/color]") if tasks[id] else "○  " + title)
@@ -526,6 +535,7 @@ func _make_task(id: String, title: String, location: Vector3) -> void:
 	task_nodes[id] = node
 
 func begin_prep(resolve_evening := true) -> void:
+	if is_instance_valid(corpses): corpses.reset()
 	if is_instance_valid(scrubbing_audio): scrubbing_audio.stop()
 	if earnings.grandpa.is_dead(): return
 	if resolve_evening and earnings.grandpa.evening_pending:
@@ -582,12 +592,14 @@ func begin_cleanup() -> void:
 	if is_instance_valid(oven): oven.reset_oven()
 	restock.begin()
 	dine_in.begin_cleanup()
+	corpses.begin_cleanup()
 	game.set_night(true)
 	closing_events.begin()
 	_update_shift_clock()
 	_message("DINER CLOSED! Clean the bathroom and kitchen, clear table trash into the indoor bin, then take the bag to the dumpster. Replenish missing cooler pies from the freezer.")
 
 func start_demo() -> void:
+	if is_instance_valid(corpses): corpses.reset()
 	if is_instance_valid(scrubbing_audio): scrubbing_audio.stop()
 	if earnings.grandpa.is_dead(): return
 	if is_instance_valid(dialogue): dialogue.finish()
@@ -701,6 +713,7 @@ func _process(delta: float) -> void:
 	if not is_instance_valid(game):
 		return
 	animation_time += delta
+	pistol.tick()
 	dine_in.tick(delta)
 	closing_events.tick(delta)
 	if phase in ["arriving", "waiting", "leaving"] and not closing_time:
@@ -792,6 +805,11 @@ func complete_task(id: String) -> void:
 
 func action_prompt(node: Node) -> String:
 	var action: String = node.get_meta("action", "")
+	if action == "corpse": return corpses.prompt()
+	if action == "dispose" and is_instance_valid(corpses.carried_body): return "[E] Dispose of body in dumpster"
+	if carried_item == "Pistol":
+		return "[Click / E] Fire · Q return pistol" if action == "customer" and pistol.available() else "Pistol equipped · aim at the unclothed customer · Q return"
+	if action == "pistol": return pistol.prompt()
 	match action:
 		"table_trash", "trash_bin", "dining_customer": return dine_in.prompt(action)
 		"freezer_stock", "restock_cooler": return restock.prompt(action, node)
@@ -825,7 +843,17 @@ func action_prompt(node: Node) -> String:
 func interact(node: Node) -> void:
 	if earnings.grandpa.is_dead(): return
 	var action: String = node.get_meta("action", "")
+	if carried_item == "Carrying body":
+		if action == "dispose": corpses.dispose()
+		elif action == "corpse": corpses.drop()
+		else: _message("Release the body with Q before using other items.")
+		return
+	if carried_item == "Pistol":
+		if not pistol.fire(node): _message("Only the unclothed customer is a valid target. Q returns the pistol.")
+		return
 	match action:
+		"corpse": corpses.grab(node)
+		"pistol": pistol.take()
 		"table_trash": dine_in.pick_trash(int(node.get_meta("table")))
 		"trash_bin": dine_in.use_bin()
 		"dining_customer": _message("They're enjoying their meal.")
@@ -895,6 +923,7 @@ func is_practicing() -> bool:
 	return phase == "prep" and demo != null and demo.tutorial_state == "practice"
 
 func add_item(item: String, source: Node3D = null) -> bool:
+	if item == "Pistol": return false
 	if item.ends_with("pie") and (not is_instance_valid(source) or source.get_meta("bake_quality", "raw") == "raw"):
 		_message("Bake the pie in the kitchen oven before putting it on the serving tray.")
 		return false
@@ -913,6 +942,9 @@ func add_item(item: String, source: Node3D = null) -> bool:
 	return true
 
 func discard_last() -> void:
+	if is_instance_valid(corpses) and is_instance_valid(corpses.carried_body):
+		corpses.drop()
+		return
 	if coffee_station.return_empty() or soda_station.return_empty(): return
 	if not carried_item.is_empty():
 		if is_practicing() and carried_item.ends_with("pie") and is_instance_valid(carried_source):
@@ -1057,7 +1089,11 @@ func _item_model(parent: Node3D, item: String, at: Vector3, size: float, source:
 	parent.add_child(holder)
 	holder.position = at
 	holder.scale = Vector3.ONE * size
-	if item == "Table trash":
+	if item == "Pistol":
+		pistol.visual(holder,true)
+	elif item == "Carrying body":
+		pass
+	elif item == "Table trash":
 		dine_in.trash_visual(holder)
 	elif item.ends_with(" stock"):
 		_box(holder, Vector3(0, 0.08, 0), Vector3(0.45, 0.16, 0.35), Color(0.5, 0.39, 0.24))
@@ -1160,6 +1196,7 @@ func place_carried() -> bool:
 	return true
 
 func _clear_carried(restore: bool) -> void:
+	if is_instance_valid(corpses) and is_instance_valid(corpses.carried_body): corpses.drop()
 	if restore and carried_item == "Table trash" and is_instance_valid(dine_in): dine_in.return_trash()
 	if restore and is_instance_valid(carried_source): _set_pickup_visible(carried_source, true)
 	carried_item = ""

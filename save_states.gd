@@ -62,6 +62,7 @@ static func capture(scene: Node) -> Dictionary:
 	var shift = scene.shift
 	data["shift"] = properties(shift,SHIFT_FIELDS)
 	data["dine_in"] = shift.dine_in.snapshot()
+	data["corpses"] = shift.corpses.snapshot()
 	data["pies"] = []
 	for pie in shift.all_pies: data.pies.append({"visible":pie.visible,"quality":pie.get_meta("bake_quality","raw"),"seconds":pie.get_meta("bake_seconds",0.0)})
 	data["tray_sources"] = []
@@ -143,6 +144,7 @@ static func restore(scene: Node, data: Dictionary) -> void:
 	shift._reset_customer()
 	shift.closing_events.reset()
 	if not data.shift.tasks.has("tables"): data.shift.tasks["tables"] = true
+	if not data.shift.tasks.has("bodies"): data.shift.tasks["bodies"] = true
 	apply(shift,data.shift,SHIFT_FIELDS)
 	for i in mini(data.pies.size(),shift.all_pies.size()):
 		var pie = shift.all_pies[i]
@@ -214,6 +216,7 @@ static func restore(scene: Node, data: Dictionary) -> void:
 	shift.closing_events.opened_cooler = scene.doors[cooler_index] if cooler_index >= 0 and cooler_index < scene.doors.size() else null
 	for i in mini(data.events.energies.size(),shift.closing_events.lights.size()): shift.closing_events.lights[i].light_energy = data.events.energies[i]
 	shift.dine_in.restore(data.get("dine_in",{}))
+	shift.corpses.restore(data.get("corpses",{}))
 	apply(shift.customer_line,data.line,LINE_FIELDS)
 	shift._update_cash_display()
 	shift._update_shift_clock()

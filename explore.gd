@@ -22,8 +22,10 @@ func _ready() -> void:
 		get_tree().root.set_meta("pie_day_wallet",saved_wallet)
 		get_tree().change_scene_to_file.call_deferred("res://grandpa_ending.tscn")
 		return
-	var diner = load("res://assets/DINER/Models/DINER.dae").instantiate()
-	add_child(diner)
+	var diner = get_node_or_null("DinerLayout")
+	if diner == null:
+		diner = load("res://assets/DINER/Models/DINER.dae").instantiate()
+		add_child(diner)
 	preload("res://cooler.gd").install(diner)
 	preload("res://service_yard.gd").install(diner)
 	var bounds := AABB()
@@ -163,7 +165,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		if event.keycode == KEY_F7 and preload("res://playable_demo.gd").session(self) == null:
 			shift.begin_cleanup()
 	if event is InputEventMouseButton and event.pressed:
-		if event.button_index == MOUSE_BUTTON_LEFT and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED and is_instance_valid(target_action) and target_action.get_meta("action", "") in ["coffee", "cup_stack", "tray", "pie", "donut", "soda", "soda_cup_stack", "customer", "bell", "oven", "dispose", "freezer_stock", "restock_cooler"]:
+		if event.button_index == MOUSE_BUTTON_LEFT and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED and is_instance_valid(target_action) and target_action.get_meta("action", "") in ["pistol", "coffee", "cup_stack", "tray", "pie", "donut", "soda", "soda_cup_stack", "customer", "bell", "oven", "dispose", "freezer_stock", "restock_cooler"]:
 			shift.interact(target_action)
 			return
 		Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
@@ -187,6 +189,7 @@ func _physics_process(delta: float) -> void:
 	var direction := Vector3(float(Input.is_physical_key_pressed(KEY_D)) - float(Input.is_physical_key_pressed(KEY_A)), 0, float(Input.is_physical_key_pressed(KEY_S)) - float(Input.is_physical_key_pressed(KEY_W)))
 	direction = _movement_direction(Vector2(direction.x, direction.z))
 	var speed := 6.0 if Input.is_physical_key_pressed(KEY_SHIFT) else 3.2
+	if shift.carried_item == "Carrying body": speed = 2.4
 	player.velocity.x = direction.x * speed
 	player.velocity.z = direction.z * speed
 	if not player.is_on_floor():

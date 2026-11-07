@@ -116,6 +116,7 @@ func interact(action: String) -> void:
 	liquid.position.y = 0.012
 	stream.visible = true
 	status.text = "FILLING " + drink_name.to_upper() + "..."
+	_fill_cup(0.0)
 	brew_tween = create_tween()
 	brew_tween.tween_method(_fill_cup, 0.0, 1.0, fill_seconds)
 	brew_tween.tween_callback(_finish_brewing)

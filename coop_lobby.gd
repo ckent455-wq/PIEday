@@ -24,7 +24,8 @@ func _ready() -> void:
 	column.add_theme_constant_override("separation", 14)
 	panel.add_child(column)
 	column.add_child(UI.label("PIEday  /  ONLINE CO-OP", 28, UI.GOLD))
-	column.add_child(UI.label("Two players · One diner shift", 18))
+	column.add_child(UI.label("Two players · The full diner campaign", 18))
+	column.add_child(UI.label("Build v%s · Both PCs must match" % ProjectSettings.get_setting("application/config/version"), 16, UI.GOLD))
 	host_button = _button(column, "Host Shift", func(): _connect_game(true))
 	address = LineEdit.new()
 	address.placeholder_text = "Host IP address"

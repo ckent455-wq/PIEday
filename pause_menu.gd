@@ -88,11 +88,14 @@ func _ready() -> void:
 		restart_button.text = "Restart Demo"
 		restart_dialog.dialog_text = "Replay the demo from the intro? Demo earnings will reset."
 	if coop != null:
-		save_button.hide()
-		load_button.hide()
-		restart_button.hide()
-		subtitle.text = "ONLINE CO-OP"
-		hint.text = "The shift clock keeps running"
+		saves.directory = "user://coop_manual_saves"
+		save_button.disabled = not coop.hosting
+		load_button.disabled = not coop.hosting
+		restart_button.disabled = not coop.hosting
+		save_button.tooltip_text = "The host manages shared co-op saves."
+		load_button.tooltip_text = save_button.tooltip_text
+		subtitle.text = "PAUSED"
+		hint.text = "Esc to resume"
 		_button(column, "Leave Co-op").pressed.connect(func(): coop.leave())
 	overlay.hide()
 
@@ -108,7 +111,7 @@ func _input(event: InputEvent) -> void:
 	if is_instance_valid(saves) and saves.is_open: return
 	if event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_ESCAPE:
 		# The intro's fade also pauses the scene; do not interrupt that transition.
-		if get_tree().paused and not is_open: return
+		if get_tree().paused and not is_open and coop == null: return
 		get_viewport().set_input_as_handled()
 		if restart_dialog.visible:
 			restart_dialog.hide()
@@ -119,10 +122,12 @@ func _input(event: InputEvent) -> void:
 			pause_game()
 
 func pause_game() -> void:
-	if is_open or get_tree().paused: return
+	if is_open or (get_tree().paused and coop == null): return
+	if coop != null and is_instance_valid(coop.game) and coop.game.scene_file_path == "res://main.tscn" and coop.game.shift.dialogue.is_open: return
 	is_open = true
 	overlay.show()
 	if coop == null: get_tree().paused = true
+	else: coop.request_pause(true)
 	_set_music_paused(true)
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 	resume_button.grab_focus()
@@ -132,7 +137,8 @@ func resume_game() -> void:
 	restart_dialog.hide()
 	is_open = false
 	overlay.hide()
-	get_tree().paused = false
+	if coop == null: get_tree().paused = false
+	else: coop.request_pause(false)
 	_set_music_paused(false)
 	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 
@@ -143,6 +149,9 @@ func _set_music_paused(value: bool) -> void:
 
 func restart_day() -> void:
 	resume_game()
+	if coop != null:
+		coop.restart_day()
+		return
 	var demo = preload("res://playable_demo.gd").session(self)
 	if demo != null:
 		demo.restart()

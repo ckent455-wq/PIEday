@@ -340,7 +340,7 @@ func _build_hud() -> void:
 	UI.passive(root)
 
 func _refresh_hud() -> void:
-	notice_panel.visible = not notice.text.is_empty()
+	notice_panel.visible = not notice.text.is_empty() and not (is_instance_valid(dialogue) and dialogue.is_open)
 	payment_panel.visible = payment_label.visible
 	order_panel.visible = phase in ["arriving", "waiting", "leaving", "cleanup"] and not (is_instance_valid(dialogue) and dialogue.is_open)
 	var lines := PackedStringArray()
@@ -572,9 +572,6 @@ func begin_prep(resolve_evening := true) -> void:
 		_message("Ready for the day. Use the shift clipboard to open the diner.")
 
 func begin_cleanup() -> void:
-	if game.coop != null:
-		game.coop.finish_service()
-		return
 	if is_instance_valid(scrubbing_audio): scrubbing_audio.stop()
 	if earnings.grandpa.is_dead(): return
 	if is_instance_valid(dialogue): dialogue.finish()
@@ -796,7 +793,7 @@ func _pose_customer(stride: float) -> void:
 func _update_cleaning(delta: float) -> void:
 	if phase != "cleanup" or not is_instance_valid(target) or not target.has_meta("task") or not Input.is_action_pressed("interact") or Input.mouse_mode != Input.MOUSE_MODE_CAPTURED:
 		cleaning_progress = 0
-		scrubbing_audio.stop()
+		if game.coop == null or game.coop.guest_cleaning.is_empty(): scrubbing_audio.stop()
 		return
 	var id: String = target.get_meta("task")
 	if id not in ["bathroom", "kitchen"] or tasks[id]:
@@ -905,9 +902,13 @@ func interact(node: Node) -> void:
 			speech.text = "I'd like " + ", ".join(order) + ", please."
 			_message("CUSTOMER: " + ", ".join(order) + ". Place everything on the counter tray, then ring the bell to serve.")
 			if game.coop == null: dialogue.begin(customer, order, reminder)
+			else: game.coop.begin_dialogue(customer, order, reminder)
 		"task":
 			if phase != "cleanup": return
 			if node.get_meta("task") == "trash":
+				if not node.visible:
+					_message("The trash bag is already being carried.")
+					return
 				if not tasks.tables:
 					_message("Clear all table trash into the indoor bin before taking out the bag.")
 					return

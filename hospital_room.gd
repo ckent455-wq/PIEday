@@ -15,8 +15,10 @@ var conversation: CanvasLayer
 var hospital_music: AudioStreamPlayer
 var interaction_release_required := false
 var leaving := false
+var coop: Node
 
 func _ready() -> void:
+	coop = preload("res://coop_session.gd").active(self)
 	preload("res://playable_demo.gd").prepare(self)
 	if get_tree().root.has_meta("pie_day_wallet"):
 		earnings = get_tree().root.get_meta("pie_day_wallet")
@@ -62,6 +64,7 @@ func _ready() -> void:
 	talk.position = Vector3(0,1.2,-.35)
 	paused = preload("res://pause_menu.gd").new()
 	add_child(paused)
+	if coop != null: coop.attach_hospital(self)
 	paused.restart_button.text = "Restart Room"
 	paused.restart_dialog.title = "Restart Room"
 	paused.restart_dialog.dialog_text = "Return to the hospital room entrance?"
@@ -278,6 +281,9 @@ func _unhandled_input(event: InputEvent) -> void:
 		camera.rotation.x = pitch
 
 func interact() -> void:
+	if coop != null and not coop.hosting:
+		coop.request_action()
+		return
 	if leaving or get_tree().paused: return
 	if target == "light": bedside_light.visible = not bedside_light.visible
 	if target == "grandpa": conversation.show_dialogue(earnings.grandpa.visit_dialogue(earnings.cash))

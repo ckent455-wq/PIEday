@@ -84,6 +84,7 @@ func _open() -> void:
 	get_tree().paused = true
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 	footer.get_child(0).grab_focus()
+	_share()
 
 func _update_page() -> void:
 	footer.get_child(0).text = "Reveal text [E]"
@@ -94,27 +95,46 @@ func _page_ready() -> void:
 		footer.get_child(0).text = "Finish conversation [E]" if page == pages.size()-1 else "Continue [E]"
 
 func advance() -> void:
+	if _network_input("advance"): return
 	if not is_open or not dialogue_mode: return
-	if typewriter.reveal_if_typing(): return
+	if typewriter.reveal_if_typing():
+		_share()
+		return
 	page += 1
 	if page >= pages.size():
 		dialogue_completed.emit()
 		finish()
 	else: _update_page()
+	_share()
 
 func _choose(index: int) -> void:
-	if typewriter.reveal_if_typing(): return
+	if _network_input("choose", index): return
+	if typewriter.reveal_if_typing():
+		_share()
+		return
 	finish()
 	selected.emit(index)
 
 func finish() -> void:
 	if not is_open: return
+	if _network_input("close"): return
 	is_open = false
 	typewriter.stop()
 	overlay.hide()
 	get_tree().paused = false
 	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 	if is_instance_valid(host): host.set("interaction_release_required",true)
+	_share()
+
+func _network_input(command: String, index := -1) -> bool:
+	var coop = preload("res://coop_session.gd").active(self)
+	if coop == null or coop.ui_applying: return false
+	coop.modal_input(command, index)
+	return true
+
+func _share() -> void:
+	var coop = preload("res://coop_session.gd").active(self)
+	if coop != null: coop.share_modal()
 
 func _input(event: InputEvent) -> void:
 	if not is_open: return
@@ -127,7 +147,9 @@ func _input(event: InputEvent) -> void:
 			advance()
 		elif not dialogue_mode and typewriter.typing and event.keycode in [KEY_E,KEY_SPACE,KEY_ENTER,KEY_KP_ENTER]:
 			get_viewport().set_input_as_handled()
-			typewriter.reveal()
+			if not _network_input("reveal"):
+				typewriter.reveal()
+				_share()
 
 func _exit_tree() -> void:
 	if is_open: get_tree().paused = false

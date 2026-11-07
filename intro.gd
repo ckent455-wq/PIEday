@@ -21,7 +21,7 @@ var key_sounds_played := 0
 var sound_rng := RandomNumberGenerator.new()
 
 func _ready() -> void:
-	if "--coop-lobby" in OS.get_cmdline_user_args() and not OS.has_feature("playable_demo"):
+	if "--coop-lobby" in OS.get_cmdline_user_args() and not OS.has_feature("playable_demo") and preload("res://coop_session.gd").active(self) == null:
 		get_tree().change_scene_to_file.call_deferred("res://coop_lobby.tscn")
 		return
 	preload("res://playable_demo.gd").prepare(self)
@@ -108,6 +108,8 @@ func _ready() -> void:
 	continue_button.pressed.connect(_continue)
 	column.add_child(continue_button)
 	_show_passage()
+	var coop = preload("res://coop_session.gd").active(self)
+	if coop != null: coop.attach_intro(self)
 
 func _show_passage() -> void:
 	key_audio.stop()
@@ -149,6 +151,10 @@ func _reveal() -> void:
 	continue_button.text = "Open the Diner  [E / Space]" if final_passage else "Continue  [E / Space]"
 
 func _continue() -> void:
+	var coop = preload("res://coop_session.gd").active(self)
+	if coop != null and not coop.ui_applying:
+		coop.intro_input()
+		return
 	if starting: return
 	if not complete: _reveal()
 	elif passage_index < PASSAGES.size() - 1:
@@ -159,6 +165,10 @@ func _continue() -> void:
 func _start_game(animate := true) -> void:
 	if is_instance_valid(key_audio): key_audio.stop()
 	starting = true
+	var coop = preload("res://coop_session.gd").active(self)
+	if coop != null:
+		coop.travel(self, "res://main.tscn", coop.wallet)
+		return
 	if not animate:
 		get_tree().change_scene_to_file.call_deferred("res://main.tscn")
 		return

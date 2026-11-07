@@ -15,15 +15,17 @@ var correct_orders := 0
 var closing_bonus := 0
 var day_completed := false
 var save_enabled := true
+var save_path := SAVE_PATH
 var rng := RandomNumberGenerator.new()
 var grandpa := preload("res://grandpa_progress.gd").new()
 
-func _init(persist := true) -> void:
+func _init(persist := true, path := SAVE_PATH) -> void:
+	save_path = path
 	save_enabled = persist
 	rng.randomize()
 	if persist:
 		var config := ConfigFile.new()
-		if config.load(SAVE_PATH) == OK:
+		if config.load(save_path) == OK:
 			cash = maxi(0, int(config.get_value("earnings", "cash", 0)))
 			grandpa.read_config(config)
 
@@ -90,4 +92,4 @@ func _save() -> void:
 		var config := ConfigFile.new()
 		config.set_value("earnings", "cash", cash)
 		grandpa.write_config(config)
-		if config.save(SAVE_PATH) != OK: push_warning("Could not save game progress.")
+		if config.save(save_path) != OK: push_warning("Could not save game progress.")

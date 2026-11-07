@@ -1,6 +1,6 @@
 # PIEday
 
-Current version: **0.9.1**. Includes two-player online service shifts, randomized campaign orders, and updated rewards. The campaign includes a kitchen pistol for clothing-required encounters,
+Current version: **0.10.0**. Includes two-player online campaign play, randomized campaign orders, and updated rewards. The campaign includes a kitchen pistol for clothing-required encounters,
 jointed customer ragdolls, and a closing chore to pick up bodies and carry them
 to the dumpster. Includes the full campaign, hospital visits, save/load, donut
 and soda varieties, music, and closing scares.
@@ -151,7 +151,8 @@ network, use the host address shown in the lobby. For a direct internet
 connection, the host may need to forward UDP port **27841** and allow the game
 through their firewall.
 
-Either player can open the diner at the clipboard once both have joined. You
-each carry your own items and share the equipment, serving tray, and shift
-earnings. This mode ends after one service shift and uses temporary progress.
-Esc opens a local menu while the shift clock keeps running.
+Both players play through the story, diner service, closing duties, scares,
+hospital visits and following days together. You carry separate items and share
+customers, equipment, the tray and earnings. Conversations and pauses stop the
+shared clock. The host manages co-op autosaves and manual slots, stored separately
+from solo campaign progress.

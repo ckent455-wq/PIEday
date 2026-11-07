@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.10.0
+
+- Co-op follows the story, service shift, closing chores, scares, hospital visits and subsequent days.
+- Customer conversations use the solo dialogue presentation and pause both players. Hospital choices and dialogue are shared.
+- Dine-in meals, table litter, held items, ragdolls and scare effects are replicated.
+- The host manages persistent co-op progress and manual saves in separate co-op files.
+- Both co-op characters wear diner uniforms and aprons.
+
 ## 0.9.1
 
 - Added a main menu with separate Solo Campaign and Online Co-op buttons. The co-op lobby is available before campaign saves load.

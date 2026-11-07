@@ -1,6 +1,10 @@
 extends RefCounted
 
 static func go(host: Node, destination: String, wallet: RefCounted = null) -> void:
+	var coop = preload("res://coop_session.gd").active(host)
+	if coop != null and not coop.transporting:
+		coop.travel(host, destination, wallet)
+		return
 	if host.get_tree().root.has_meta("hospital_travel_busy"): return
 	var tree := host.get_tree()
 	if wallet != null: tree.root.set_meta("pie_day_wallet",wallet)

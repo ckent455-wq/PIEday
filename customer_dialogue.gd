@@ -78,6 +78,9 @@ func setup(host: Node3D) -> void:
 
 func begin(actor: Node3D, items: Array, reminder := false) -> void:
 	if is_open or get_tree().paused: return
+	show_pages(make_pages(actor, items, reminder))
+
+func make_pages(actor: Node3D, items: Array, reminder := false) -> Array:
 	pages.clear()
 	customer_name = str(actor.get_meta("display_name", "Customer"))
 	if not reminder:
@@ -88,6 +91,11 @@ func begin(actor: Node3D, items: Array, reminder := false) -> void:
 		pages.append([customer_name.to_upper(), CHATS[index][0]])
 		pages.append(["YOU", CHATS[index][1]])
 	pages.append([customer_name.to_upper(), "Could I get " + ", ".join(items) + ", please?"])
+	return pages.duplicate(true)
+
+func show_pages(lines: Array) -> void:
+	if is_open or get_tree().paused: return
+	pages.assign(lines)
 	page = 0
 	is_open = true
 	overlay.show()
@@ -108,6 +116,10 @@ func _page_ready() -> void:
 	next_button.text = "Start order" if page == pages.size() - 1 else "Continue"
 
 func advance() -> void:
+	var coop = preload("res://coop_session.gd").active(self)
+	if coop != null and not coop.ui_applying:
+		coop.customer_dialogue_input()
+		return
 	if not is_open: return
 	if typewriter.reveal_if_typing(): return
 	page += 1
@@ -118,6 +130,10 @@ func advance() -> void:
 
 func finish() -> void:
 	if not is_open: return
+	var coop = preload("res://coop_session.gd").active(self)
+	if coop != null and not coop.ui_applying:
+		coop.customer_dialogue_input(true)
+		return
 	is_open = false
 	typewriter.stop()
 	overlay.hide()

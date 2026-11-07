@@ -73,8 +73,8 @@ func _begin_carry(entry: Dictionary) -> void:
 	shift._refresh_carried()
 	_position_carried(entry)
 
-func _position_carried(entry: Dictionary) -> void:
-	var camera: Camera3D = shift.game.camera
+func _position_carried(entry: Dictionary, camera_override: Camera3D = null) -> void:
+	var camera: Camera3D = camera_override if camera_override != null else shift.game.camera
 	var anchor := camera.global_transform
 	anchor.origin = camera.to_global(Vector3(0,-.85,-1.15))
 	for i in entry.ragdoll.bones.size():
@@ -99,6 +99,13 @@ func grab(target: Node) -> void:
 		return
 	for entry in bodies:
 		if target == entry.body or entry.body.is_ancestor_of(target):
+			var coop = preload("res://coop_session.gd").active(self)
+			if coop != null and not coop.acting_guest and entry.body == coop.guest_body:
+				shift._message("Your partner is carrying that body.")
+				return
+			if coop != null and coop.acting_guest and entry.body == coop.host_carrying_body:
+				shift._message("Your partner is carrying that body.")
+				return
 			_begin_carry(entry)
 			shift._message("Body picked up. Carry it to the outdoor dumpster and press E to dispose. Q sets it down.")
 			return

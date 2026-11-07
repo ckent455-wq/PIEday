@@ -274,10 +274,14 @@ func tick(delta: float) -> void:
 		return
 	if not figure_done and trash_disposed:
 		# Appear behind the player after disposal, never pop into their current view.
-		if not figure.visible and preload("res://service_yard.gd").WALK_AREA.has_point(Vector2(shift.game.player.position.x, shift.game.player.position.z)) and not _figure_in_view():
+		var coop = preload("res://coop_session.gd").active(self)
+		var outside := preload("res://service_yard.gd").WALK_AREA.has_point(Vector2(shift.game.player.position.x, shift.game.player.position.z))
+		if coop != null: outside = outside or preload("res://service_yard.gd").WALK_AREA.has_point(Vector2(coop.partner_target.x, coop.partner_target.z))
+		if not figure.visible and outside and not _figure_in_view():
 			figure.visible = _place_figure()
 		if figure.visible:
 			var target: Vector3 = shift.game.player.global_position
+			if coop != null and coop.partner_target.distance_to(figure.global_position) < target.distance_to(figure.global_position): target = coop.partner_target
 			target.y = figure.global_position.y
 			if target.distance_to(figure.global_position) > 0.1: figure.look_at(target,Vector3.UP,true)
 			if shift.game.player.global_position.distance_to(figure.global_position) < 1.2:
@@ -296,6 +300,8 @@ func tick(delta: float) -> void:
 func _figure_in_view() -> bool:
 	var camera: Camera3D = shift.game.camera
 	var head := figure.global_position + Vector3(0, figure_height * 0.88, 0)
+	var coop = preload("res://coop_session.gd").active(self)
+	if coop != null and coop.partner_sees(head, 12, 0.78): return true
 	var direction := head - camera.global_position
 	if direction.length() > 12 or -camera.global_basis.z.dot(direction.normalized()) < 0.78:
 		return false
@@ -316,6 +322,8 @@ func _sound(stream: AudioStream, at: Vector3) -> void:
 	effect_audio.play()
 
 func _cooler_in_view(door: MeshInstance3D, at: Vector3) -> bool:
+	var coop = preload("res://coop_session.gd").active(self)
+	if coop != null and coop.partner_sees(at, 7, 0.85, door): return true
 	var camera: Camera3D = shift.game.camera
 	var direction := at - camera.global_position
 	if -camera.global_basis.z.dot(direction.normalized()) < 0.85: return false
@@ -333,26 +341,34 @@ func _tick_extra(delta: float) -> void:
 			step_timer = rng.randf_range(0.45, 0.65)
 	if extra_done or elapsed < extra_at or not shift.customer_line.departing.is_empty(): return
 	var player_position: Vector3 = shift.game.player.global_position
+	var coop = preload("res://coop_session.gd").active(self)
 	if encounter == "knocks" and is_instance_valid(bathroom_door):
 		var at: Vector3 = (bathroom_door.global_transform * bathroom_door.get_aabb()).get_center()
-		if player_position.distance_to(at) < 6:
+		if player_position.distance_to(at) < 6 or (coop != null and coop.partner_target.distance_to(at) < 6):
 			extra_done = true
 			_sound(preload("res://assets/audio/closing_knocks.wav"), at)
 	elif encounter == "cooler":
 		for door in shift.game.doors:
 			if not door.has_meta("cooler") or door.get_meta("open", false): continue
 			var at: Vector3 = (door.global_transform * door.get_aabb()).get_center()
-			if player_position.distance_to(at) < 7 and _cooler_in_view(door, at):
+			var nearby: bool = player_position.distance_to(at) < 7 or (coop != null and coop.partner_target.distance_to(at) < 7)
+			if nearby and _cooler_in_view(door, at):
 				extra_done = true
 				opened_cooler = door
 				shift.game._set_door_open(door, true)
 				break
-	elif encounter == "footsteps" and player_position.z > -14:
+	elif encounter == "footsteps" and (player_position.z > -14 or (coop != null and coop.partner_target.z > -14)):
 		var camera: Camera3D = shift.game.camera
 		for at in [Vector3(-6, 0.1, -2), Vector3(4, 0.1, -2), Vector3(-1, 0.1, -11)]:
 			var distance: float = player_position.distance_to(at)
 			var facing := -camera.global_basis.z.dot((at - camera.global_position).normalized())
-			if distance > 3 and distance < 11 and facing < 0.4:
+			var near_partner := false
+			if coop != null:
+				var partner_distance: float = coop.partner_target.distance_to(at)
+				var forward := -Basis.from_euler(Vector3(coop.partner_pitch, coop.partner_yaw, 0)).z
+				var partner_facing: float = forward.dot((at - coop.partner_target - Vector3.UP * 2).normalized())
+				near_partner = partner_distance > 3 and partner_distance < 11 and partner_facing < 0.4
+			if (distance > 3 and distance < 11 and facing < 0.4) or near_partner:
 				extra_done = true
 				step_position = at
 				step_direction = Vector3(0.55 if at.x < 0 else -0.55, 0, 0)

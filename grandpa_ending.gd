@@ -57,6 +57,10 @@ func _ready() -> void:
 	saves = preload("res://save_load_menu.gd").new()
 	add_child(saves)
 	saves.setup(self)
+	var coop = preload("res://coop_session.gd").active(self)
+	if coop != null:
+		saves.directory = "user://coop_manual_saves"
+		load_button.disabled = not coop.hosting
 	load_button.pressed.connect(func(): saves.open(false))
 	new_game_button = Button.new()
 	new_game_button.text = "Start a New Campaign"
@@ -75,9 +79,17 @@ func _ready() -> void:
 	restart_dialog.confirmed.connect(func(): start_new_campaign.call_deferred())
 	quit_button.pressed.connect(func(): get_tree().quit())
 	new_game_button.grab_focus()
+	if coop != null:
+		new_game_button.disabled = not coop.hosting
+		var leave_button := Button.new()
+		leave_button.text = "Leave Co-op"
+		leave_button.custom_minimum_size.y = 48
+		buttons.add_child(leave_button)
+		leave_button.pressed.connect(func(): coop.leave())
 
 func start_new_campaign() -> void:
 	var fresh = preload("res://earnings.gd").new(false)
 	fresh.save_enabled = earnings.save_enabled
+	fresh.save_path = earnings.save_path
 	fresh._save()
 	preload("res://hospital_travel.gd").go(self,"res://intro.tscn",fresh)

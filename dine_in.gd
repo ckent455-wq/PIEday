@@ -213,6 +213,7 @@ func pick_trash(index: int) -> void:
 		shift._message("Free your hands before clearing a table.")
 		return
 	if index < 0 or index >= tables.size() or not tables[index].dirty: return
+	if not is_instance_valid(tables[index].trash) or not tables[index].trash.visible: return
 	carried_table = index
 	shift.carried_item = "Table trash"
 	shift.carried_source = tables[index].trash

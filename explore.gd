@@ -154,6 +154,7 @@ func set_night(night: bool) -> void:
 
 func _unhandled_input(event: InputEvent) -> void:
 	if is_instance_valid(pause_menu) and pause_menu.is_open: return
+	if is_instance_valid(shift) and is_instance_valid(shift.dialogue) and shift.dialogue.is_open: return
 	if event is InputEventMouseMotion and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
 		player.rotate_y(-event.relative.x * 0.0025)
 		pitch = clampf(pitch - event.relative.y * 0.0025, -1.5, 1.5)
@@ -192,6 +193,7 @@ func _physics_process(delta: float) -> void:
 	if not is_instance_valid(player):
 		return
 	if coop != null and is_instance_valid(pause_menu) and pause_menu.is_open: return
+	if coop != null and shift.dialogue.is_open: return
 	var direction := Vector3(float(Input.is_physical_key_pressed(KEY_D)) - float(Input.is_physical_key_pressed(KEY_A)), 0, float(Input.is_physical_key_pressed(KEY_S)) - float(Input.is_physical_key_pressed(KEY_W)))
 	direction = _movement_direction(Vector2(direction.x, direction.z))
 	var speed := 6.0 if Input.is_physical_key_pressed(KEY_SHIFT) else 3.2
@@ -222,7 +224,6 @@ func _physics_process(delta: float) -> void:
 
 func _interact() -> void:
 	if coop != null:
-		if shift.phase == "closed": return
 		if not coop.hosting:
 			coop.request_action()
 			return
@@ -336,9 +337,6 @@ func _update_interaction() -> void:
 	target_action = target.action
 	target_door = target.door
 	interaction_label.text = ""
-	if coop != null and shift.phase == "closed":
-		interaction_label.hide()
-		return
 	if is_instance_valid(shift):
 		shift.target = target_action
 	if is_instance_valid(target_action):

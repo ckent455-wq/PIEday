@@ -54,6 +54,10 @@ func prompt() -> String:
 	return "[E] Take pistol · Q returns it" if shift.carried_item.is_empty() and not shift.has_empty_cup() else "Free your hands first"
 
 func take() -> void:
+	var coop = preload("res://coop_session.gd").active(self)
+	if coop != null and ((not coop.acting_guest and coop.guest_item == "Pistol") or (coop.acting_guest and coop.host_holding_pistol)):
+		shift._message("Your partner has the pistol.")
+		return
 	if not available():
 		shift._message("The pistol is only available during a clothing-required encounter.")
 		return
@@ -67,7 +71,8 @@ func take() -> void:
 
 func tick() -> void:
 	if shift.carried_item == "Pistol" and not available(): shift._clear_carried(false)
-	pickup.visible = shift.carried_item != "Pistol"
+	var coop = preload("res://coop_session.gd").active(self)
+	pickup.visible = shift.carried_item != "Pistol" and (coop == null or coop.guest_item != "Pistol")
 	pickup.collision_layer = 4 if pickup.visible else 0
 
 func fire(target: Node) -> bool:
@@ -76,6 +81,8 @@ func fire(target: Node) -> bool:
 	if not shift.customer.is_ancestor_of(target): return false
 	shot.play()
 	muzzle_flash()
+	var coop = preload("res://coop_session.gd").active(self)
+	if coop != null: coop.share_shot(coop.acting_guest)
 	shift._clear_carried(false)
 	shift.customers_this_shift += 1
 	shift.corpses.kill(shift.customer)

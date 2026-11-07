@@ -56,6 +56,8 @@ static func capture(scene: Node) -> Dictionary:
 	var progress := ConfigFile.new()
 	wallet.grandpa.write_config(progress)
 	var data := {"version":1,"scene":scene.scene_file_path,"timestamp":Time.get_datetime_string_from_system(),"wallet":properties(wallet,WALLET_FIELDS),"grandpa":progress.encode_to_text(),"rng_state":wallet.rng.state,"player":scene.player.transform,"velocity":scene.player.velocity,"camera":scene.camera.rotation,"pitch":scene.pitch}
+	var coop = preload("res://coop_session.gd").active(scene)
+	if coop != null and coop.hosting: data["coop"] = coop.save_partner()
 	if scene.scene_file_path == "res://hospital_room.tscn":
 		data["bedside_light"] = scene.bedside_light.visible
 		return data
@@ -127,6 +129,8 @@ static func load_state(host: Node, data: Dictionary, persist := true) -> void:
 	apply(wallet,data.wallet,WALLET_FIELDS)
 	wallet.rng.state = data.rng_state
 	wallet.save_enabled = persist
+	var coop = preload("res://coop_session.gd").active(host)
+	if coop != null: wallet.save_path = coop.CAMPAIGN_PATH
 	wallet._save()
 	host.get_tree().root.set_meta("restore_manual_state",data)
 	preload("res://hospital_travel.gd").go(host,data.scene,wallet)
@@ -138,6 +142,8 @@ static func restore(scene: Node, data: Dictionary) -> void:
 	scene.pitch = data.pitch
 	if scene.scene_file_path == "res://hospital_room.tscn":
 		scene.bedside_light.visible = data.get("bedside_light",true)
+		var coop = preload("res://coop_session.gd").active(scene)
+		if coop != null and coop.hosting and data.has("coop"): coop.restore_partner(data.coop)
 		return
 	var shift = scene.shift
 	shift.customer_line.clear_all()
@@ -222,3 +228,5 @@ static func restore(scene: Node, data: Dictionary) -> void:
 	shift._update_shift_clock()
 	shift._refresh_hud()
 	shift._message("Save state loaded.")
+	var coop = preload("res://coop_session.gd").active(scene)
+	if coop != null and coop.hosting and data.has("coop"): coop.restore_partner(data.coop)

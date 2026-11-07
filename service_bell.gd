@@ -66,6 +66,7 @@ func setup(host: Node3D) -> void:
 
 func play_ding() -> void:
 	sound.play()
+	if shift.game.coop != null: shift.game.coop.share_bell()
 	var tween := create_tween()
 	tween.tween_property(button, "position:y", -0.013, 0.055)
 	tween.tween_property(button, "position:y", 0.0, 0.12)
@@ -75,7 +76,6 @@ func ring() -> void:
 	if now < next_ring: return
 	next_ring = now + 450
 	play_ding()
-	if shift.game.coop != null: shift.game.coop.share_bell()
 	if shift.is_practicing():
 		preload("res://playable_demo.gd").session(self).ring_practice_bell(shift)
 	elif shift.refusal_required():

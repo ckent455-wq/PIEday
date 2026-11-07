@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.11.0
+
+- Main-menu updater checks GitHub, verifies and installs the Windows release, and opens the updated game. Future launches redirect to the newest installed version.
+
+- Co-op player bodies and carried items face the same direction as their player cameras.
+
 ## 0.10.0
 
 - Co-op follows the story, service shift, closing chores, scares, hospital visits and subsequent days.

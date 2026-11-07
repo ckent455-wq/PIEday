@@ -1,6 +1,6 @@
 # PIEday
 
-Current version: **0.10.0**. Includes two-player online campaign play, randomized campaign orders, and updated rewards. The campaign includes a kitchen pistol for clothing-required encounters,
+Current version: **0.11.0**. Includes two-player online campaign play, randomized campaign orders, and updated rewards. The campaign includes a kitchen pistol for clothing-required encounters,
 jointed customer ragdolls, and a closing chore to pick up bodies and carry them
 to the dumpster. Includes the full campaign, hospital visits, save/load, donut
 and soda varieties, music, and closing scares.
@@ -156,3 +156,11 @@ hospital visits and following days together. You carry separate items and share
 customers, equipment, the tray and earnings. Conversations and pauses stop the
 shared clock. The host manages co-op autosaves and manual slots, stored separately
 from solo campaign progress.
+
+### Updating the Windows game
+
+The main menu checks GitHub for a newer release. Click **Update to v…** to
+download, verify, install and open it. Keep using your original game shortcut;
+it opens the newest version installed by the updater. Both co-op PCs need the
+same version, shown in the lobby. Existing solo and co-op saves stay available.
+Older releases without the updater need one manual download of v0.11.0.

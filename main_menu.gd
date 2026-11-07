@@ -3,6 +3,7 @@ extends Control
 const UI := preload("res://diner_ui.gd")
 
 func _ready() -> void:
+	if preload("res://game_updater.gd").redirect_to_installed(get_tree()): return
 	var root := get_tree().root
 	var first_open := not root.has_meta("main_menu_opened")
 	root.set_meta("main_menu_opened", true)
@@ -33,6 +34,10 @@ func _ready() -> void:
 	var version := UI.label("v" + str(ProjectSettings.get_setting("application/config/version")), 14, UI.MUTED)
 	version.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	column.add_child(version)
+	if preload("res://game_updater.gd").enabled():
+		var updater := preload("res://game_updater.gd").new()
+		add_child(updater)
+		updater.setup(column)
 
 func _add_button(column: VBoxContainer, caption: String, action: Callable) -> void:
 	var button := Button.new()

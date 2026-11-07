@@ -118,6 +118,8 @@ func attach(diner: Node3D) -> void:
 
 func _create_partner(scaffold: Node3D) -> void:
 	partner = scaffold.customer_line.make_actor(Vector3.ZERO, "male_1" if not hosting else "female_1")
+	# Customer meshes face +Z; the first-person player's forward is -Z.
+	partner.get_node("Visual").rotation.y = PI
 	preload("res://coop_uniform.gd").dress(partner.get_node("Visual"), hosting)
 	partner.get_node("Interaction").free()
 	partner.reparent(game, false)
@@ -128,7 +130,8 @@ func _create_partner(scaffold: Node3D) -> void:
 	partner_camera.position.y = game.camera.position.y
 	partner_hand = Node3D.new()
 	partner.add_child(partner_hand)
-	partner_hand.position = Vector3(0, 1.15, 0.35)
+	partner_hand.position = Vector3(0, 1.15, -0.35)
+	partner_hand.rotation.y = PI
 	partner_hand_key = ""
 	var label := Label3D.new()
 	label.text = "PARTNER"

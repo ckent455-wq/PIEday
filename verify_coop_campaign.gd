@@ -44,6 +44,11 @@ func run():
 	assert(await wait_for(func(): return is_instance_valid(session.game)))
 	game = session.game
 	shift = game.shift
+	var visual: Node3D = session.partner.get_node("Visual")
+	var visible_forward := visual.global_basis.z.normalized()
+	var camera_forward: Vector3 = -session.partner_camera.global_basis.z.normalized()
+	assert(visible_forward.dot(camera_forward) > .99, "Partner body faces the same direction as the player's camera")
+	assert(session.partner_hand.position.z < 0, "Partner carries items in front of their body")
 	game.set_physics_process(false)
 	assert(not shift.earnings.save_enabled)
 	if hosting:

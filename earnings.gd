@@ -3,6 +3,8 @@ extends RefCounted
 const PRICES := {"Meat pie": 8, "Apple pie": 6, "Cherry pie": 6, "Donut": 2, "Strawberry donut": 2, "Chocolate donut": 2, "Glazed donut": 2, "Coffee": 3, "Soda": 2, "Cola": 2, "Lemon Fizz": 2, "Dr. Paw Paw": 2}
 const SAVE_PATH := "user://earnings.cfg"
 const TREATMENT_GOAL := 15000
+const SERVICE_REWARD := 145
+const CLOSING_BONUS := 275
 var cash := 0
 var sales := 0
 var tips := 0
@@ -61,7 +63,7 @@ func payout(items: Array, correct: bool, seconds: float, perfect_pie: bool) -> D
 	var tip := rng.randi_range(3, 8) if rng.randf() < tip_chance(seconds, perfect_pie) else 0
 	streak += 1
 	correct_orders += 1
-	var service := 35
+	var service := SERVICE_REWARD
 	var streak_bonus := mini(streak - 1, 3) * 5
 	sales += sale
 	tips += tip
@@ -74,7 +76,7 @@ func payout(items: Array, correct: bool, seconds: float, perfect_pie: bool) -> D
 func finish_day() -> int:
 	if day_completed or grandpa.is_dead(): return 0
 	day_completed = true
-	closing_bonus = 100 if correct_orders > 0 else 0
+	closing_bonus = CLOSING_BONUS if correct_orders > 0 else 0
 	cash += closing_bonus
 	grandpa.advance_day(cash >= TREATMENT_GOAL)
 	_save()

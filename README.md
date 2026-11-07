@@ -1,6 +1,6 @@
 # PIEday
 
-Current version: **0.8.0**. Adds a kitchen pistol for clothing-required encounters,
+Current version: **0.9.0**. Includes two-player online service shifts, randomized campaign orders, and updated rewards. The campaign includes a kitchen pistol for clothing-required encounters,
 jointed customer ragdolls, and a closing chore to pick up bodies and carry them
 to the dumpster. Includes the full campaign, hospital visits, save/load, donut
 and soda varieties, music, and closing scares.
@@ -142,3 +142,16 @@ The doorway test starts with a trash bag: dispose of it and turn toward the dine
 Editable BeepBox music projects and song URLs are in `art/music/`.
 
 Run the gameplay checks with PowerShell: .\run_checks.ps1 -Godot 'C:\path\to\Godot_console.exe'. Some checks open a window to verify input and layout; reports are written to .godot/verification/.
+### Online co-op
+
+Select **Online Co-op** on the opening screen of the Windows campaign build.
+One player chooses **Host Shift**, and the other enters the host's IP address
+and chooses **Join Shift**. Both players need the same build. On the same local
+network, use the host address shown in the lobby. For a direct internet
+connection, the host may need to forward UDP port **27841** and allow the game
+through their firewall.
+
+Either player can open the diner at the clipboard once both have joined. You
+each carry your own items and share the equipment, serving tray, and shift
+earnings. This mode ends after one service shift and uses temporary progress.
+Esc opens a local menu while the shift clock keeps running.

@@ -75,6 +75,7 @@ func ring() -> void:
 	if now < next_ring: return
 	next_ring = now + 450
 	play_ding()
+	if shift.game.coop != null: shift.game.coop.share_bell()
 	if shift.is_practicing():
 		preload("res://playable_demo.gd").session(self).ring_practice_bell(shift)
 	elif shift.refusal_required():

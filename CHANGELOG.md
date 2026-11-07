@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.9.0
+
+- Two-player online co-op service shifts with separate hands and shared customers, equipment, tray, and earnings.
+- Full campaign orders draw from the existing menu at random without consecutive recipe repeats during a shift.
+- Correct orders earn a $145 service reward. Completing closing duties after a correct order earns $275. The treatment goal stays at $15,000.
+
 ## 0.8.0
 
 - Editable kitchen pistol centered on the right-hand table, with firing sound and muzzle flash. Only available during clothing-required encounters.

@@ -12,9 +12,11 @@ var shift: Node3D
 var pause_menu: CanvasLayer
 var diner_music: AudioStreamPlayer
 var interaction_release_required := false
+var coop: Node
 
 func _ready() -> void:
 	preload("res://playable_demo.gd").prepare(self)
+	coop = preload("res://coop_session.gd").active(self)
 	var saved_wallet = get_tree().root.get_meta("pie_day_wallet") if get_tree().root.has_meta("pie_day_wallet") else null
 	if saved_wallet == null: saved_wallet = preload("res://earnings.gd").new()
 	if saved_wallet.grandpa.is_dead():
@@ -117,6 +119,7 @@ func _ready() -> void:
 	shift.setup(self)
 	pause_menu = preload("res://pause_menu.gd").new()
 	add_child(pause_menu)
+	if coop != null: coop.attach(self)
 	preload("res://save_states.gd").restore_pending(self)
 	if "--scare-test" in OS.get_cmdline_user_args():
 		var showcase := preload("res://scare_showcase.gd").new()
@@ -150,6 +153,7 @@ func set_night(night: bool) -> void:
 		yard_light.light_energy = 1.0 if night else 1.4
 
 func _unhandled_input(event: InputEvent) -> void:
+	if is_instance_valid(pause_menu) and pause_menu.is_open: return
 	if event is InputEventMouseMotion and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
 		player.rotate_y(-event.relative.x * 0.0025)
 		pitch = clampf(pitch - event.relative.y * 0.0025, -1.5, 1.5)
@@ -159,14 +163,15 @@ func _unhandled_input(event: InputEvent) -> void:
 			player.position = spawn_point
 			player.velocity = Vector3.ZERO
 		if event.keycode == KEY_Q:
-			shift.discard_last()
-		if event.keycode == KEY_F6 and preload("res://playable_demo.gd").session(self) == null:
+			if coop != null and not coop.hosting: coop.request_action(true)
+			else: shift.discard_last()
+		if event.keycode == KEY_F6 and coop == null and preload("res://playable_demo.gd").session(self) == null:
 			shift.start_demo()
-		if event.keycode == KEY_F7 and preload("res://playable_demo.gd").session(self) == null:
+		if event.keycode == KEY_F7 and coop == null and preload("res://playable_demo.gd").session(self) == null:
 			shift.begin_cleanup()
 	if event is InputEventMouseButton and event.pressed:
 		if event.button_index == MOUSE_BUTTON_LEFT and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED and is_instance_valid(target_action) and target_action.get_meta("action", "") in ["pistol", "coffee", "cup_stack", "tray", "pie", "donut", "soda", "soda_cup_stack", "customer", "bell", "oven", "dispose", "freezer_stock", "restock_cooler"]:
-			shift.interact(target_action)
+			_interact()
 			return
 		Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 
@@ -186,6 +191,7 @@ func face_point(target: Vector3) -> void:
 func _physics_process(delta: float) -> void:
 	if not is_instance_valid(player):
 		return
+	if coop != null and is_instance_valid(pause_menu) and pause_menu.is_open: return
 	var direction := Vector3(float(Input.is_physical_key_pressed(KEY_D)) - float(Input.is_physical_key_pressed(KEY_A)), 0, float(Input.is_physical_key_pressed(KEY_S)) - float(Input.is_physical_key_pressed(KEY_W)))
 	direction = _movement_direction(Vector2(direction.x, direction.z))
 	var speed := 6.0 if Input.is_physical_key_pressed(KEY_SHIFT) else 3.2
@@ -210,15 +216,23 @@ func _physics_process(delta: float) -> void:
 	if interaction_release_required and not Input.is_action_pressed("interact"):
 		interaction_release_required = false
 	elif Input.is_action_just_pressed("interact") and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED and not interaction_release_required:
-		if is_instance_valid(target_action):
-			shift.interact(target_action)
-		elif is_instance_valid(target_door):
-			if target_door.name == "Door_03" and shift.phase == "closed":
-				shift.hospital_visits.open_departure()
-			else:
-				_toggle_door(target_door)
+		_interact()
 	if player.position.y < -100:
 		player.position = spawn_point
+
+func _interact() -> void:
+	if coop != null:
+		if shift.phase == "closed": return
+		if not coop.hosting:
+			coop.request_action()
+			return
+	if is_instance_valid(target_action):
+		shift.interact(target_action)
+	elif is_instance_valid(target_door):
+		if target_door.name == "Door_03" and shift.phase == "closed":
+			shift.hospital_visits.open_departure()
+		else:
+			_toggle_door(target_door)
 
 func _setup_door(door: MeshInstance3D) -> void:
 	doors.append(door)
@@ -300,10 +314,8 @@ func _set_door_open(door: MeshInstance3D, opened: bool) -> void:
 	tween.tween_property(door, "rotation:y", angle, 0.45).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 	door.set_meta("tween", tween)
 
-func _update_interaction() -> void:
-	target_door = null
-	target_action = null
-	var query := PhysicsRayQueryParameters3D.create(camera.global_position, camera.global_position - camera.global_basis.z * 2.7, 5, [player.get_rid()])
+func interaction_at(origin: Vector3, direction: Vector3) -> Dictionary:
+	var query := PhysicsRayQueryParameters3D.create(origin, origin + direction * 2.7, 5, [player.get_rid()])
 	var hit := get_world_3d().direct_space_state.intersect_ray(query)
 	if not hit.is_empty():
 		var node: Node = hit.collider
@@ -311,16 +323,22 @@ func _update_interaction() -> void:
 			if node.has_meta("action"):
 				if node.get_meta("action") == "donut" and not node.name.begins_with("Donus"):
 					node.set_meta("item", preload("res://donut_types.gd").flavor_at(hit.position.x))
-				target_action = node
-				break
+				return {"action": node, "door": null}
 			if node.has_meta("door"):
-				target_door = node.get_meta("door")
-				break
+				return {"action": null, "door": node.get_meta("door")}
 			if node is MeshInstance3D and node in doors:
-				target_door = node
-				break
+				return {"action": null, "door": node}
 			node = node.get_parent()
+	return {"action": null, "door": null}
+
+func _update_interaction() -> void:
+	var target := interaction_at(camera.global_position, -camera.global_basis.z)
+	target_action = target.action
+	target_door = target.door
 	interaction_label.text = ""
+	if coop != null and shift.phase == "closed":
+		interaction_label.hide()
+		return
 	if is_instance_valid(shift):
 		shift.target = target_action
 	if is_instance_valid(target_action):

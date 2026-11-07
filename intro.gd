@@ -21,6 +21,9 @@ var key_sounds_played := 0
 var sound_rng := RandomNumberGenerator.new()
 
 func _ready() -> void:
+	if "--coop-lobby" in OS.get_cmdline_user_args() and not OS.has_feature("playable_demo"):
+		get_tree().change_scene_to_file.call_deferred("res://coop_lobby.tscn")
+		return
 	preload("res://playable_demo.gd").prepare(self)
 	if "--scare-test" in OS.get_cmdline_user_args():
 		get_tree().root.set_meta("pie_day_wallet", preload("res://earnings.gd").new(false))
@@ -104,6 +107,14 @@ func _ready() -> void:
 	continue_button.focus_mode = Control.FOCUS_NONE
 	continue_button.pressed.connect(_continue)
 	column.add_child(continue_button)
+	if preload("res://playable_demo.gd").session(self) == null:
+		var coop_button := Button.new()
+		coop_button.text = "Online Co-op"
+		coop_button.alignment = HORIZONTAL_ALIGNMENT_LEFT
+		coop_button.flat = true
+		coop_button.add_theme_font_size_override("font_size", 20)
+		coop_button.pressed.connect(func(): get_tree().change_scene_to_file.call_deferred("res://coop_lobby.tscn"))
+		column.add_child(coop_button)
 	_show_passage()
 
 func _show_passage() -> void:

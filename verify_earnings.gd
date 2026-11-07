@@ -66,7 +66,8 @@ func check():
 		var correct: bool = shift.serve_order()
 		if customer_index < 2:
 			assert(correct and shift.payment_label.visible)
-			assert(shift.earnings.cash - cash >= expected_sale + 35 + customer_index*5 and shift.earnings.cash - cash <= expected_sale + 43 + customer_index*5)
+			var expected_base := expected_sale + 145 + customer_index * 5
+			assert(shift.earnings.cash - cash >= expected_base and shift.earnings.cash - cash <= expected_base + 8)
 			if customer_index == 0 and DisplayServer.get_name() != "headless":
 				await create_timer(0.2).timeout
 				await RenderingServer.frame_post_draw
@@ -81,7 +82,7 @@ func check():
 	for task in shift.tasks: shift.complete_task(task)
 	assert(shift.phase == "closed")
 	assert(shift.earnings.sales == 21)
-	assert(shift.earnings.service_rewards == 70 and shift.earnings.streak_rewards == 5 and shift.earnings.closing_bonus == 100)
+	assert(shift.earnings.service_rewards == 290 and shift.earnings.streak_rewards == 5 and shift.earnings.closing_bonus == 275)
 	cash = shift.earnings.cash
 	assert(shift.earnings.finish_day() == 0 and shift.earnings.cash == cash, "Closing bonus cannot be claimed twice")
 	assert(shift.notice.text.contains("Sales: $21") and shift.notice.text.contains("Tips:") and shift.notice_time == 0)

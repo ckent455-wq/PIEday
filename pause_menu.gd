@@ -7,9 +7,11 @@ var quit_button: Button
 var restart_dialog: ConfirmationDialog
 var is_open := false
 var saves: CanvasLayer
+var coop: Node
 const UI := preload("res://diner_ui.gd")
 
 func _ready() -> void:
+	coop = preload("res://coop_session.gd").active(self)
 	name = "PauseMenu"
 	layer = 90
 	process_mode = Node.PROCESS_MODE_ALWAYS
@@ -85,6 +87,13 @@ func _ready() -> void:
 		load_button.tooltip_text = save_button.tooltip_text
 		restart_button.text = "Restart Demo"
 		restart_dialog.dialog_text = "Replay the demo from the intro? Demo earnings will reset."
+	if coop != null:
+		save_button.hide()
+		load_button.hide()
+		restart_button.hide()
+		subtitle.text = "ONLINE CO-OP"
+		hint.text = "The shift clock keeps running"
+		_button(column, "Leave Co-op").pressed.connect(func(): coop.leave())
 	overlay.hide()
 
 func _button(parent: Control, text: String) -> Button:
@@ -113,7 +122,7 @@ func pause_game() -> void:
 	if is_open or get_tree().paused: return
 	is_open = true
 	overlay.show()
-	get_tree().paused = true
+	if coop == null: get_tree().paused = true
 	_set_music_paused(true)
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 	resume_button.grab_focus()

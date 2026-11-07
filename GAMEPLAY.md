@@ -75,12 +75,12 @@ restart the clock. A brief payment message shows order income, tip, and cash.
 The closing summary shows sales, tips and total earnings. Cash saves locally
 between sessions; daily sales and tips reset when opening the next shift.
 
-Each correct order also earns a clearly labeled $35 service reward. Consecutive
+Each correct order also earns a clearly labeled $145 service reward. Consecutive
 correct orders add a streak bonus: $0, $5, $10, then $15 per order. A mistake
 resets the streak but never deducts cash. Completing all closing chores after
-at least one correct order earns $100 once per day. Empty days earn no bonus.
-At 6-8 fast, correct orders per day, simulated earnings average roughly $460-$589:
-about 26-33 days toward the $15,000 goal. This is a pacing target, not a deadline.
+at least one correct order earns $275 once per day. Empty days earn no bonus.
+At 6–10 fast, correct orders per shift, simulated earnings reach the $15,000 goal
+in about 8–12 shifts.
 
 Open the diner at the shift clipboard. Service lasts three minutes. At closing,
 waiting customers leave and new arrivals stop. If you already took the current

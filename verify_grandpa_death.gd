@@ -40,7 +40,7 @@ func run() -> void:
 			break
 	require(fatal_setback,"Fatal random setback was exercised")
 	var rescued = preload("res://earnings.gd").new(false)
-	rescued.cash = 14900
+	rescued.cash = 14725
 	rescued.grandpa.health = 1
 	rescued.start_day()
 	rescued.correct_orders = 1

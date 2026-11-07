@@ -74,5 +74,14 @@ func run_checks() -> void:
 	shift.hospital_visits.menu.finish()
 	shift.begin_prep(false)
 	assert(shift.phase == "prep" and shift.tasks.values().all(func(done): return done), "Next morning starts clean after evening flow")
+	shift.earnings.grandpa.days = 1
+	assert(shift.start_shift())
+	shift.customer_line.nude_chance = 0.0
+	var previous: Array = []
+	for i in range(12):
+		shift._spawn_customer()
+		assert(shift.order in shift.ORDERS and shift.order != previous, "Campaign draws valid orders without consecutive repeats")
+		previous = shift.order.duplicate()
+		shift._reset_customer()
 	print("PASS: daily task gate, trash disposal, customer arrival, humanoid animation, counter interaction, pickup/return, correct order, angry wrong order, and next customer")
 	quit()

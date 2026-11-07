@@ -25,6 +25,8 @@ var angry := false
 var served := 0
 var lost := 0
 var order_index := 0
+var randomize_orders := true
+var last_recipe_index := -1
 var arrival_delay := 0.0
 var animation_time := 0.0
 var notice: Label
@@ -570,6 +572,9 @@ func begin_prep(resolve_evening := true) -> void:
 		_message("Ready for the day. Use the shift clipboard to open the diner.")
 
 func begin_cleanup() -> void:
+	if game.coop != null:
+		game.coop.finish_service()
+		return
 	if is_instance_valid(scrubbing_audio): scrubbing_audio.stop()
 	if earnings.grandpa.is_dead(): return
 	if is_instance_valid(dialogue): dialogue.finish()
@@ -620,12 +625,11 @@ func start_demo() -> void:
 		task_nodes[id].visible = false
 		task_nodes[id].collision_layer = 0
 	_reset_stock()
-	order_index = 0
 	shift_number = 1
 	served = 0
 	lost = 0
 	phase = "prep"
-	start_shift()
+	start_shift(false)
 	game.spawn_point = Vector3(-2.4, 0.03, -5.8)
 	game.player.position = game.spawn_point
 	game.player.rotation.y = PI
@@ -633,14 +637,20 @@ func start_demo() -> void:
 	game.pitch = 0.0
 	_message("CUSTOMER DEMO: E to take the order. Pick up each item and click the counter tray to place it. Ring the counter bell to submit the completed tray.")
 
-func start_shift() -> bool:
+func start_shift(use_random_orders := true) -> bool:
 	if earnings.grandpa.is_dead(): return false
 	if phase != "prep": return false
+	if game.coop != null and not game.coop.partner_ready:
+		_message("Waiting for your partner to load the diner.")
+		return false
 	for done in tasks.values():
 		if not done:
 			_message("Finish all closing duties before opening the next shift.")
 			return false
 	phase = "arriving"
+	order_index = 0
+	randomize_orders = use_random_orders
+	last_recipe_index = -1
 	closing_time = false
 	shift_remaining = SHIFT_SECONDS
 	_update_shift_clock()
@@ -658,10 +668,19 @@ func _spawn_customer() -> void:
 	var queued: bool = not customer_line.waiting.is_empty()
 	_reset_customer()
 	var demo_orders := [["Glazed donut", "Coffee"], ["Apple pie", "Cola"], ["Chocolate donut", "Lemon Fizz"], ["Cherry pie", "Dr. Paw Paw"]]
-	order.assign(demo_orders[order_index % demo_orders.size()] if preload("res://playable_demo.gd").session(self) != null else ORDERS[order_index % ORDERS.size()])
 	order_taken = false
 	angry = false
 	customer = customer_line.pop_front() if queued else customer_line.make_actor(Vector3(0.76,-0.094,5))
+	if not customer.get_meta("requires_refusal", false):
+		if preload("res://playable_demo.gd").session(self) != null:
+			order.assign(demo_orders[order_index % demo_orders.size()])
+		elif randomize_orders:
+			var recipe_index := randi_range(0, ORDERS.size() - 1 - int(last_recipe_index >= 0))
+			if last_recipe_index >= 0 and recipe_index >= last_recipe_index: recipe_index += 1
+			last_recipe_index = recipe_index
+			order.assign(ORDERS[recipe_index])
+		else:
+			order.assign(ORDERS[order_index % ORDERS.size()])
 	_bind_customer_actor(customer)
 	phase = "arriving"
 	if customer.position.z <= 0.2:
@@ -885,7 +904,7 @@ func interact(node: Node) -> void:
 			order_taken = true
 			speech.text = "I'd like " + ", ".join(order) + ", please."
 			_message("CUSTOMER: " + ", ".join(order) + ". Place everything on the counter tray, then ring the bell to serve.")
-			dialogue.begin(customer, order, reminder)
+			if game.coop == null: dialogue.begin(customer, order, reminder)
 		"task":
 			if phase != "cleanup": return
 			if node.get_meta("task") == "trash":

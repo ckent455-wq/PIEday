@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.9.1
+
+- Added a main menu with separate Solo Campaign and Online Co-op buttons. The co-op lobby is available before campaign saves load.
+
 ## 0.9.0
 
 - Two-player online co-op service shifts with separate hands and shared customers, equipment, tray, and earnings.

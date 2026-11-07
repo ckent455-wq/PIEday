@@ -1,6 +1,6 @@
 # PIEday
 
-Current version: **0.9.0**. Includes two-player online service shifts, randomized campaign orders, and updated rewards. The campaign includes a kitchen pistol for clothing-required encounters,
+Current version: **0.9.1**. Includes two-player online service shifts, randomized campaign orders, and updated rewards. The campaign includes a kitchen pistol for clothing-required encounters,
 jointed customer ragdolls, and a closing chore to pick up bodies and carry them
 to the dumpster. Includes the full campaign, hospital visits, save/load, donut
 and soda varieties, music, and closing scares.
@@ -144,7 +144,7 @@ Editable BeepBox music projects and song URLs are in `art/music/`.
 Run the gameplay checks with PowerShell: .\run_checks.ps1 -Godot 'C:\path\to\Godot_console.exe'. Some checks open a window to verify input and layout; reports are written to .godot/verification/.
 ### Online co-op
 
-Select **Online Co-op** on the opening screen of the Windows campaign build.
+Select **Online Co-op** on the main menu of the Windows campaign build.
 One player chooses **Host Shift**, and the other enters the host's IP address
 and chooses **Join Shift**. Both players need the same build. On the same local
 network, use the host address shown in the lobby. For a direct internet

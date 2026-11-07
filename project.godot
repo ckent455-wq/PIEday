@@ -11,8 +11,8 @@ config_version=5
 [application]
 
 config/name="PIEday"
-config/version="0.9.0"
-run/main_scene="res://intro.tscn"
+config/version="0.9.1"
+run/main_scene="res://main_menu.tscn"
 config/features=PackedStringArray("4.7")
 
 [display]

@@ -38,7 +38,7 @@ func _ready() -> void:
 		status.text = get_tree().root.get_meta("coop_status")
 		get_tree().root.remove_meta("coop_status")
 	column.add_child(status)
-	_button(column, "Back to Solo", func(): _back.call_deferred())
+	_button(column, "Back to Main Menu", func(): _back.call_deferred())
 
 func _button(parent: Control, caption: String, pressed: Callable) -> Button:
 	var button := Button.new()
@@ -76,4 +76,4 @@ func _connect_game(hosting: bool) -> void:
 func _back() -> void:
 	var session = SESSION.active(self)
 	if session != null: session.shutdown()
-	get_tree().change_scene_to_file("res://intro.tscn")
+	get_tree().change_scene_to_file("res://main_menu.tscn")

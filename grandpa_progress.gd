@@ -2,6 +2,7 @@ extends RefCounted
 
 const DAILY_DECLINE := 2
 const SETBACKS := ["mistreatment", "fall", "setback", "chemo", "wrong_meds"]
+const NURSE_EVENT_WEIGHT := 2
 var days := 0
 var health := 100
 var death_day := 0
@@ -10,6 +11,7 @@ var last_setback_day := -100
 var last_setback_id := ""
 var setback_history: Array = []
 var last_discussed_setback_day := -100
+var last_witnessed_mistreatment_day := -100
 var evening_pending := false
 var visit_in_progress := false
 var next_visit_day := 1
@@ -55,9 +57,12 @@ func _setback(before: int) -> bool:
 	if event_rng.randf() >= .12: return false
 	var choices: Array = []
 	for event in SETBACKS:
-		if event != last_setback_id: choices.append(event)
+		if event == last_setback_id: continue
+		for ticket in range(NURSE_EVENT_WEIGHT if event == "mistreatment" else 1):
+			choices.append(event)
 	last_setback_id = choices[event_rng.randi_range(0,choices.size()-1)]
-	health = maxi(0,health-event_rng.randi_range(8,12))
+	var incident_damage := 20 if last_setback_id == "mistreatment" else event_rng.randi_range(8,12)
+	health = maxi(0,health-incident_damage)
 	last_setback_day = days
 	setback_history.append({"day":days,"event_id":last_setback_id,"health_before":before,"health_after":health,"health_loss":before-health})
 	return true
@@ -143,6 +148,7 @@ func read_config(config: ConfigFile) -> void:
 	last_setback_day = int(config.get_value("grandpa","last_setback_day",-100))
 	last_setback_id = str(config.get_value("grandpa","last_setback_id",""))
 	last_discussed_setback_day = int(config.get_value("grandpa","last_discussed_setback_day",-100))
+	last_witnessed_mistreatment_day = int(config.get_value("grandpa","last_witnessed_mistreatment_day",-100))
 	evening_pending = bool(config.get_value("grandpa","evening_pending",false))
 	visit_in_progress = bool(config.get_value("grandpa","visit_in_progress",false))
 	next_visit_day = maxi(1,int(config.get_value("grandpa","next_visit_day",1)))
@@ -165,7 +171,7 @@ func read_config(config: ConfigFile) -> void:
 					setback_history.append({"day":entry.day,"event_id":entry.event_id,"health_before":entry.get("health_before",health),"health_after":entry.get("health_after",health),"health_loss":entry.get("health_loss",0)})
 
 func write_config(config: ConfigFile) -> void:
-	for key in ["days","health","death_day","setback_seed","last_setback_day","last_setback_id","last_discussed_setback_day","evening_pending","visit_in_progress","next_visit_day","last_visit_day","last_visit_choice_day","setback_history"]:
+	for key in ["days","health","death_day","setback_seed","last_setback_day","last_setback_id","last_discussed_setback_day","last_witnessed_mistreatment_day","evening_pending","visit_in_progress","next_visit_day","last_visit_day","last_visit_choice_day","setback_history"]:
 		config.set_value("grandpa",key,get(key))
 	for retired in ["letters","next_letter_day","funded_announced"]:
 		if config.has_section_key("grandpa",retired): config.erase_section_key("grandpa",retired)

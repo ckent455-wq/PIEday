@@ -18,7 +18,10 @@ func run_checks() -> void:
 	assert(shift.tasks.values().all(func(done): return done), "No chores before opening")
 	var board = shift.get_node("Station_clock")
 	shift.interact(board)
-	assert(shift.phase == "arriving", "Completed duties plus shift board must open the shift")
+	assert(shift.phase == "prep", "Clipboard must direct players to the window sign")
+	shift.donut_fryer.stock = [6,6,6]
+	shift.interact(shift.open_sign)
+	assert(shift.phase == "arriving", "Stocked donuts and neon sign open the shift")
 	var delay: float = shift.arrival_delay
 	for press in range(5): shift.interact(board)
 	assert(shift.phase == "arriving" and shift.arrival_delay == delay, "Repeated board presses must not restart duties or delay customers")
@@ -75,6 +78,7 @@ func run_checks() -> void:
 	shift.begin_prep(false)
 	assert(shift.phase == "prep" and shift.tasks.values().all(func(done): return done), "Next morning starts clean after evening flow")
 	shift.earnings.grandpa.days = 1
+	shift.donut_fryer.stock = [6,6,6]
 	assert(shift.start_shift())
 	shift.customer_line.nude_chance = 0.0
 	var previous: Array = []

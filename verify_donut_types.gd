@@ -9,6 +9,8 @@ func check():
 	game.set_process_unhandled_input(false)
 	game.shift.set_process(false)
 	game.shift.start_demo()
+	game.shift.donut_fryer.stock = [6,6,6]
+	game.shift.donut_fryer.refresh()
 	game.shift.customer_line.next_arrival = INF
 	for frame in range(620): game.shift._process(1.0 / 60.0)
 	var types = preload("res://donut_types.gd").TYPES

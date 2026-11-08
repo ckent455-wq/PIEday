@@ -6,6 +6,26 @@ func require(value: bool, message: String):
 		push_error(message)
 		failures += 1
 func check():
+	var incident_count := 0
+	var nurse_count := 0
+	for seed_value in range(1,5001):
+		var weighted = preload("res://grandpa_progress.gd").new()
+		weighted.days = 2
+		weighted.setback_seed = seed_value
+		weighted.advance_day(false)
+		if weighted.last_setback_day == 3:
+			incident_count += 1
+			if weighted.last_setback_id == "mistreatment": nurse_count += 1
+		var no_repeat = preload("res://grandpa_progress.gd").new()
+		no_repeat.days = 8
+		no_repeat.last_setback_day = 3
+		no_repeat.last_setback_id = "mistreatment"
+		no_repeat.setback_seed = seed_value
+		no_repeat.advance_day(false)
+		require(no_repeat.last_setback_day != 9 or no_repeat.last_setback_id != "mistreatment", "Nurse weighting preserves no consecutive repeats")
+	require(incident_count > 500 and incident_count < 700,"Overall eligible-day setback rate remains about twelve percent")
+	var nurse_share := float(nurse_count)/maxi(1,incident_count)
+	require(nurse_share > 0.29 and nurse_share < 0.38,"Nurse represents about one third of first setbacks")
 	var examples: Dictionary = {}
 	for seed_value in range(1, 600):
 		var progress = preload("res://grandpa_progress.gd").new()
@@ -21,7 +41,10 @@ func check():
 		require(progress.health == reloaded.health and progress.setback_history == reloaded.setback_history, "Loading before a day cannot reroll outcome")
 		if progress.last_setback_day == 3:
 			var event: Dictionary = progress.setback_history.back()
-			require(event.health_loss >= 10 and event.health_loss <= 14, "Incident records significant actual loss")
+			if event.event_id == "mistreatment":
+				require(event.health_loss == 22, "Nurse incident removes 20 health points plus normal 2-point daily decline")
+			else:
+				require(event.health_loss >= 10 and event.health_loss <= 14, "Incident records significant actual loss")
 			require(progress.setback_history.size() == 1, "Each incident is recorded once")
 			if not examples.has(event.event_id): examples[event.event_id] = progress
 		if examples.size() == 5: break

@@ -1,6 +1,6 @@
 # PIEday
 
-Current version: **0.11.0**. Includes two-player online campaign play, randomized campaign orders, and updated rewards. The campaign includes a kitchen pistol for clothing-required encounters,
+Current version: **0.12.0**. Includes two-player online campaign play, randomized campaign orders, and updated rewards. The campaign includes a kitchen pistol for clothing-required encounters,
 jointed customer ragdolls, and a closing chore to pick up bodies and carry them
 to the dumpster. Includes the full campaign, hospital visits, save/load, donut
 and soda varieties, music, and closing scares.
@@ -10,7 +10,7 @@ Space to reveal each passage and advance, then choose Open the Diner. Earn $15,0
 treatment; the upper-left cash display tracks the goal. Existing cash is retained.
 
 A first-person diner prototype built with **Godot 4.7.2**. Prepare customer orders
-with meat, apple, or cherry pies, donuts, coffee, and fountain soda. Assemble the
+with burgers, meat/apple/cherry pies, donuts, coffee, and fountain soda. Assemble the
 order on the counter tray and **ring the service bell to serve it**. Wrong orders
 make customers angry; correct orders make them leave happy.
 
@@ -18,6 +18,8 @@ Up to three customers line up. The next customer steps forward while the
 previous one leaves. At closing, queued customers walk out. You can finish an
 already accepted order before nighttime cleanup; customers whose orders were not
 taken leave without a penalty.
+
+Before opening, fry and stock all three donut flavors, then switch the neon OPEN sign on in the front window. Burgers use the flat top: three seconds per side, E to flip, then assemble at the bun tray. Raw patties and buns have separate trays. Both co-op PCs must run v0.12.0.
 
 ## Play the Windows release
 

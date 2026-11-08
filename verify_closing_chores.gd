@@ -13,6 +13,7 @@ func check():
 	shift.earnings.save_enabled = false
 	assert(shift.phase == "prep" and shift.tasks.values().all(func(done): return done))
 	for task in shift.task_nodes.values(): assert(not task.visible)
+	shift.donut_fryer.stock = [6,6,6]
 	assert(shift.start_shift())
 	for frame in range(620): shift._process(1.0/60.0)
 	assert(shift.phase == "waiting")
@@ -48,6 +49,7 @@ func check():
 	var morning = current_scene
 	assert(morning.shift.phase == "prep" and not morning.get_node("NightInteriorLights").visible)
 	assert(morning.shift.tasks.values().all(func(done): return done))
+	morning.shift.donut_fryer.stock = [6,6,6]
 	assert(morning.shift.start_shift() and morning.shift.shift_remaining == 180)
 	print("PASS: immediate nighttime cleanup, board cannot skip chores, trash disposal, summary after chores, daylight next day")
 	quit()

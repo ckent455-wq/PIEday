@@ -18,7 +18,11 @@ static func install(diner: Node3D) -> void:
 	# Layout and dumpster transforms are edited directly in this scene.
 	var yard: Node3D = load("res://service_yard.tscn").instantiate()
 	diner.add_child(yard)
+	ensure_collision(yard)
+
+static func ensure_collision(yard: Node3D) -> void:
 	_smooth_dumpster(yard)
+	if yard.find_child("YardJumpBoundary",false,false) != null: return
 	# Player-only boundaries extend above the decorative fence so a jump from
 	# props cannot land outside the walkable rectangle and get clamped there.
 	for wall in [
@@ -38,6 +42,7 @@ static func install(diner: Node3D) -> void:
 
 static func _smooth_dumpster(yard: Node3D) -> void:
 	var dumpster := yard.get_node("OutdoorDumpster") as Node3D
+	if dumpster.has_node("SmoothDumpsterCollision"): return
 	var bounds := AABB()
 	var first := true
 	for mesh in dumpster.find_children("*", "MeshInstance3D", true, false):

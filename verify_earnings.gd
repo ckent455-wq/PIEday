@@ -89,6 +89,7 @@ func check():
 	cash = shift.earnings.cash
 	shift.begin_prep()
 	for task in shift.tasks: shift.complete_task(task)
+	shift.donut_fryer.stock = [6,6,6]
 	assert(shift.start_shift())
 	assert(shift.earnings.sales == 0 and shift.earnings.tips == 0 and shift.earnings.cash == cash)
 	print("PASS: menu prices, tip chance by speed/quality, tipped and untipped orders, first-order timer, no timer reset, exact payouts, wrong-order zero payout, duplicate protection, day summary, wallet carryover, day reset, controls removed; test writes no money saves")

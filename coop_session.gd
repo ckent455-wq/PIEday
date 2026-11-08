@@ -1,10 +1,10 @@
 extends Node
 
 const PORT := 27841
-const PROTOCOL := 2
+const PROTOCOL := 3
 const CAMPAIGN_PATH := "user://coop_earnings.cfg"
 const SAVE := preload("res://save_states.gd")
-const SUPPORTED_ACTIONS := ["clock", "pie", "donut", "tray", "coffee", "cup_stack", "soda", "soda_cup_stack", "oven", "bell", "customer", "pistol", "corpse", "task", "table_trash", "trash_bin", "dining_customer", "freezer_stock", "restock_cooler", "dispose"]
+const SUPPORTED_ACTIONS := ["clock", "open_sign", "burger_grill", "burger_prep", "burger_raw", "pie", "donut", "donut_fryer", "tray", "coffee", "cup_stack", "soda", "soda_cup_stack", "oven", "bell", "customer", "pistol", "corpse", "task", "table_trash", "trash_bin", "dining_customer", "freezer_stock", "restock_cooler", "dispose"]
 var hosting := false
 var partner_id := 0
 var partner_ready := false
@@ -109,7 +109,7 @@ func attach(diner: Node3D) -> void:
 	partner.position = partner_target
 	partner_yaw = PI
 	wallet = game.shift.earnings
-	game.shift._message("Use the clipboard to open the shared shift." if game.shift.phase == "prep" else game.shift.notice.text)
+	game.shift._message("Finish donut prep, then flip the OPEN sign in the front window to open the shared shift." if game.shift.phase == "prep" else game.shift.notice.text)
 	if not hosting:
 		game.shift.set_process(false)
 		game.shift.oven.set_process(false)
@@ -372,7 +372,7 @@ func _customer_dialogue_input(close: bool) -> void:
 
 func _snapshot() -> Dictionary:
 	if game.scene_file_path == "res://hospital_room.tscn":
-		return {"scene": game.scene_file_path, "epoch": scene_epoch, "progress": _wallet_state(game.earnings), "paused": get_tree().paused, "menu_paused": not pause_votes.is_empty(), "host": [game.player.position, game.player.rotation.y], "light": game.bedside_light.visible}
+		return {"scene": game.scene_file_path, "epoch": scene_epoch, "progress": _wallet_state(game.earnings), "paused": get_tree().paused, "menu_paused": not pause_votes.is_empty(), "host": [game.player.position, game.player.rotation.y], "light": game.bedside_light.visible, "incident": game.incident.snapshot()}
 	var shift = game.shift
 	var actors := {}
 	var line = shift.customer_line
@@ -392,6 +392,7 @@ func _snapshot() -> Dictionary:
 	for door in game.doors: door_states.append([door.get_meta("open"), door.rotation.y])
 	return {
 		"scene": game.scene_file_path, "epoch": scene_epoch, "paused": get_tree().paused, "progress": _wallet_state(shift.earnings),
+		"donuts": shift.donut_fryer.snapshot(), "burger": shift.burger_station.snapshot(),
 		"phase": shift.phase, "remaining": shift.shift_remaining, "closing": shift.closing_time,
 		"order": shift.order, "taken": shift.order_taken, "cash": shift.earnings.cash, "notice": shift.notice.text,
 		"actors": actors, "customer": str(shift.customer.get_instance_id()) if is_instance_valid(shift.customer) else "",
@@ -432,6 +433,7 @@ func _sync_shift(packet: PackedByteArray) -> void:
 	partner_yaw = state.host[1]
 	if game.scene_file_path == "res://hospital_room.tscn":
 		game.bedside_light.visible = state.light
+		game.incident.restore_visual(state.get("incident",{}))
 		game.hospital_music.set_music_paused(state.menu_paused)
 		return
 	var shift = game.shift
@@ -439,6 +441,8 @@ func _sync_shift(packet: PackedByteArray) -> void:
 	partner_target = state.host[0]
 	partner_yaw = state.host[1]
 	shift.phase = state.phase
+	shift.donut_fryer.restore(state.get("donuts", {}))
+	shift.burger_station.restore(state.get("burger", {}))
 	shift.shift_remaining = state.remaining
 	shift.closing_time = state.closing
 	shift.order.assign(state.order)

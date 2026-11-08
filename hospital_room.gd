@@ -16,6 +16,7 @@ var hospital_music: AudioStreamPlayer
 var interaction_release_required := false
 var leaving := false
 var coop: Node
+var incident: Node3D
 
 func _ready() -> void:
 	coop = preload("res://coop_session.gd").active(self)
@@ -70,6 +71,9 @@ func _ready() -> void:
 	paused.restart_dialog.dialog_text = "Return to the hospital room entrance?"
 	if earnings.grandpa.visit_in_progress:
 		prompt.text = "Visit Grandpa at his bedside. Leave through the door when you're ready to head home."
+	incident = preload("res://hospital_incident.gd").new()
+	add_child(incident)
+	incident.setup(self)
 	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 	preload("res://save_states.gd").restore_pending(self)
 
@@ -275,6 +279,7 @@ func _build_hud() -> void:
 	preload("res://diner_ui.gd").passive(ui)
 
 func _unhandled_input(event: InputEvent) -> void:
+	if is_instance_valid(incident) and incident.active: return
 	if event is InputEventMouseMotion and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
 		player.rotate_y(-event.relative.x * .0025)
 		pitch = clampf(pitch-event.relative.y*.0025,-1.4,1.4)
@@ -284,9 +289,10 @@ func interact() -> void:
 	if coop != null and not coop.hosting:
 		coop.request_action()
 		return
-	if leaving or get_tree().paused: return
+	if leaving or get_tree().paused or incident.active: return
 	if target == "light": bedside_light.visible = not bedside_light.visible
-	if target == "grandpa": conversation.show_dialogue(earnings.grandpa.visit_dialogue(earnings.cash))
+	if target == "grandpa":
+		if not incident.begin(): conversation.show_dialogue(earnings.grandpa.visit_dialogue(earnings.cash))
 	if target == "exit":
 		var demo = preload("res://playable_demo.gd").session(self)
 		if demo != null:
@@ -303,7 +309,7 @@ func interact() -> void:
 		preload("res://hospital_travel.gd").go(self,"res://main.tscn",earnings)
 
 func _physics_process(delta: float) -> void:
-	if leaving: return
+	if leaving or (is_instance_valid(incident) and incident.active): return
 	var direction := Vector2(float(Input.is_physical_key_pressed(KEY_D))-float(Input.is_physical_key_pressed(KEY_A)),float(Input.is_physical_key_pressed(KEY_S))-float(Input.is_physical_key_pressed(KEY_W)))
 	var forward := -camera.global_basis.z
 	forward.y = 0

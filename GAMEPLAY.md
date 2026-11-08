@@ -38,7 +38,7 @@ and full health. Reaching the
 $15,000 surgery goal before health reaches zero stops decline and setbacks.
 
 From the third completed day, eligible days have a 12% chance of a serious setback:
-mistreatment, a fall, a bad night, or a rough chemotherapy session. These take another 8-12 health points and
+mistreatment, a fall, a bad night, chemotherapy, or wrong medication. Nurse mistreatment takes another 20 health points; other incidents take 8-12 points. Nurse incidents have double selection weight (about 4-5% per eligible day when allowed) and include a one-time bedside cutscene. All incidents
 are explained by Grandpa at his next hospital conversation, even if a visit was
 skipped. Setbacks are at least six days apart, do not repeat the previous incident
 type, and stop once surgery is funded. The schedule and outcomes are stable across
@@ -82,7 +82,7 @@ at least one correct order earns $275 once per day. Empty days earn no bonus.
 At 6–10 fast, correct orders per shift, simulated earnings reach the $15,000 goal
 in about 8–12 shifts.
 
-Open the diner at the shift clipboard. Service lasts three minutes. At closing,
+Opening duties are frying and stocking the three donut flavors, then switching on the neon OPEN sign in the front window. Service lasts three minutes. At closing,
 waiting customers leave and new arrivals stop. If you already took the current
 customer's order, you can finish it, with the HUD showing CLOSED · LAST ORDER.
 Serving it (correctly or incorrectly) starts closing chores. If no order was
@@ -93,7 +93,7 @@ the dumpster outside the kitchen back door. The door replaces the flat-top grill
 press E to open it, walk into the fenced service yard, and click or press E on
 the dumpster while holding the bag. Return through the door to the kitchen.
 Finish all closing duties to see the day's earnings summary. Use the shift
-clipboard to begin the next day; daylight returns and no morning chores are needed.
+clipboard to begin the next day; daylight returns and donut prep begins again.
 
 **F6** starts a fresh customer demo. **F7** jumps to nighttime closing chores
 for testing. The customer demo launches with `-- --customer-demo`.
@@ -202,3 +202,9 @@ new players. The full Windows Desktop preset retains the campaign.
 During a clothing-required encounter, the pistol in the center of the kitchen's right-hand table can be picked up with E using an empty hand. Aim at the unclothed customer at the counter and click/E to fire. They collapse with jointed ragdoll physics, collide with the diner furniture and floor, and remain for cleanup without gore. Q returns the pistol. It cannot be put on the tray, used on ordinary customers, or kept after the encounter. Normal E refusal remains available when unarmed.
 
 If bodies remain at closing, the checklist includes body disposal. With empty hands, press E on a body to pick it up, carry it through the kitchen to the outdoor dumpster, then press E at the dumpster to dispose of it. Q sets it down. The body holds a fixed carry pose while lifted and resumes ragdoll physics when set down. All bodies must be removed before the day can end. Manual saves preserve physical poses and the carried body.
+
+## Donut frying and burgers
+
+At either kitchen fryer, press E to lower six raw dough rings. Lift with E after 5 seconds and before 10 seconds. Aim at a flavor in the donut case to ice and stock six donuts. Stock strawberry, chocolate and glazed before switching the neon OPEN sign on. Fry more during service as stock runs low.
+
+Take a raw patty from the raw-meat tray. Put it on the flat top, wait 3 seconds, press E to flip, wait 3 more seconds, then collect it. Take it to the separate bun tray and press E to assemble a Burger. Place the finished burger on the serving tray and ring the bell. Patties burn at 12 seconds total. Raw or unassembled patties cannot be placed on the serving tray.

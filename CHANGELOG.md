@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.12.0
+
+- Opening prep uses the existing fryer baskets: fry six donuts, lift between five and ten seconds, then ice and stock strawberry, chocolate and glazed batches. Oil ripples, bubbles and positional sizzling accompany frying.
+- Switch the classic red-and-blue neon OPEN sign on after prep to begin service. It switches off at closing.
+- Burgers join random customer orders. Cook raw patties on the flat top for three seconds per side, flip with E, then assemble on the separate bun tray. Patties burn at twelve seconds; correct burgers sell for $8.
+- Original Blender raw/cooked patties and sesame buns replace placeholder food. Raw meat and buns use separate trays.
+- The saved diner layout contains the kitchen, cooler and yard changes visible in the editor. Burger equipment follows the edited stove and prep counter.
+- The nurse mistreatment event includes a non-graphic witnessed cutscene, louder slap, Grandpa grunt, recoil, brief blackout and bedside dialogue. It removes twenty health points in addition to daily decline, once per incident.
+- Nurse setbacks have double selection weight; the twelve-percent overall setback roll, six-day spacing and no consecutive repeats remain.
+- New equipment state and the witnessed-incident flag are saved and replicated in co-op. Both players must use v0.12.0.
+
 ## 0.11.0
 
 - Main-menu updater checks GitHub, verifies and installs the Windows release, and opens the updated game. Future launches redirect to the newest installed version.

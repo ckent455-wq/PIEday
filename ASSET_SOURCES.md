@@ -93,3 +93,10 @@ This file records provenance; it does not relicense third-party material.
 
 ## Kitchen pistol
 Long Slide Magnum Pistol from 3D Low-Poly Guns Pack 2 by Polyy (https://polyy.ai), user-provided download. CC0; license and pack readme included under assets/pistol/. Gunshot is generated procedurally by pistol_encounter.gd.
+
+## v0.12.0 kitchen and hospital additions
+
+- Burger patties and sesame buns: original low-poly meshes and 256px textures made in Blender for PIEday. Editable files and generators in art/burger; GLB assets in assets/burger. Photographic shape/color references only: https://order.usfoods.com/desktop/products/3327301 and https://www.pexels.com/photo/close-up-of-burgers-in-the-griller-14133038/. No third-party photo textures are included.
+- Fryer sizzle and hospital slap: original synthesized effects, assets/audio/fryer_sizzle.wav and hospital_impact.wav.
+- Grandpa hurt grunt: Male Grunting In Pain by elynch0901, https://freesound.org/people/elynch0901/sounds/464486/, CC0 1.0 https://creativecommons.org/publicdomain/zero/1.0/. HQ MP3 preview used at pitch scale 0.88; source/license recorded beside the audio.
+- Neon sign: original mesh tubing and materials. Nurse: existing clothed female_1 scrubs character from the project character pack, with an original cap and procedural arm animation.

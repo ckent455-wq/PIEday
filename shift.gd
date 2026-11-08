@@ -4,7 +4,7 @@ const DONUTS := preload("res://donut_types.gd")
 const PIE_NAMES := ["Meat pie", "Apple pie", "Cherry pie"]
 const SHIRT_COLORS := [Color(0.12,0.32,0.42), Color(0.48,0.12,0.10), Color(0.18,0.35,0.17), Color(0.48,0.32,0.10), Color(0.32,0.18,0.40), Color(0.60,0.53,0.39), Color(0.21,0.22,0.25), Color(0.57,0.30,0.23)]
 var last_shirt_color := -1
-const ORDERS := [["Meat pie", "Strawberry donut", "Coffee"], ["Apple pie", "Lemon Fizz"], ["Cherry pie", "Chocolate donut", "Coffee"], ["Apple pie", "Glazed donut", "Coffee"], ["Meat pie", "Cola"], ["Cherry pie", "Dr. Paw Paw"]]
+const ORDERS := [["Meat pie", "Strawberry donut", "Coffee"], ["Apple pie", "Lemon Fizz"], ["Cherry pie", "Chocolate donut", "Coffee"], ["Apple pie", "Glazed donut", "Coffee"], ["Meat pie", "Cola"], ["Cherry pie", "Dr. Paw Paw"], ["Burger", "Cola"], ["Burger", "Lemon Fizz"], ["Burger", "Coffee"]]
 var game: Node3D
 var phase := "prep"
 var tasks := {"bathroom": false, "kitchen": false, "trash": false, "restock": false, "tables": false}
@@ -73,6 +73,9 @@ var hospital_visits: Node
 var dine_in: Node3D
 var pistol: Node3D
 var corpses: Node3D
+var burger_station: Node3D
+var donut_fryer: Node3D
+var open_sign: StaticBody3D
 
 func setup(host: Node3D) -> void:
 	game = host
@@ -93,7 +96,15 @@ func setup(host: Node3D) -> void:
 	add_child(scrubbing_audio)
 	_tag_pies()
 	_setup_donut_case()
+	donut_fryer = preload("res://donut_fryer.gd").new()
+	add_child(donut_fryer)
+	donut_fryer.setup(self)
+	burger_station = preload("res://burger_station.gd").new()
+	add_child(burger_station)
+	burger_station.setup(self)
 	_make_shift_board()
+	open_sign = preload("res://open_sign.gd").new()
+	open_sign.setup(self)
 	_make_task("bathroom", "BATHROOM: hold E to scrub", Vector3(-7.15, -0.075, -10.1))
 	_make_task("kitchen", "KITCHEN: hold E to scrub", Vector3(0, -0.075, -11.7))
 	_make_task("trash", "TRASH: E to collect bag", Vector3(10.1, -0.075, 1.5))
@@ -371,7 +382,7 @@ func _refresh_hud() -> void:
 	order_text.text = "\n".join(lines)
 
 func _update_shift_clock() -> void:
-	if phase == "prep": shift_clock.text = "READY TO OPEN"
+	if phase == "prep": shift_clock.text = "READY TO OPEN" if is_instance_valid(donut_fryer) and donut_fryer.prepared() else "PREP: FRY & STOCK DONUTS"
 	elif phase == "cleanup": shift_clock.text = "AFTER HOURS - CLEANUP"
 	elif phase == "closed": shift_clock.text = "CLOSED"
 	elif closing_time and phase == "waiting" and order_taken: shift_clock.text = "CLOSED · LAST ORDER"
@@ -565,11 +576,12 @@ func begin_prep(resolve_evening := true) -> void:
 		task_nodes[id].collision_layer = 0
 	_reset_stock()
 	game.set_night(false)
+	donut_fryer.reset()
 	var demo = preload("res://playable_demo.gd").session(self)
 	if demo != null and demo.tutorial_state == "welcome":
 		_message("Use the shift clipboard behind the counter to start training.")
 	else:
-		_message("Ready for the day. Use the shift clipboard to open the diner.")
+		_message("Opening prep: fry donuts in the kitchen, lift at 5 seconds (burns at 10), then ice and stock each flavor at the display case.")
 
 func begin_cleanup() -> void:
 	if is_instance_valid(scrubbing_audio): scrubbing_audio.stop()
@@ -583,6 +595,7 @@ func begin_cleanup() -> void:
 	order.clear()
 	_clear_tray(true)
 	arrival_delay = 0
+	burger_station.reset()
 	phase = "cleanup"
 	closing_time = true
 	_set_carrying_trash(false)
@@ -639,6 +652,9 @@ func start_shift(use_random_orders := true) -> bool:
 	if phase != "prep": return false
 	if game.coop != null and not game.coop.partner_ready:
 		_message("Waiting for your partner to load the diner.")
+		return false
+	if use_random_orders and not donut_fryer.prepared():
+		_message("Opening prep: fry and stock strawberry, chocolate and glazed donuts before opening.")
 		return false
 	for done in tasks.values():
 		if not done:
@@ -728,6 +744,8 @@ func _process(delta: float) -> void:
 	if phase == "game_over": return
 	if not is_instance_valid(game):
 		return
+	donut_fryer.tick(delta)
+	burger_station.tick(delta)
 	animation_time += delta
 	pistol.tick()
 	dine_in.tick(delta)
@@ -831,6 +849,10 @@ func action_prompt(node: Node) -> String:
 		"freezer_stock", "restock_cooler": return restock.prompt(action, node)
 		"pie" when phase == "cleanup": return restock.prompt("restock_cooler", node)
 		"pie": return "[Click / E] Pick up " + str(node.get_meta("item"))
+		"burger_grill", "burger_prep", "burger_raw": return burger_station.prompt(action)
+		"open_sign": return open_sign.prompt()
+		"donut_fryer": return donut_fryer.prompt(node)
+		"donut" when donut_fryer.batches.any(func(batch): return batch.state == "ready"): return "[E] Ice and stock 6 " + str(node.get_meta("item", "Glazed donut")) + "s"
 		"donut": return "[Click / E] Grab " + str(node.get_meta("item", "Glazed donut")) if carried_item.is_empty() and not has_empty_cup() else "Hands full - place or return your item first"
 		"tray": return "[Click / E] Place " + carried_item + " on tray" if not carried_item.is_empty() else "[Click / E] Take last item off tray" if not tray.is_empty() else "Serving tray - bring the customer's items here"
 		"coffee", "cup_stack": return coffee_station.prompt(action)
@@ -850,7 +872,7 @@ func action_prompt(node: Node) -> String:
 			if phase == "prep":
 				var demo = preload("res://playable_demo.gd").session(self)
 				if demo != null and demo.tutorial_state != "done": return "[E] Training\n" + earnings.health_status()
-				return "[E] Open shift\n" + earnings.health_status()
+				return "Flip the OPEN sign in the front window to start the shift\n" + earnings.health_status()
 			if phase == "closed": return ("[E] Visit Grandpa / Go Home" if earnings.grandpa.visit_available() else "[E] Go Home") + "\n" + earnings.health_status()
 			if phase == "cleanup": return "Finish closing chores to end the day"
 			return earnings.health_status()
@@ -878,7 +900,10 @@ func interact(node: Node) -> void:
 		"pie":
 			if phase == "cleanup": restock.deliver()
 			else: pickup_item(str(node.get_meta("item")), node)
-		"donut": pickup_item(str(node.get_meta("item", "Glazed donut")))
+		"burger_grill", "burger_prep", "burger_raw": burger_station.use(action)
+		"open_sign": open_sign.use()
+		"donut_fryer": donut_fryer.use(node)
+		"donut": donut_fryer.use_case(str(node.get_meta("item", "Glazed donut")))
 		"tray":
 			if not carried_item.is_empty(): place_carried()
 			elif not tray.is_empty() and not has_empty_cup():
@@ -927,7 +952,7 @@ func interact(node: Node) -> void:
 		"clock":
 			if phase == "prep":
 				var demo = preload("res://playable_demo.gd").session(self)
-				if demo == null or demo.tutorial_state == "done": start_shift()
+				if demo == null or demo.tutorial_state == "done": _message("Finish donut prep, then flip the OPEN sign in the front window to start the shift.")
 				elif demo.tutorial_state == "welcome": demo.open_tutorial(self)
 				else: _message("Finish the practice order at the serving bell before opening.")
 			elif phase == "closed": hospital_visits.open_departure()
@@ -943,6 +968,9 @@ func is_practicing() -> bool:
 	return phase == "prep" and demo != null and demo.tutorial_state == "practice"
 
 func add_item(item: String, source: Node3D = null) -> bool:
+	if item in ["Raw patty", "Cooked patty"]:
+		_message("Cook the patty and assemble it in a bun at the kitchen prep tray before serving.")
+		return false
 	if item == "Pistol": return false
 	if item.ends_with("pie") and (not is_instance_valid(source) or source.get_meta("bake_quality", "raw") == "raw"):
 		_message("Bake the pie in the kitchen oven before putting it on the serving tray.")
@@ -1080,6 +1108,7 @@ func _set_pickup_visible(node: Node3D, shown: bool) -> void:
 		body.collision_layer = 1 if shown else 0
 
 func _reset_stock() -> void:
+	if is_instance_valid(burger_station): burger_station.reset()
 	if is_instance_valid(restock): restock.reset()
 	if is_instance_valid(oven): oven.reset_oven()
 	if is_instance_valid(coffee_station): coffee_station.reset_station()
@@ -1115,6 +1144,11 @@ func _item_model(parent: Node3D, item: String, at: Vector3, size: float, source:
 		pass
 	elif item == "Table trash":
 		dine_in.trash_visual(holder)
+	elif item == "Burger":
+		preload("res://burger_station.gd").model(holder)
+	elif item in ["Raw patty", "Cooked patty"]:
+		var patty = load("res://assets/burger/burger_patty_" + ("raw" if item == "Raw patty" else "cooked") + ".glb").instantiate()
+		holder.add_child(patty)
 	elif item.ends_with(" stock"):
 		_box(holder, Vector3(0, 0.08, 0), Vector3(0.45, 0.16, 0.35), Color(0.5, 0.39, 0.24))
 		var pie = preload("res://assets/pies/pie_ps2.glb").instantiate()

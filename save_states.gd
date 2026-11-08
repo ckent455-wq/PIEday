@@ -63,6 +63,8 @@ static func capture(scene: Node) -> Dictionary:
 		return data
 	var shift = scene.shift
 	data["shift"] = properties(shift,SHIFT_FIELDS)
+	data["donuts"] = shift.donut_fryer.snapshot()
+	data["burger"] = shift.burger_station.snapshot()
 	data["dine_in"] = shift.dine_in.snapshot()
 	data["corpses"] = shift.corpses.snapshot()
 	data["pies"] = []
@@ -152,6 +154,8 @@ static func restore(scene: Node, data: Dictionary) -> void:
 	if not data.shift.tasks.has("tables"): data.shift.tasks["tables"] = true
 	if not data.shift.tasks.has("bodies"): data.shift.tasks["bodies"] = true
 	apply(shift,data.shift,SHIFT_FIELDS)
+	shift.donut_fryer.restore(data.get("donuts", {}))
+	shift.burger_station.restore(data.get("burger", {}))
 	for i in mini(data.pies.size(),shift.all_pies.size()):
 		var pie = shift.all_pies[i]
 		pie.set_meta("bake_quality",data.pies[i].quality)

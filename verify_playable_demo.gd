@@ -71,7 +71,8 @@ func run() -> void:
 	assert(demo.tutorial_state == "done" and shift.tray.is_empty())
 	assert(apple.get_meta("bake_quality") == "raw" and shift.soda_station.cups_left == 10)
 	assert(demo.wallet.cash == 0 and shift.phase == "prep")
-	shift.interact(clipboard)
+	shift.donut_fryer.stock = [6,6,6]
+	shift.interact(shift.open_sign)
 	assert(shift.phase == "arriving")
 	shift._spawn_customer()
 	assert(shift.order == ["Glazed donut", "Coffee"])

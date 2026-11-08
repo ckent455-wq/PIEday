@@ -26,10 +26,12 @@ func _ready() -> void:
 		return
 	var diner = get_node_or_null("DinerLayout")
 	if diner == null:
-		diner = load("res://assets/DINER/Models/DINER.dae").instantiate()
+		diner = load("res://diner_layout.tscn").instantiate()
 		add_child(diner)
-	preload("res://cooler.gd").install(diner)
-	preload("res://service_yard.gd").install(diner)
+	if not diner.get_meta("static_layout_ready", false):
+		preload("res://cooler.gd").install(diner)
+		preload("res://service_yard.gd").install(diner)
+		preload("res://kitchen_prep_counter.gd").install(diner)
 	var bounds := AABB()
 	var first := true
 	for node in diner.find_children("*", "MeshInstance3D", true, false):

@@ -3,10 +3,12 @@ extends Node3D
 const TYPES = preload("res://donut_types.gd")
 const READY := 5.0
 const BURNT := 10.0
+const SHELF_CAPACITY := 8
 var shift: Node
 var stock := [0, 0, 0]
 var batches: Array[Dictionary] = []
 var effect_time := 0.0
+var missing_slots: Array[String] = []
 
 func setup(owner_shift: Node) -> void:
 	shift = owner_shift
@@ -66,7 +68,7 @@ func setup(owner_shift: Node) -> void:
 		sizzle.max_distance = 12.0
 		add_child(sizzle)
 		sizzle.global_position = Vector3(box.get_center().x, box.end.y - 0.25, box.get_center().z)
-		batches.append({"state": "empty", "elapsed": 0.0, "holder": holder, "baskets": baskets, "lower": 0.0, "oil": oil_pans, "audio": sizzle})
+		batches.append({"state": "empty", "elapsed": 0.0, "remaining":6, "holder": holder, "baskets": baskets, "lower": 0.0, "oil": oil_pans, "audio": sizzle})
 	reset()
 
 func _make_oil(bounds: AABB) -> Node3D:
@@ -105,9 +107,11 @@ func _make_oil(bounds: AABB) -> Node3D:
 
 func reset() -> void:
 	stock = [0, 0, 0]
+	missing_slots.clear()
 	for batch in batches:
 		batch.state = "empty"
 		batch.elapsed = 0.0
+		batch.remaining = 6
 	refresh()
 
 func tick(delta: float) -> void:
@@ -149,7 +153,9 @@ func use(node: Node) -> void:
 	if batch.state in ["empty", "raw"]:
 		var fresh: bool = batch.state == "empty"
 		batch.state = "frying"
-		if fresh: batch.elapsed = 0.0
+		if fresh:
+			batch.elapsed = 0.0
+			batch.remaining = 6
 		shift._message("Donuts frying! Lift the basket after 5 seconds, before 10 seconds.")
 	elif batch.state == "frying":
 		if batch.elapsed < READY:
@@ -164,15 +170,27 @@ func use(node: Node) -> void:
 	else: shift._message("Finish this batch at the donut case before frying more.")
 	refresh()
 
-func use_case(flavor: String) -> void:
+func use_case(flavor: String, aimed: Node = null) -> void:
 	var index: int = TYPES.TYPES.find(flavor)
 	if index < 0: return
 	for batch in batches:
 		if batch.state == "ready":
-			stock[index] += 6
-			batch.state = "empty"
+			if stock[index] >= SHELF_CAPACITY:
+				if shift.phase == "prep":
+					shift._message("That shelf is full. Aim at another flavor to stock the remaining donuts.")
+					return
+				continue
+			var added := mini(int(batch.remaining),SHELF_CAPACITY-stock[index])
+			var restored := added
+			for mesh in shift.game.find_children("Donus*","MeshInstance3D",true,false):
+				if restored > 0 and mesh.get_meta("item","") == flavor and str(mesh.name) in missing_slots:
+					missing_slots.erase(str(mesh.name))
+					restored -= 1
+			stock[index] += added
+			batch.remaining -= added
+			if batch.remaining == 0: batch.state = "empty"
 			refresh()
-			shift._message("Iced and stocked 6 %ss. %s" % [flavor.to_lower(), "All flavors ready — flip the OPEN sign in the front window!" if prepared() and shift.phase == "prep" else "Prepare the other flavors or refill during service."])
+			shift._message("Stocked %d %ss (%d/8). %s" % [added,flavor.to_lower(),stock[index], "%d donuts remain in the basket — choose another shelf." % batch.remaining if batch.remaining > 0 else "All flavors ready — flip the OPEN sign in the front window!" if prepared() and shift.phase == "prep" else "Batch finished. Fry more whenever you need them."])
 			return
 	if shift.is_practicing():
 		shift.pickup_item(flavor)
@@ -180,9 +198,24 @@ func use_case(flavor: String) -> void:
 	if stock[index] <= 0:
 		shift._message("No %ss left. Fry a batch in the kitchen first." % flavor.to_lower())
 		return
-	if shift.pickup_item(flavor):
+	var source: Node3D
+	for mesh in shift.game.find_children("Donus*","MeshInstance3D",true,false):
+		if mesh.visible and mesh.get_meta("item","") == flavor:
+			source = mesh
+			if mesh == aimed: break
+	if source == null: return
+	if shift.pickup_item(flavor, source):
+		missing_slots.append(str(source.name))
 		stock[index] -= 1
 		refresh()
+
+func return_item(source: Node3D) -> void:
+	if not is_instance_valid(source) or str(source.name) not in missing_slots: return
+	var index: int = TYPES.TYPES.find(str(source.get_meta("item","")))
+	if index < 0: return
+	missing_slots.erase(str(source.name))
+	stock[index] += 1
+	refresh()
 
 func refresh() -> void:
 	for batch in batches:
@@ -192,21 +225,25 @@ func refresh() -> void:
 		batch.holder.visible = batch.state != "empty"
 		batch.holder.position.y = float(batch.holder.get_meta("base_y")) - float(batch.lower)
 		for ring in batch.holder.get_children():
+			ring.visible = ring.get_index() < int(batch.remaining)
 			ring.material_override.albedo_color = Color(0.13, 0.055, 0.02) if batch.elapsed >= BURNT else Color(0.72, 0.38, 0.10) if batch.elapsed >= READY else Color(0.87, 0.73, 0.49)
 	var counts := [0, 0, 0]
 	for mesh in shift.game.find_children("Donus*", "MeshInstance3D", true, false):
 		var index: int = TYPES.TYPES.find(str(mesh.get_meta("item", "")))
 		if index < 0: continue
-		mesh.visible = counts[index] < stock[index]
-		counts[index] += 1
+		var shown: bool = str(mesh.name) not in missing_slots and counts[index] < stock[index]
+		shift._set_pickup_visible(mesh, shown)
+		if shown: counts[index] += 1
 
 func snapshot() -> Dictionary:
-	return {"stock": stock.duplicate(), "batches": batches.map(func(batch): return [batch.state, batch.elapsed])}
+	return {"stock": stock.duplicate(), "missing_slots":missing_slots.duplicate(), "batches": batches.map(func(batch): return [batch.state, batch.elapsed, batch.remaining])}
 
 func restore(data: Dictionary) -> void:
 	if data.is_empty(): return
 	stock.assign(data.stock)
+	missing_slots.assign(data.get("missing_slots",[]))
 	for i in mini(batches.size(), data.batches.size()):
 		batches[i].state = data.batches[i][0]
 		batches[i].elapsed = data.batches[i][1]
+		batches[i].remaining = int(data.batches[i][2]) if data.batches[i].size() > 2 else 6
 	refresh()

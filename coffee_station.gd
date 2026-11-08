@@ -45,7 +45,7 @@ func setup(host: Node3D) -> void:
 	stack.set_meta("action", stack_action)
 	add_child(stack)
 	stack.position = stack_offset
-	_collision(stack, Vector3(0.95, 0.32, 0.40) if built_in_cup_holder else Vector3(0.20, 0.38, 0.20), Vector3.ZERO if built_in_cup_holder else Vector3(0, 0.18, 0))
+	_collision(stack, Vector3(1.70, 0.46, 0.48) if built_in_cup_holder else Vector3(0.20, 0.38, 0.20), Vector3.ZERO if built_in_cup_holder else Vector3(0, 0.18, 0))
 	shift._label(stack, "PULL SODA CUP" if built_in_cup_holder else drink_name.to_upper() + " CUPS", Vector3(0, 0.28, 0.12) if built_in_cup_holder else Vector3(0, 0.50, 0), 0.0015)
 	stack_visual = Node3D.new()
 	stack.add_child(stack_visual)

@@ -35,9 +35,17 @@ static func wallet_for(scene: Node) -> RefCounted:
 	return scene.shift.earnings if scene.scene_file_path == "res://main.tscn" else scene.earnings
 
 static func source_id(shift: Node, source: Node) -> int:
-	return shift.all_pies.find(source) if is_instance_valid(source) else -1
+	if not is_instance_valid(source): return -1
+	var pie_index: int = shift.all_pies.find(source)
+	if pie_index >= 0: return pie_index
+	var donuts = shift.game.find_children("Donus*","MeshInstance3D",true,false)
+	var donut_index: int = donuts.find(source)
+	return 1000 + donut_index if donut_index >= 0 else -1
 
 static func source_node(shift: Node, index: int) -> Node:
+	if index >= 1000:
+		var donuts = shift.game.find_children("Donus*","MeshInstance3D",true,false)
+		return donuts[index-1000] if index-1000 < donuts.size() else null
 	return shift.all_pies[index] if index >= 0 and index < shift.all_pies.size() else null
 
 static func actor_data(actor: Node3D) -> Dictionary:

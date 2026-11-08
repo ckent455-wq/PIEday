@@ -55,7 +55,7 @@ var service_seconds := 0.0
 var payment_label: Label
 var payment_time := 0.0
 var cash_label: Label
-const SHIFT_SECONDS := 180.0
+const SHIFT_SECONDS := 300.0
 var shift_remaining := SHIFT_SECONDS
 var closing_time := false
 var shift_clock: Label
@@ -852,8 +852,12 @@ func action_prompt(node: Node) -> String:
 		"burger_grill", "burger_prep", "burger_raw": return burger_station.prompt(action)
 		"open_sign": return open_sign.prompt()
 		"donut_fryer": return donut_fryer.prompt(node)
-		"donut" when donut_fryer.batches.any(func(batch): return batch.state == "ready"): return "[E] Ice and stock 6 " + str(node.get_meta("item", "Glazed donut")) + "s"
-		"donut": return "[Click / E] Grab " + str(node.get_meta("item", "Glazed donut")) if carried_item.is_empty() and not has_empty_cup() else "Hands full - place or return your item first"
+		"donut" when donut_fryer.batches.any(func(batch): return batch.state == "ready") and donut_fryer.stock[DONUTS.TYPES.find(str(node.get_meta("item", "Glazed donut")))] < donut_fryer.SHELF_CAPACITY: return "[E] Ice and stock " + str(node.get_meta("item", "Glazed donut")) + "s — fill available spaces"
+		"donut":
+			var flavor: String = str(node.get_meta("item", "Glazed donut"))
+			var left: int = donut_fryer.stock[DONUTS.TYPES.find(flavor)]
+			if not is_practicing() and left <= 0: return flavor + " sold out — fry another batch"
+			return "[Click / E] Grab " + flavor + (" (%d left)" % left if not is_practicing() else "") if carried_item.is_empty() and not has_empty_cup() else "Hands full - place or return your item first"
 		"tray": return "[Click / E] Place " + carried_item + " on tray" if not carried_item.is_empty() else "[Click / E] Take last item off tray" if not tray.is_empty() else "Serving tray - bring the customer's items here"
 		"coffee", "cup_stack": return coffee_station.prompt(action)
 		"soda": return soda_station.flavor_prompt(str(node.get_meta("flavor", "Cola")))
@@ -903,7 +907,7 @@ func interact(node: Node) -> void:
 		"burger_grill", "burger_prep", "burger_raw": burger_station.use(action)
 		"open_sign": open_sign.use()
 		"donut_fryer": donut_fryer.use(node)
-		"donut": donut_fryer.use_case(str(node.get_meta("item", "Glazed donut")))
+		"donut": donut_fryer.use_case(str(node.get_meta("item", "Glazed donut")), node)
 		"tray":
 			if not carried_item.is_empty(): place_carried()
 			elif not tray.is_empty() and not has_empty_cup():
@@ -1004,7 +1008,9 @@ func discard_last() -> void:
 	if tray.is_empty(): return
 	var item: String = tray.pop_back()
 	var source: Node3D = tray_sources.pop_back()
-	if is_instance_valid(source): _set_pickup_visible(source, true)
+	if is_instance_valid(source):
+		donut_fryer.return_item(source)
+		_set_pickup_visible(source, true)
 	_refresh_tray()
 	_message("Removed " + item + " from tray.")
 
@@ -1084,7 +1090,9 @@ func _clear_tray(restore: bool) -> void:
 	_clear_carried(restore)
 	if restore:
 		for source in tray_sources:
-			if is_instance_valid(source): _set_pickup_visible(source, true)
+			if is_instance_valid(source):
+				donut_fryer.return_item(source)
+				_set_pickup_visible(source, true)
 	tray.clear()
 	tray_sources.clear()
 	if is_instance_valid(held_tray): _refresh_tray()
@@ -1252,7 +1260,9 @@ func place_carried() -> bool:
 func _clear_carried(restore: bool) -> void:
 	if is_instance_valid(corpses) and is_instance_valid(corpses.carried_body): corpses.drop()
 	if restore and carried_item == "Table trash" and is_instance_valid(dine_in): dine_in.return_trash()
-	if restore and is_instance_valid(carried_source): _set_pickup_visible(carried_source, true)
+	if restore and is_instance_valid(carried_source):
+		donut_fryer.return_item(carried_source)
+		_set_pickup_visible(carried_source, true)
 	carried_item = ""
 	carried_source = null
 	_refresh_carried()

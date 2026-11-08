@@ -1,6 +1,6 @@
 # PIEday
 
-Current version: **0.12.0**. Includes two-player online campaign play, randomized campaign orders, and updated rewards. The campaign includes a kitchen pistol for clothing-required encounters,
+Current version: **0.12.1**. Includes two-player online campaign play, randomized campaign orders, and updated rewards. The campaign includes a kitchen pistol for clothing-required encounters,
 jointed customer ragdolls, and a closing chore to pick up bodies and carry them
 to the dumpster. Includes the full campaign, hospital visits, save/load, donut
 and soda varieties, music, and closing scares.
@@ -19,7 +19,7 @@ previous one leaves. At closing, queued customers walk out. You can finish an
 already accepted order before nighttime cleanup; customers whose orders were not
 taken leave without a penalty.
 
-Before opening, fry and stock all three donut flavors, then switch the neon OPEN sign on in the front window. Burgers use the flat top: three seconds per side, E to flip, then assemble at the bun tray. Raw patties and buns have separate trays. Both co-op PCs must run v0.12.0.
+Before opening, fry and stock all three donut flavors, then switch the neon OPEN sign on in the front window. Burgers use the flat top: three seconds per side, E to flip, then assemble at the bun tray. Raw patties and buns have separate trays. Both co-op PCs must run v0.12.1.
 
 ## Play the Windows release
 

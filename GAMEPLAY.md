@@ -75,14 +75,14 @@ restart the clock. A brief payment message shows order income, tip, and cash.
 The closing summary shows sales, tips and total earnings. Cash saves locally
 between sessions; daily sales and tips reset when opening the next shift.
 
-Each correct order also earns a clearly labeled $145 service reward. Consecutive
+Each correct order also earns a clearly labeled $80 service reward. Consecutive
 correct orders add a streak bonus: $0, $5, $10, then $15 per order. A mistake
 resets the streak but never deducts cash. Completing all closing chores after
-at least one correct order earns $275 once per day. Empty days earn no bonus.
+at least one correct order earns $300 once per day. Empty days earn no bonus.
 At 6–10 fast, correct orders per shift, simulated earnings reach the $15,000 goal
 in about 8–12 shifts.
 
-Opening duties are frying and stocking the three donut flavors, then switching on the neon OPEN sign in the front window. Service lasts three minutes. At closing,
+Opening duties are frying and stocking the three donut flavors, then switching on the neon OPEN sign in the front window. Service lasts five minutes. At closing,
 waiting customers leave and new arrivals stop. If you already took the current
 customer's order, you can finish it, with the HUD showing CLOSED · LAST ORDER.
 Serving it (correctly or incorrectly) starts closing chores. If no order was
@@ -208,3 +208,7 @@ If bodies remain at closing, the checklist includes body disposal. With empty ha
 At either kitchen fryer, press E to lower six raw dough rings. Lift with E after 5 seconds and before 10 seconds. Aim at a flavor in the donut case to ice and stock six donuts. Stock strawberry, chocolate and glazed before switching the neon OPEN sign on. Fry more during service as stock runs low.
 
 Take a raw patty from the raw-meat tray. Put it on the flat top, wait 3 seconds, press E to flip, wait 3 more seconds, then collect it. Take it to the separate bun tray and press E to assemble a Burger. Place the finished burger on the serving tray and ring the bell. Patties burn at 12 seconds total. Raw or unassembled patties cannot be placed on the serving tray.
+
+Five-minute balance: correct orders earn $80 service pay plus menu prices, optional tips and capped streak rewards. Closing pays $300 after at least one correct order. About 9–16 correct orders per shift targets the $15,000 goal in roughly 8–12 shifts. Preparation, dialogue and closing chores do not consume service time. Existing savings are retained.
+
+The donut case holds eight of each flavor (24 total). A six-donut batch can top off a partly full shelf; unused donuts remain in the basket and can be iced for another flavor. Picking a donut removes that exact displayed item. Q returns held/tray donuts and restores their stock. Empty shelves require fresh frying.

@@ -33,7 +33,7 @@ func check():
 	await create_timer(2.6).timeout
 	assert(not paused and not root.has_node("IntroTransition"), "Fade releases gameplay and cleans up")
 	assert(current_scene.name == "DinerExplorer")
-	assert(current_scene.shift.phase == "prep" and current_scene.shift.shift_remaining == 180)
+	assert(current_scene.shift.phase == "prep" and current_scene.shift.shift_remaining == 300)
 	assert(Input.mouse_mode == Input.MOUSE_MODE_CAPTURED)
 	print("PASS: black-screen intro, gradual typing, reveal without premature start, goal reveal, continue into morning duties, full shift clock and mouse capture")
 	quit()

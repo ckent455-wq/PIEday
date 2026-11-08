@@ -144,7 +144,7 @@ func run():
 				if actor.get_node("Interaction").get_meta("action") == "dining_customer" and actor.has_meta("network_meal"): return true
 			return false
 		))
-		assert(await wait_for(func(): return shift.phase == "cleanup" and shift.earnings.cash > 145))
+		assert(await wait_for(func(): return shift.phase == "cleanup" and shift.earnings.cash > shift.earnings.SERVICE_REWARD))
 		assert(await wait_for(func(): return session.mirror_bodies.size() == 1))
 		await create_timer(.8).timeout
 		var corpse: Dictionary = session.mirror_bodies.values()[0]

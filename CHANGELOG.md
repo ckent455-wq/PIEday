@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.12.1
+
+- Soda empty-cup pickup covers the full front holder with more vertical tolerance; rays from multiple approach angles are verified without intercepting flavor buttons or filled-cup rays.
+
+- Donut pickups remove the exact case item, stop when a flavor sells out, and preserve depleted slots in saves/co-op. Returning held or tray donuts restores stock; fryer batches refill the case during service.
+
+- The entire donut case can be filled to eight per flavor (24 total). Partial refills keep the unused portion of a six-donut batch for other shelves, including across saves and co-op.
+
+- Service shifts last five minutes, with untimed opening prep and closing chores.
+- Correct-order service reward is $80 and the closing bonus is $300. Menu prices, tips and streak bonuses remain; simulations with 9–16 correct orders per shift reach $15,000 in about 8–12 shifts. Existing savings are unchanged.
+
 ## 0.12.0
 
 - Opening prep uses the existing fryer baskets: fry six donuts, lift between five and ten seconds, then ice and stock strawberry, chocolate and glazed batches. Oil ripples, bubbles and positional sizzling accompany frying.

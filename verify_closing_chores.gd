@@ -50,6 +50,6 @@ func check():
 	assert(morning.shift.phase == "prep" and not morning.get_node("NightInteriorLights").visible)
 	assert(morning.shift.tasks.values().all(func(done): return done))
 	morning.shift.donut_fryer.stock = [6,6,6]
-	assert(morning.shift.start_shift() and morning.shift.shift_remaining == 180)
+	assert(morning.shift.start_shift() and morning.shift.shift_remaining == 300)
 	print("PASS: immediate nighttime cleanup, board cannot skip chores, trash disposal, summary after chores, daylight next day")
 	quit()

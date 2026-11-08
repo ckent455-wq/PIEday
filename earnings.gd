@@ -3,8 +3,8 @@ extends RefCounted
 const PRICES := {"Burger": 8, "Meat pie": 8, "Apple pie": 6, "Cherry pie": 6, "Donut": 2, "Strawberry donut": 2, "Chocolate donut": 2, "Glazed donut": 2, "Coffee": 3, "Soda": 2, "Cola": 2, "Lemon Fizz": 2, "Dr. Paw Paw": 2}
 const SAVE_PATH := "user://earnings.cfg"
 const TREATMENT_GOAL := 15000
-const SERVICE_REWARD := 145
-const CLOSING_BONUS := 275
+const SERVICE_REWARD := 80
+const CLOSING_BONUS := 300
 var cash := 0
 var sales := 0
 var tips := 0

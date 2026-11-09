@@ -7,7 +7,18 @@ const FRIES := preload("res://fries.gd")
 const PIE_NAMES := ["Meat pie", "Apple pie", "Cherry pie"]
 const SHIRT_COLORS := [Color(0.12,0.32,0.42), Color(0.48,0.12,0.10), Color(0.18,0.35,0.17), Color(0.48,0.32,0.10), Color(0.32,0.18,0.40), Color(0.60,0.53,0.39), Color(0.21,0.22,0.25), Color(0.57,0.30,0.23)]
 var last_shirt_color := -1
-const ORDERS := [["Meat pie", "Strawberry donut", "Coffee"], ["Apple pie", "Lemon Fizz"], ["Cherry pie", "Chocolate donut", "Coffee"], ["Apple pie", "Glazed donut", "Coffee"], ["Meat pie", "Cola"], ["Cherry pie", "Dr. Paw Paw"], ["Burger", "Cola"], ["Cheeseburger", "Lemon Fizz"], ["Deluxe burger", "Coffee"], ["Burger", FRIES.SERVING, "Cola"], ["Deluxe burger", FRIES.SERVING]]
+const FIRST_BURGER_ORDER := 6
+const BURGER_ORDER_CHANCE := 0.45
+const ORDERS := [
+	["Meat pie", "Strawberry donut", "Coffee"], ["Apple pie", "Lemon Fizz"],
+	["Cherry pie", "Chocolate donut", "Coffee"], ["Apple pie", "Glazed donut", "Coffee"],
+	["Meat pie", "Cola"], ["Cherry pie", "Dr. Paw Paw"],
+	["Burger", FRIES.SERVING], ["Cheeseburger", FRIES.SERVING, "Lemon Fizz"],
+	["Deluxe burger", FRIES.SERVING, "Coffee"], ["Burger", FRIES.SERVING, "Cola"],
+	["Deluxe burger", FRIES.SERVING], ["Lettuce burger", FRIES.SERVING],
+	["Cheese and lettuce burger", FRIES.SERVING], ["Tomato burger", FRIES.SERVING],
+	["Cheese and tomato burger", FRIES.SERVING], ["Lettuce and tomato burger", FRIES.SERVING],
+]
 var game: Node3D
 var phase := "prep"
 var tasks := {"bathroom": false, "kitchen": false, "trash": false, "restock": false, "tables": false}
@@ -30,6 +41,7 @@ var lost := 0
 var order_index := 0
 var randomize_orders := true
 var last_recipe_index := -1
+var fries_order_offered := false
 var arrival_delay := 0.0
 var animation_time := 0.0
 var notice: Label
@@ -719,6 +731,7 @@ func start_shift(use_random_orders := true) -> bool:
 	rush_order = false
 	randomize_orders = use_random_orders
 	last_recipe_index = -1
+	fries_order_offered = false
 	closing_time = false
 	shift_remaining = SHIFT_SECONDS
 	_update_shift_clock()
@@ -743,11 +756,7 @@ func _spawn_customer() -> void:
 		if preload("res://playable_demo.gd").session(self) != null:
 			order.assign(demo_orders[order_index % demo_orders.size()])
 		elif randomize_orders:
-			var recipe_index := randi_range(0, ORDERS.size() - 1 - int(last_recipe_index >= 0))
-			if last_recipe_index >= 0 and recipe_index >= last_recipe_index: recipe_index += 1
-			last_recipe_index = recipe_index
-			order.assign(ORDERS[recipe_index])
-			_add_bottle_order()
+			_pick_random_order()
 		else:
 			order.assign(ORDERS[order_index % ORDERS.size()])
 	_bind_customer_actor(customer)
@@ -757,11 +766,24 @@ func _spawn_customer() -> void:
 	else:
 		_set_route([Vector3(0.76,-0.094,0.2),Vector3(-2.4,-0.094,-3.6)])
 
-func _add_bottle_order() -> void:
+func _pick_random_order() -> void:
+	var fries_due := not fries_order_offered and order_index >= 2
+	var burger_order := fries_due or randf() < BURGER_ORDER_CHANCE
+	var first_recipe := FIRST_BURGER_ORDER if burger_order else 0
+	var recipe_end := ORDERS.size() if burger_order else FIRST_BURGER_ORDER
+	var skip_previous := last_recipe_index >= first_recipe and last_recipe_index < recipe_end
+	var recipe_index := randi_range(first_recipe, recipe_end - 1 - int(skip_previous))
+	if skip_previous and recipe_index >= last_recipe_index: recipe_index += 1
+	last_recipe_index = recipe_index
+	order.assign(ORDERS[recipe_index])
+	_add_bottle_order(not fries_due)
+	fries_order_offered = fries_order_offered or order.has(FRIES.SERVING)
+
+func _add_bottle_order(allow_bottle_only := true) -> void:
 	if randi_range(1, 8) != 1: return
 	var stocked: Array[String] = bottle_cooler.available_items()
 	if stocked.is_empty(): return
-	if randi_range(1, 4) == 1:
+	if allow_bottle_only and randi_range(1, 4) == 1:
 		order.clear()
 	else:
 		order.assign(order.filter(func(item): return item != "Coffee" and item not in soda_station.FLAVORS))

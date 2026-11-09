@@ -61,15 +61,18 @@ func run():
 		assert(shift.corpses.bodies.size() == 1 and session.guest_item.is_empty())
 		shift.customer_line.nude_chance = 0.0
 		shift.dine_in.mess_chance = 0.0
-		assert(shift.start_shift(false))
+		shift.donut_fryer.stock = [6, 6, 6]
+		assert(shift.start_shift())
+		shift.order_index = 2
 		assert(shift.corpses.bodies.is_empty())
 		assert(await wait_for(func(): return shift.phase == "waiting"))
-		shift.order.assign(["Glazed donut", "Coffee"])
+		assert(has_burger_and_fries())
 		shift.shift_remaining = shift.RUSH_START + 0.05
 		var cola: Node3D = front_cola()
 		game._set_door_open(cola.get_meta("cooler_door"), true)
 		assert(await wait_for(func(): return session.guest_source == cola and not cola.visible))
 		assert(await wait_for(func(): return session.guest_item.is_empty() and cola.visible))
+		shift.order.assign(["Glazed donut", "Coffee"])
 		shift.interact(shift.customer.get_node("Interaction"))
 		assert(shift.dialogue.is_open and paused)
 		assert(await wait_for(func(): return not shift.dialogue.is_open))
@@ -150,7 +153,7 @@ func run():
 		assert(await wait_for(func(): return shift.carried_item == "Pistol"))
 		var customer_center: Vector3 = shift.customer.global_position + Vector3.UP * 1.4
 		await aim_at(customer_center, Vector3(-2.4, -0.09, -5.55), "customer")
-		assert(await wait_for(func(): return shift.phase == "waiting" and shift.order.has("Glazed donut") and shift.order.has("Coffee")))
+		assert(await wait_for(func(): return shift.phase == "waiting" and has_burger_and_fries()))
 		assert(is_instance_valid(shift.customer))
 		var cola: Node3D = front_cola()
 		assert(await wait_for(func(): return shift.rush_active() and cola.get_meta("cooler_door").get_meta("open")))
@@ -239,6 +242,9 @@ func front_cola() -> Node3D:
 	var colas: Array = shift.bottle_cooler.bottles.filter(func(bottle): return bottle.get_meta("item") == "2-liter Cola")
 	colas.sort_custom(func(a, b): return a.position.z > b.position.z)
 	return colas[0]
+
+func has_burger_and_fries() -> bool:
+	return shift.order.has(shift.FRIES.SERVING) and shift.order.any(func(item): return item in shift.BURGER_STATION.BURGERS)
 
 func coordinate() -> void:
 	var folder := ProjectSettings.globalize_path("res://.godot/verification")

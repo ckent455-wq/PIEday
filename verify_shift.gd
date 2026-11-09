@@ -81,11 +81,24 @@ func run_checks() -> void:
 	shift.donut_fryer.stock = [6,6,6]
 	assert(shift.start_shift())
 	shift.customer_line.nude_chance = 0.0
-	var previous: Array = []
+	var previous := -1
 	for i in range(12):
 		shift._spawn_customer()
-		assert(shift.order in shift.ORDERS and shift.order != previous, "Campaign draws valid orders without consecutive repeats")
-		previous = shift.order.duplicate()
+		assert(shift.last_recipe_index != previous, "Campaign avoids consecutive recipe repeats")
+		previous = shift.last_recipe_index
+		if shift.order.any(func(item): return item in shift.BURGER_STATION.BURGERS):
+			assert(shift.order.has(shift.FRIES.SERVING), "Every burger comes with fries")
 		shift._reset_customer()
+		shift.order_index += 1
+	for burger in shift.BURGER_STATION.BURGERS:
+		assert(shift.ORDERS.any(func(recipe): return burger in recipe and shift.FRIES.SERVING in recipe))
+	seed(130)
+	for day in 200:
+		shift.fries_order_offered = false
+		shift.last_recipe_index = -1
+		for index in 3:
+			shift.order_index = index
+			shift._pick_random_order()
+		assert(shift.fries_order_offered, "Fries appear within the first three food orders")
 	print("PASS: daily task gate, trash disposal, customer arrival, humanoid animation, counter interaction, pickup/return, correct order, angry wrong order, and next customer")
 	quit()

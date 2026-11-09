@@ -48,13 +48,22 @@ func check():
  assert(shift.carried_item == "Cooked patty", "Raw tray must not assemble cooked food")
  station.use("burger_prep")
  assert(shift.carried_item == "Burger")
- assert(shift.place_carried() and shift.tray == ["Burger"])
+ for topping in ["Cheese", "Tomato", "Lettuce"]:
+  var bin = station.get_node(topping + "Bin")
+  var origin = Vector3(4.5, 2.0, bin.global_position.z)
+  assert(game.interaction_at(origin, origin.direction_to(bin.global_position)).action == bin)
+  shift.interact(bin)
+  var dressed = shift.carried_item
+  shift.interact(bin)
+  assert(shift.carried_item == dressed, "A topping cannot be added twice")
+ assert(shift.carried_item == "Deluxe burger")
+ assert(shift.place_carried() and shift.tray == ["Deluxe burger"])
  shift.customer_line.nude_chance = 0
  shift._spawn_customer()
  shift.phase = "waiting"
- shift.order.assign(["Burger"])
+ shift.order.assign(["Deluxe burger"])
  shift.order_taken = true
- assert(shift.serve_order() and shift.earnings.sales == 8,"Correct burger order pays")
+ assert(shift.serve_order() and shift.earnings.sales == 10,"Correct burger order pays")
  shift.phase = "arriving"
  station.use("burger_raw")
  station.use("burger_grill")
@@ -63,5 +72,5 @@ func check():
  station.use("burger_grill")
  assert(not station.cooking and shift.carried_item.is_empty())
  assert(preload("res://shift.gd").ORDERS.any(func(order):return "Burger" in order))
- print("PASS: physical flat top and prep targeting, raw pickup, two-sided cook, assembly, serving/payment, burning, state restoration and burger orders")
+ print("PASS: physical flat top and prep targeting, raw pickup, two-sided cook, assembly, physical topping bins, deluxe serving/payment, burning, state restoration and burger orders")
  quit()

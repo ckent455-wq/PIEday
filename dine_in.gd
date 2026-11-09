@@ -50,6 +50,7 @@ func setup(host: Node3D) -> void:
 
 func try_seat(actor: Node3D, items: Array, force := false) -> bool:
 	if shift.closing_time or actor.get_meta("requires_refusal",false): return false
+	if items.any(func(item): return item in shift.BOTTLE_COOLER.ITEMS): return false
 	if not force and randf() >= dine_chance: return false
 	var free: Array[int] = []
 	for i in tables.size():

@@ -2,6 +2,13 @@ extends Node3D
 
 const SIDE_SECONDS := 3.0
 const BURNS_AT := 12.0
+const LETTUCE_LEAF := preload("res://assets/burger/lettuce_leaf.glb")
+const TOMATO_SLICE := preload("res://assets/burger/tomato_slice.glb")
+const CHEESE_SLICE := preload("res://assets/burger/cheese_slice.glb")
+const CHEESE_DRAPED := preload("res://assets/burger/cheese_draped.glb")
+const TOPPINGS := ["Cheese", "Lettuce", "Tomato"]
+# Each topping has one bit, so ingredients can be added in any order.
+const BURGERS := ["Burger", "Cheeseburger", "Lettuce burger", "Cheese and lettuce burger", "Tomato burger", "Cheese and tomato burger", "Lettuce and tomato burger", "Deluxe burger"]
 var shift: Node
 var cooking := false
 var elapsed := 0.0
@@ -45,6 +52,8 @@ func setup(owner_shift: Node) -> void:
 		var bun_top = preload("res://assets/burger/burger_bun_top.glb").instantiate()
 		bun.add_child(bun_top)
 		bun_top.position.y = 0.018
+	_setup_toppings()
+	_setup_prep_sheet()
 	visual = Node3D.new()
 	grill.add_child(visual)
 	visual.position.y = 0.012
@@ -73,6 +82,81 @@ func _target(action: String, at: Vector3, size: Vector3) -> StaticBody3D:
 	body.add_child(collider)
 	return body
 
+func _setup_toppings() -> void:
+	for index in range(TOPPINGS.size()):
+		var bin := _target("burger_topping", Vector3(5.86, 1.26, -9.34 + (index - 1) * 0.59), Vector3(0.48, 0.19, 0.44))
+		bin.name = TOPPINGS[index] + "Bin"
+		bin.set_meta("topping_index", index)
+		shift._box(bin, Vector3(0, -0.065, 0), Vector3(0.47, 0.03, 0.43), Color(0.48, 0.51, 0.53))
+		for x in [-0.23, 0.23]:
+			shift._box(bin, Vector3(x, -0.04, 0), Vector3(0.015, 0.05, 0.43), Color(0.48, 0.51, 0.53))
+		for z in [-0.21, 0.21]:
+			shift._box(bin, Vector3(0, -0.04, z), Vector3(0.47, 0.05, 0.015), Color(0.48, 0.51, 0.53))
+		if index == 0:
+			for stack in [-1, 1]:
+				for i in range(3):
+					var cheese := _topping_mesh(bin, index, Vector3(i * 0.024 - 0.024, -0.048 + i * 0.0035, stack * 0.10 + i * 0.016))
+					cheese.rotation.y = stack * 0.16 + i * 0.14
+			continue
+		if index == 1:
+			for i in range(3):
+				var leaf := _topping_mesh(bin, index, Vector3((i - 1) * 0.115, -0.038 + i * 0.006, (i % 2) * 0.065 - 0.03))
+				leaf.rotation.y = (i - 1) * 0.68
+			continue
+		for row in range(3):
+			for column in range(2):
+				_topping_mesh(bin, index, Vector3((column - 0.5) * 0.16, -0.044 + row * 0.005, (row - 1) * 0.105))
+
+func _setup_prep_sheet() -> void:
+	var sheet := Node3D.new()
+	sheet.name = "BurgerPrepSheet"
+	add_child(sheet)
+	sheet.global_position = Vector3(6.555, 1.88, -9.34)
+	sheet.rotation.y = -PI / 2
+	shift._box(sheet, Vector3.ZERO, Vector3(1.38, 0.68, 0.012), Color("eee2bc"))
+	shift._box(sheet, Vector3(0, 0.227, 0.007), Vector3(1.38, 0.14, 0.002), Color("71382d"))
+	_prep_sheet_label(sheet, "BURGER PREP", 0.228, 0.0020, Color("fff2ce"))
+	_prep_sheet_label(sheet, "BURGER", 0.112, 0.0014, Color("40231c"))
+	_prep_sheet_label(sheet, "Patty + bun", 0.055, 0.00125, Color("27261f"))
+	_prep_sheet_label(sheet, "CHEESEBURGER", -0.023, 0.0014, Color("40231c"))
+	_prep_sheet_label(sheet, "Patty + bun + cheese", -0.080, 0.00125, Color("27261f"))
+	_prep_sheet_label(sheet, "DELUXE BURGER", -0.158, 0.0014, Color("40231c"))
+	_prep_sheet_label(sheet, "Patty + bun + cheese + lettuce + tomato", -0.215, 0.00125, Color("27261f"))
+
+func _prep_sheet_label(sheet: Node3D, caption: String, y: float, pixel: float, ink: Color) -> void:
+	var label: Label3D = shift._label(sheet, caption, Vector3(0, y, 0.010), pixel)
+	label.billboard = BaseMaterial3D.BILLBOARD_DISABLED
+	label.outline_size = 0
+	label.modulate = ink
+
+func topping_prompt(index: int) -> String:
+	var mask := BURGERS.find(shift.carried_item)
+	if mask < 0: return TOPPINGS[index] + " — bring an assembled burger"
+	if mask & (1 << index): return TOPPINGS[index] + " already added"
+	return "[E] Add " + TOPPINGS[index].to_lower()
+
+func add_topping(index: int) -> void:
+	var mask := BURGERS.find(shift.carried_item)
+	if mask < 0:
+		shift._message("Assemble a cooked patty and bun before adding toppings.")
+		return
+	var dressed := mask | (1 << index)
+	if dressed == mask: return
+	shift.carried_item = BURGERS[dressed]
+	shift._refresh_carried()
+	shift._message("Added " + TOPPINGS[index].to_lower() + " · " + shift.carried_item)
+
+static func _topping_mesh(parent: Node3D, index: int, at: Vector3, on_burger := false) -> Node3D:
+	var scene: PackedScene
+	match index:
+		0: scene = CHEESE_DRAPED if on_burger else CHEESE_SLICE
+		1: scene = LETTUCE_LEAF
+		2: scene = TOMATO_SLICE
+	var topping := scene.instantiate() as Node3D
+	parent.add_child(topping)
+	topping.position = at
+	return topping
+
 func quality() -> String:
 	if elapsed >= BURNS_AT: return "burnt"
 	if flipped_at >= 0 and elapsed-flipped_at >= SIDE_SECONDS - 0.00001: return "ready"
@@ -99,7 +183,7 @@ func prompt(action: String) -> String:
 	return "Cooking second side — %0.1f / 3s (burns at 12s total)" % (elapsed-flipped_at)
 
 func use(action: String) -> void:
-	if shift.phase not in ["waiting","arriving","leaving"]:
+	if shift.phase not in ["waiting","arriving","leaving"] and not shift.is_practicing():
 		shift._message("Burgers are cooked to order during service. Finish donut prep and switch the OPEN sign on first.")
 		return
 	if action == "burger_raw":
@@ -110,7 +194,7 @@ func use(action: String) -> void:
 		if shift.carried_item == "Cooked patty":
 			shift._clear_carried(false)
 			shift.pickup_item("Burger")
-			shift._message("Burger assembled! Put it on the serving tray.")
+			shift._message("Burger assembled. Dress it to order at the metal table. Deluxe gets cheese, lettuce and tomato.")
 		else: shift._message("This tray is for buns and cooked patties only. Cook raw meat on the flat top first.")
 		return
 	if not cooking:
@@ -173,7 +257,7 @@ func restore(data: Dictionary) -> void:
 	flipped_at = data.flipped_at
 	refresh()
 
-static func model(parent: Node3D) -> void:
+static func model(parent: Node3D, item := "Burger") -> void:
 	var bottom = preload("res://assets/burger/burger_bun_bottom.glb").instantiate()
 	parent.add_child(bottom)
 	var patty = preload("res://assets/burger/burger_patty_cooked.glb").instantiate()
@@ -181,4 +265,11 @@ static func model(parent: Node3D) -> void:
 	patty.position.y = 0.018
 	var top = preload("res://assets/burger/burger_bun_top.glb").instantiate()
 	parent.add_child(top)
-	top.position.y = 0.0405
+	var height := 0.0405
+	var mask := maxi(0, BURGERS.find(item))
+	for index in range(TOPPINGS.size()):
+		if mask & (1 << index):
+			var offset := 0.003 if index == 1 else 0.0
+			_topping_mesh(parent, index, Vector3(0, height + offset, 0), true)
+			height += [0.006, 0.012, 0.010][index]
+	top.position.y = height

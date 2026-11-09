@@ -1,6 +1,6 @@
 extends RefCounted
 
-const PRICES := {"Burger": 8, "Meat pie": 8, "Apple pie": 6, "Cherry pie": 6, "Donut": 2, "Strawberry donut": 2, "Chocolate donut": 2, "Glazed donut": 2, "Coffee": 3, "Soda": 2, "Cola": 2, "Lemon Fizz": 2, "Dr. Paw Paw": 2}
+const PRICES := {"Burger": 8, "Cheeseburger": 9, "Deluxe burger": 10, "Meat pie": 8, "Apple pie": 6, "Cherry pie": 6, "Donut": 2, "Strawberry donut": 2, "Chocolate donut": 2, "Glazed donut": 2, "Coffee": 3, "Soda": 2, "Cola": 2, "Lemon Fizz": 2, "Dr. Paw Paw": 2, "2-liter Cola": 4, "2-liter Lemon Fizz": 4, "2-liter Dr. Paw Paw": 4, "2-liter Orange Soda": 4, "Basket of fries": 3}
 const SAVE_PATH := "user://earnings.cfg"
 const TREATMENT_GOAL := 15000
 const SERVICE_REWARD := 80
@@ -54,7 +54,7 @@ func tip_chance(seconds: float, perfect_pie: bool) -> float:
 	if perfect_pie: chance += 0.15
 	return clampf(chance, 0.0, 0.80)
 
-func payout(items: Array, correct: bool, seconds: float, perfect_pie: bool) -> Dictionary:
+func payout(items: Array, correct: bool, seconds: float, perfect_pie: bool, extra_tip := 0) -> Dictionary:
 	if grandpa.is_dead(): return {"sale":0,"tip":0,"service":0,"streak_bonus":0,"total":0}
 	if not correct:
 		streak = 0
@@ -63,6 +63,7 @@ func payout(items: Array, correct: bool, seconds: float, perfect_pie: bool) -> D
 	for item in items: sale += int(PRICES.get(item, 0))
 	if sale <= 0 or day_completed: return {"sale": 0, "tip": 0, "service": 0, "streak_bonus": 0, "total": 0}
 	var tip := rng.randi_range(3, 8) if rng.randf() < tip_chance(seconds, perfect_pie) else 0
+	tip += extra_tip
 	streak += 1
 	correct_orders += 1
 	var service := SERVICE_REWARD

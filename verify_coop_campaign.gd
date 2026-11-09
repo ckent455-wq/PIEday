@@ -53,11 +53,23 @@ func run():
 	assert(not shift.earnings.save_enabled)
 	if hosting:
 		assert(await wait_for(func(): return session.partner_ready))
+		shift.tutorial.open_tutorial()
+		assert(await wait_for(func(): return shift.is_practicing()))
+		shift.tutorial.practice_order_index = shift.tutorial.FRIES_LESSON
+		assert(await wait_for(func(): return shift.tutorial.tutorial_state == "done", 12.0))
+		assert(shift.phase == "prep" and shift.customers_this_shift == 0)
+		assert(shift.corpses.bodies.size() == 1 and session.guest_item.is_empty())
 		shift.customer_line.nude_chance = 0.0
 		shift.dine_in.mess_chance = 0.0
 		assert(shift.start_shift(false))
+		assert(shift.corpses.bodies.is_empty())
 		assert(await wait_for(func(): return shift.phase == "waiting"))
 		shift.order.assign(["Glazed donut", "Coffee"])
+		shift.shift_remaining = shift.RUSH_START + 0.05
+		var cola: Node3D = front_cola()
+		game._set_door_open(cola.get_meta("cooler_door"), true)
+		assert(await wait_for(func(): return session.guest_source == cola and not cola.visible))
+		assert(await wait_for(func(): return session.guest_item.is_empty() and cola.visible))
 		shift.interact(shift.customer.get_node("Interaction"))
 		assert(shift.dialogue.is_open and paused)
 		assert(await wait_for(func(): return not shift.dialogue.is_open))
@@ -110,8 +122,42 @@ func run():
 		assert(await wait_for(func(): return not is_instance_valid(session), 10.0))
 		print("PASS: authoritative shared dialogue, independent hands, closing, hospital and next day")
 	else:
+		var lesson = shift.tutorial.lesson
+		assert(await wait_for(func(): return lesson.is_open))
+		session.modal_input("reveal")
+		await create_timer(.2).timeout
+		session.modal_input("choose", 0)
+		assert(await wait_for(func(): return shift.is_practicing() and shift.tutorial.practice_order_index == shift.tutorial.FRIES_LESSON))
+		await aim_at(shift.fries_rack.global_position + Vector3.UP, Vector3(9.1, -0.09, -9.3), "frozen_fries")
+		assert(shift.carried_item == "Frozen fries")
+		var fry_basket: MeshInstance3D = shift.donut_fryer.batches[0].baskets[1].mesh
+		var fryer_feet := Vector3(2.586, -0.09, -13.056)
+		await aim_at(fry_basket.global_transform * fry_basket.get_aabb().get_center(), fryer_feet, "donut_fryer")
+		assert(await wait_for(func(): return shift.donut_fryer.batches[0].elapsed >= 3.0))
+		assert(shift.donut_fryer.batches[0].fries_basket == 1 and shift.donut_fryer.batches[0].fries.get_meta("golden"))
+		await create_timer(.4).timeout
+		await aim_at(fry_basket.global_transform * fry_basket.get_aabb().get_center(), fryer_feet, "donut_fryer")
+		assert(shift.carried_item == "Basket of fries")
+		var serving_feet := Vector3(-3.1, -0.09, -5.6)
+		await aim_at(shift.held_tray.global_position + Vector3.UP * .06, serving_feet, "tray")
+		await aim_at(shift.service_bell.global_position + Vector3.UP * .10, serving_feet, "bell")
+		assert(await wait_for(func(): return shift.is_practicing() and shift.refusal_required()))
+		var drawer_feet := Vector3(-2.35, -0.09, -5.85)
+		await aim_at(shift.pistol.drawer.global_position, drawer_feet, "pistol_drawer")
+		assert(await wait_for(func(): return shift.pistol.drawer_open))
+		await create_timer(.35).timeout
+		await aim_at(shift.pistol.pickup.global_position + Vector3.UP * .04, drawer_feet, "pistol")
+		assert(await wait_for(func(): return shift.carried_item == "Pistol"))
+		var customer_center: Vector3 = shift.customer.global_position + Vector3.UP * 1.4
+		await aim_at(customer_center, Vector3(-2.4, -0.09, -5.55), "customer")
 		assert(await wait_for(func(): return shift.phase == "waiting" and shift.order.has("Glazed donut") and shift.order.has("Coffee")))
 		assert(is_instance_valid(shift.customer))
+		var cola: Node3D = front_cola()
+		assert(await wait_for(func(): return shift.rush_active() and cola.get_meta("cooler_door").get_meta("open")))
+		await create_timer(.55).timeout
+		await aim_at(cola.global_position + Vector3.UP * .33, Vector3(5.4, -0.09, -4.8), "bottle")
+		assert(shift.carried_item == "2-liter Cola" and not cola.visible)
+		session.request_action(true)
 		assert(await wait_for(func(): return shift.dialogue.is_open))
 		assert(paused)
 		if DisplayServer.get_name() != "headless":
@@ -188,6 +234,11 @@ func run():
 		print("PASS: shared dialogue and pause, remote drink, closing chores, hospital visit and next day")
 		session.shutdown()
 	quit()
+
+func front_cola() -> Node3D:
+	var colas: Array = shift.bottle_cooler.bottles.filter(func(bottle): return bottle.get_meta("item") == "2-liter Cola")
+	colas.sort_custom(func(a, b): return a.position.z > b.position.z)
+	return colas[0]
 
 func coordinate() -> void:
 	var folder := ProjectSettings.globalize_path("res://.godot/verification")

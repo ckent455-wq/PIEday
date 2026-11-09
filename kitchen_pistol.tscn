@@ -6,7 +6,6 @@
 size = Vector3(0.44430172, 0.1394996, 0.38495275)
 
 [node name="KitchenPistolPickup" type="StaticBody3D" unique_id=215206067]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 5.86499, 1.1803702, -9.342496)
 collision_layer = 4
 metadata/action = "pistol"
 

@@ -1,10 +1,13 @@
 extends Node3D
 
+const BURGER_STATION := preload("res://burger_station.gd")
 const DONUTS := preload("res://donut_types.gd")
+const BOTTLE_COOLER := preload("res://bottle_cooler.gd")
+const FRIES := preload("res://fries.gd")
 const PIE_NAMES := ["Meat pie", "Apple pie", "Cherry pie"]
 const SHIRT_COLORS := [Color(0.12,0.32,0.42), Color(0.48,0.12,0.10), Color(0.18,0.35,0.17), Color(0.48,0.32,0.10), Color(0.32,0.18,0.40), Color(0.60,0.53,0.39), Color(0.21,0.22,0.25), Color(0.57,0.30,0.23)]
 var last_shirt_color := -1
-const ORDERS := [["Meat pie", "Strawberry donut", "Coffee"], ["Apple pie", "Lemon Fizz"], ["Cherry pie", "Chocolate donut", "Coffee"], ["Apple pie", "Glazed donut", "Coffee"], ["Meat pie", "Cola"], ["Cherry pie", "Dr. Paw Paw"], ["Burger", "Cola"], ["Burger", "Lemon Fizz"], ["Burger", "Coffee"]]
+const ORDERS := [["Meat pie", "Strawberry donut", "Coffee"], ["Apple pie", "Lemon Fizz"], ["Cherry pie", "Chocolate donut", "Coffee"], ["Apple pie", "Glazed donut", "Coffee"], ["Meat pie", "Cola"], ["Cherry pie", "Dr. Paw Paw"], ["Burger", "Cola"], ["Cheeseburger", "Lemon Fizz"], ["Deluxe burger", "Coffee"], ["Burger", FRIES.SERVING, "Cola"], ["Deluxe burger", FRIES.SERVING]]
 var game: Node3D
 var phase := "prep"
 var tasks := {"bathroom": false, "kitchen": false, "trash": false, "restock": false, "tables": false}
@@ -48,6 +51,7 @@ var carried_source: Node3D
 var carried_visual: Node3D
 var coffee_station: StaticBody3D
 var soda_station: StaticBody3D
+var bottle_cooler: Node3D
 var service_bell: StaticBody3D
 var oven: StaticBody3D
 var earnings := preload("res://earnings.gd").new()
@@ -56,6 +60,12 @@ var payment_label: Label
 var payment_time := 0.0
 var cash_label: Label
 const SHIFT_SECONDS := 300.0
+const RUSH_START := 180.0
+const RUSH_DURATION := 30.0
+const RUSH_TIP := 6
+var rush_started := false
+var rush_order := false
+var rush_bell: AudioStreamPlayer
 var shift_remaining := SHIFT_SECONDS
 var closing_time := false
 var shift_clock: Label
@@ -75,7 +85,9 @@ var pistol: Node3D
 var corpses: Node3D
 var burger_station: Node3D
 var donut_fryer: Node3D
+var fries_rack: StaticBody3D
 var open_sign: StaticBody3D
+var tutorial: CanvasLayer
 
 func setup(host: Node3D) -> void:
 	game = host
@@ -84,6 +96,18 @@ func setup(host: Node3D) -> void:
 		get_tree().root.remove_meta("pie_day_wallet")
 	name = "ShiftScenario"
 	_build_hud()
+	tutorial = preload("res://playable_demo.gd").session(self)
+	if tutorial == null:
+		tutorial = preload("res://playable_demo.gd").new()
+		tutorial.campaign_shift = self
+		add_child(tutorial)
+	tutorial.setup_lesson(self)
+	rush_bell = AudioStreamPlayer.new()
+	rush_bell.stream = preload("res://assets/audio/service_bell.wav")
+	rush_bell.volume_db = -6.0
+	rush_bell.pitch_scale = 1.24
+	rush_bell.max_polyphony = 3
+	add_child(rush_bell)
 	scrubbing_audio = AudioStreamPlayer3D.new()
 	scrubbing_audio.name = "MopScrubbing"
 	var scrub: AudioStreamWAV = preload("res://assets/audio/mop_scrub.wav").duplicate()
@@ -99,6 +123,9 @@ func setup(host: Node3D) -> void:
 	donut_fryer = preload("res://donut_fryer.gd").new()
 	add_child(donut_fryer)
 	donut_fryer.setup(self)
+	fries_rack = FRIES.new()
+	add_child(fries_rack)
+	fries_rack.setup(self)
 	burger_station = preload("res://burger_station.gd").new()
 	add_child(burger_station)
 	burger_station.setup(self)
@@ -189,6 +216,9 @@ func setup(host: Node3D) -> void:
 	soda_station.liquid_color = Color(0.12, 0.055, 0.018)
 	add_child(soda_station)
 	soda_station.setup(self)
+	bottle_cooler = BOTTLE_COOLER.new()
+	add_child(bottle_cooler)
+	bottle_cooler.setup(self)
 	# Replace the source model's decorative filled cups with the playable station.
 	for node in game.find_children("*", "MeshInstance3D", true, false):
 		if node.name in ["Tumbler", "Tumbler_01"]:
@@ -381,6 +411,18 @@ func _refresh_hud() -> void:
 		lines.append(("Speak to " + str(customer.get_meta("display_name", "the customer")) + ".") if phase == "waiting" and is_instance_valid(customer) else "Waiting for the next customer.")
 	order_text.text = "\n".join(lines)
 
+func rush_active() -> bool:
+	return rush_started and not closing_time and phase in ["arriving", "waiting", "leaving"] and shift_remaining > RUSH_START - RUSH_DURATION
+
+func set_rush_started(value: bool) -> void:
+	if rush_started == value: return
+	rush_started = value
+	if not rush_active(): return
+	var cue := create_tween()
+	for ring in range(3):
+		if ring > 0: cue.tween_interval(0.2)
+		cue.tween_callback(rush_bell.play)
+
 func _update_shift_clock() -> void:
 	if phase == "prep": shift_clock.text = "READY TO OPEN" if is_instance_valid(donut_fryer) and donut_fryer.prepared() else "PREP: FRY & STOCK DONUTS"
 	elif phase == "cleanup": shift_clock.text = "AFTER HOURS - CLEANUP"
@@ -389,7 +431,10 @@ func _update_shift_clock() -> void:
 	else:
 		var seconds := int(ceil(shift_remaining))
 		shift_clock.text = "SHIFT  %d:%02d" % [seconds / 60, seconds % 60]
-	shift_clock.modulate = UI.GOLD if closing_time else Color.WHITE
+	if rush_active():
+		var rush_seconds := ceili(shift_remaining - (RUSH_START - RUSH_DURATION))
+		shift_clock.text = "RUSH  %ds   |   " % rush_seconds + shift_clock.text
+	shift_clock.modulate = UI.GOLD if closing_time or rush_active() else Color.WHITE
 
 func _finish_day() -> void:
 	close_service()
@@ -566,6 +611,8 @@ func begin_prep(resolve_evening := true) -> void:
 	_clear_tray(true)
 	phase = "prep"
 	closing_time = false
+	rush_started = false
+	rush_order = false
 	shift_remaining = SHIFT_SECONDS
 	_update_shift_clock()
 	_set_carrying_trash(false)
@@ -577,9 +624,8 @@ func begin_prep(resolve_evening := true) -> void:
 	_reset_stock()
 	game.set_night(false)
 	donut_fryer.reset()
-	var demo = preload("res://playable_demo.gd").session(self)
-	if demo != null and demo.tutorial_state == "welcome":
-		_message("Use the shift clipboard behind the counter to start training.")
+	if _training_available() and tutorial.tutorial_state == "welcome":
+		_message("Use the wall clipboard behind the counter for training, or fry and stock donuts to open.")
 	else:
 		_message("Opening prep: fry donuts in the kitchen, lift at 5 seconds (burns at 10), then ice and stock each flavor at the display case.")
 
@@ -596,6 +642,7 @@ func begin_cleanup() -> void:
 	_clear_tray(true)
 	arrival_delay = 0
 	burger_station.reset()
+	donut_fryer.clear_fries()
 	phase = "cleanup"
 	closing_time = true
 	_set_carrying_trash(false)
@@ -650,18 +697,26 @@ func start_demo() -> void:
 func start_shift(use_random_orders := true) -> bool:
 	if earnings.grandpa.is_dead(): return false
 	if phase != "prep": return false
+	if is_practicing():
+		_message("Finish training before opening.")
+		return false
 	if game.coop != null and not game.coop.partner_ready:
 		_message("Waiting for your partner to load the diner.")
 		return false
 	if use_random_orders and not donut_fryer.prepared():
 		_message("Opening prep: fry and stock strawberry, chocolate and glazed donuts before opening.")
 		return false
+	if tutorial.tutorial_state == "done" and tutorial.practice_order_index == tutorial.PRACTICE_ORDERS.size():
+		corpses.reset()
+		tasks.bodies = true
 	for done in tasks.values():
 		if not done:
 			_message("Finish all closing duties before opening the next shift.")
 			return false
 	phase = "arriving"
 	order_index = 0
+	rush_started = false
+	rush_order = false
 	randomize_orders = use_random_orders
 	last_recipe_index = -1
 	closing_time = false
@@ -692,6 +747,7 @@ func _spawn_customer() -> void:
 			if last_recipe_index >= 0 and recipe_index >= last_recipe_index: recipe_index += 1
 			last_recipe_index = recipe_index
 			order.assign(ORDERS[recipe_index])
+			_add_bottle_order()
 		else:
 			order.assign(ORDERS[order_index % ORDERS.size()])
 	_bind_customer_actor(customer)
@@ -700,6 +756,16 @@ func _spawn_customer() -> void:
 		_set_route([Vector3(-2.4,-0.094,-3.6)])
 	else:
 		_set_route([Vector3(0.76,-0.094,0.2),Vector3(-2.4,-0.094,-3.6)])
+
+func _add_bottle_order() -> void:
+	if randi_range(1, 8) != 1: return
+	var stocked: Array[String] = bottle_cooler.available_items()
+	if stocked.is_empty(): return
+	if randi_range(1, 4) == 1:
+		order.clear()
+	else:
+		order.assign(order.filter(func(item): return item != "Coffee" and item not in soda_station.FLAVORS))
+	order.append(stocked.pick_random())
 
 func _bind_customer_actor(actor: Node3D) -> void:
 	customer = actor
@@ -752,6 +818,10 @@ func _process(delta: float) -> void:
 	closing_events.tick(delta)
 	if phase in ["arriving", "waiting", "leaving"] and not closing_time:
 		shift_remaining = maxf(0.0, shift_remaining - delta)
+		if not rush_started and shift_remaining <= RUSH_START and shift_remaining > RUSH_START - RUSH_DURATION:
+			set_rush_started(true)
+			customer_line.next_arrival = minf(customer_line.next_arrival, 0.25)
+			_message("RUSH! Faster arrivals for 30 seconds. Orders taken now earn an extra $6 tip when served correctly.")
 		if shift_remaining <= 0:
 			close_service()
 	customer_line.tick(delta)
@@ -844,29 +914,36 @@ func action_prompt(node: Node) -> String:
 	if carried_item == "Pistol":
 		return "[Click / E] Fire · Q return pistol" if action == "customer" and pistol.available() else "Pistol equipped · aim at the unclothed customer · Q return"
 	if action == "pistol": return pistol.prompt()
+	if action == "pistol_drawer": return "[E] Close drawer" if pistol.drawer_open else "[E] Open drawer"
 	match action:
 		"table_trash", "trash_bin", "dining_customer": return dine_in.prompt(action)
 		"freezer_stock", "restock_cooler": return restock.prompt(action, node)
 		"pie" when phase == "cleanup": return restock.prompt("restock_cooler", node)
 		"pie": return "[Click / E] Pick up " + str(node.get_meta("item"))
+		"bottle": return "[Click / E] Take " + str(node.get_meta("item"))
+		"burger_topping": return burger_station.topping_prompt(int(node.get_meta("topping_index")))
 		"burger_grill", "burger_prep", "burger_raw": return burger_station.prompt(action)
 		"open_sign": return open_sign.prompt()
 		"donut_fryer": return donut_fryer.prompt(node)
+		"frozen_fries": return "[E] Take frozen fries" if phase in ["waiting", "arriving"] or is_practicing() else "Frozen fries · cook to order"
 		"donut" when donut_fryer.batches.any(func(batch): return batch.state == "ready") and donut_fryer.stock[DONUTS.TYPES.find(str(node.get_meta("item", "Glazed donut")))] < donut_fryer.SHELF_CAPACITY: return "[E] Ice and stock " + str(node.get_meta("item", "Glazed donut")) + "s — fill available spaces"
 		"donut":
 			var flavor: String = str(node.get_meta("item", "Glazed donut"))
 			var left: int = donut_fryer.stock[DONUTS.TYPES.find(flavor)]
-			if not is_practicing() and left <= 0: return flavor + " sold out — fry another batch"
-			return "[Click / E] Grab " + flavor + (" (%d left)" % left if not is_practicing() else "") if carried_item.is_empty() and not has_empty_cup() else "Hands full - place or return your item first"
+			if left <= 0: return flavor + " sold out — fry another batch"
+			return "[Click / E] Grab %s (%d left)" % [flavor, left] if carried_item.is_empty() and not has_empty_cup() else "Hands full - place or return your item first"
 		"tray": return "[Click / E] Place " + carried_item + " on tray" if not carried_item.is_empty() else "[Click / E] Take last item off tray" if not tray.is_empty() else "Serving tray - bring the customer's items here"
 		"coffee", "cup_stack": return coffee_station.prompt(action)
 		"soda": return soda_station.flavor_prompt(str(node.get_meta("flavor", "Cola")))
 		"soda_cup_stack": return soda_station.prompt(action)
-		"bell": return "Refuse this customer service first" if refusal_required() else "[Click / E] Ding bell and serve the tray"
+		"bell":
+			if refusal_required(): return "Find the pistol under the bell" if is_practicing() else "Refuse this customer service first"
+			return "[Click / E] Ding bell and serve the tray"
 		"oven": return oven.prompt()
 		"customer":
+			if refusal_required() and is_practicing(): return "Clothing required · get the pistol from under the bell"
+			if refusal_required() and phase == "waiting": return "[E] Refuse service - clothing required"
 			if phase != "waiting": return "Customer is leaving" if phase == "leaving" else "Customer is approaching"
-			if refusal_required(): return "[E] Refuse service - clothing required"
 			return "[E] " + ("Hear order again - ring bell to serve" if order_taken else "Take customer's order")
 		"queued_customer": return "Waiting in line"
 		"departing_customer": return "Customer is leaving"
@@ -874,8 +951,7 @@ func action_prompt(node: Node) -> String:
 		"dispose": return "[Click / E] Throw trash into dumpster" if carrying_trash else "Dumpster - collect the morning trash bag first"
 		"clock":
 			if phase == "prep":
-				var demo = preload("res://playable_demo.gd").session(self)
-				if demo != null and demo.tutorial_state != "done": return "[E] Training\n" + earnings.health_status()
+				if _training_available() and tutorial.tutorial_state != "done": return "[E] Training\n" + earnings.health_status()
 				return "Flip the OPEN sign in the front window to start the shift\n" + earnings.health_status()
 			if phase == "closed": return ("[E] Visit Grandpa / Go Home" if earnings.grandpa.visit_available() else "[E] Go Home") + "\n" + earnings.health_status()
 			if phase == "cleanup": return "Finish closing chores to end the day"
@@ -896,6 +972,7 @@ func interact(node: Node) -> void:
 	match action:
 		"corpse": corpses.grab(node)
 		"pistol": pistol.take()
+		"pistol_drawer": pistol.set_drawer_open(not pistol.drawer_open)
 		"table_trash": dine_in.pick_trash(int(node.get_meta("table")))
 		"trash_bin": dine_in.use_bin()
 		"dining_customer": _message("They're enjoying their meal.")
@@ -904,9 +981,12 @@ func interact(node: Node) -> void:
 		"pie":
 			if phase == "cleanup": restock.deliver()
 			else: pickup_item(str(node.get_meta("item")), node)
+		"bottle": bottle_cooler.take(node)
+		"burger_topping": burger_station.add_topping(int(node.get_meta("topping_index")))
 		"burger_grill", "burger_prep", "burger_raw": burger_station.use(action)
 		"open_sign": open_sign.use()
 		"donut_fryer": donut_fryer.use(node)
+		"frozen_fries": fries_rack.take()
 		"donut": donut_fryer.use_case(str(node.get_meta("item", "Glazed donut")), node)
 		"tray":
 			if not carried_item.is_empty(): place_carried()
@@ -921,12 +1001,16 @@ func interact(node: Node) -> void:
 		"bell": service_bell.ring()
 		"oven": oven.interact()
 		"customer":
+			if is_practicing() and refusal_required():
+				_message("Take the pistol from the drawer under the bell, then aim at the customer.")
+				return
 			if phase != "waiting": return
 			if refusal_required():
 				refuse_service()
 				return
 			var reminder := order_taken
 			if not order_taken: service_seconds = 0.0
+			if not order_taken: rush_order = rush_active()
 			order_taken = true
 			speech.text = "I'd like " + ", ".join(order) + ", please."
 			_message("CUSTOMER: " + ", ".join(order) + ". Place everything on the counter tray, then ring the bell to serve.")
@@ -955,10 +1039,9 @@ func interact(node: Node) -> void:
 				complete_task("trash")
 		"clock":
 			if phase == "prep":
-				var demo = preload("res://playable_demo.gd").session(self)
-				if demo == null or demo.tutorial_state == "done": _message("Finish donut prep, then flip the OPEN sign in the front window to start the shift.")
-				elif demo.tutorial_state == "welcome": demo.open_tutorial(self)
-				else: _message("Finish the practice order at the serving bell before opening.")
+				if is_practicing(): _message("Follow the training instructions before opening.")
+				elif _training_available() and tutorial.tutorial_state == "welcome": tutorial.open_tutorial()
+				else: _message("Finish donut prep, then flip the OPEN sign in the front window to start the shift.")
 			elif phase == "closed": hospital_visits.open_departure()
 			elif phase == "cleanup": _message("Finish cleaning, take out the trash, and replenish the cooler before starting the next day.")
 			else: _message("Your shift is already open. Customers are waiting at the counter.")
@@ -968,10 +1051,15 @@ func _set_carrying_trash(value: bool) -> void:
 	if is_instance_valid(held_trash): held_trash.visible = value
 
 func is_practicing() -> bool:
-	var demo = preload("res://playable_demo.gd").session(self)
-	return phase == "prep" and demo != null and demo.tutorial_state == "practice"
+	return phase == "prep" and tutorial.tutorial_state == "practice"
+
+func _training_available() -> bool:
+	return shift_number == 1 and earnings.grandpa.days == 0
 
 func add_item(item: String, source: Node3D = null) -> bool:
+	if item == FRIES.RAW:
+		_message("Cook the frozen fries in a fryer before serving them.")
+		return false
 	if item in ["Raw patty", "Cooked patty"]:
 		_message("Cook the patty and assemble it in a bun at the kitchen prep tray before serving.")
 		return false
@@ -1063,9 +1151,10 @@ func serve_order() -> bool:
 	if correct:
 		var has_perfect_pie := tray.any(func(item): return item.ends_with("pie"))
 		var queue_wait: float = float(customer.get_meta("queue_wait",0.0))
-		var payment: Dictionary = earnings.payout(order, true, service_seconds + maxf(0,queue_wait - 60.0), has_perfect_pie)
+		var payment: Dictionary = earnings.payout(order, true, service_seconds + maxf(0,queue_wait - 60.0), has_perfect_pie, RUSH_TIP if rush_order else 0)
 		_update_cash_display()
 		payment_label.text = "Order +$%d  |  Tip +$%d  |  Service +$%d" % [payment.sale, payment.tip, payment.service]
+		if rush_order: payment_label.text += "  |  Rush tip +$%d included" % RUSH_TIP
 		if payment.streak_bonus > 0: payment_label.text += "  |  Streak +$%d" % payment.streak_bonus
 		payment_label.visible = true
 		payment_time = 6.0
@@ -1078,7 +1167,8 @@ func serve_order() -> bool:
 		lost += 1
 		speech.text = "That's NOT what I ordered!"
 		speech.modulate = Color(1, 0.35, 0.25)
-		_message("Customer wanted " + ", ".join(order) + ", with a perfectly baked pie. They are storming out.")
+		var pie_reminder := " (bake any pies perfectly)" if order.any(func(item): return item.ends_with("pie")) else ""
+		_message("Customer wanted " + ", ".join(order) + pie_reminder + ". They are storming out.")
 	_clear_tray(false)
 	phase = "leaving"
 	customers_this_shift += 1
@@ -1116,6 +1206,7 @@ func _set_pickup_visible(node: Node3D, shown: bool) -> void:
 		body.collision_layer = 1 if shown else 0
 
 func _reset_stock() -> void:
+	bottle_cooler.refill()
 	if is_instance_valid(burger_station): burger_station.reset()
 	if is_instance_valid(restock): restock.reset()
 	if is_instance_valid(oven): oven.reset_oven()
@@ -1152,8 +1243,8 @@ func _item_model(parent: Node3D, item: String, at: Vector3, size: float, source:
 		pass
 	elif item == "Table trash":
 		dine_in.trash_visual(holder)
-	elif item == "Burger":
-		preload("res://burger_station.gd").model(holder)
+	elif item in BURGER_STATION.BURGERS:
+		BURGER_STATION.model(holder, item)
 	elif item in ["Raw patty", "Cooked patty"]:
 		var patty = load("res://assets/burger/burger_patty_" + ("raw" if item == "Raw patty" else "cooked") + ".glb").instantiate()
 		holder.add_child(patty)
@@ -1170,6 +1261,10 @@ func _item_model(parent: Node3D, item: String, at: Vector3, size: float, source:
 		holder.add_child(pie)
 	elif item in preload("res://soda_station.gd").FLAVORS:
 		soda_station.drink_model(holder, item)
+	elif item in BOTTLE_COOLER.ITEMS:
+		bottle_cooler.model(holder, item)
+	elif item in [FRIES.RAW, FRIES.SERVING]:
+		FRIES.model(self, holder, item)
 	elif item in ["Coffee", "Soda"] and is_instance_valid(coffee_station):
 		var station: StaticBody3D = coffee_station if item == "Coffee" else soda_station
 		var cup: Node3D = station._cup(holder)

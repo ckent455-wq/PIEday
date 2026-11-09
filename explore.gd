@@ -100,6 +100,7 @@ func _ready() -> void:
 	prompt_center.offset_top = 42
 	prompt_center.offset_bottom = 80
 	interaction_label = Label.new()
+	interaction_label.hide()
 	prompt_center.add_child(interaction_label)
 	interaction_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	interaction_label.add_theme_font_size_override("font_size", 17)
@@ -173,7 +174,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		if event.keycode == KEY_F7 and coop == null and preload("res://playable_demo.gd").session(self) == null:
 			shift.begin_cleanup()
 	if event is InputEventMouseButton and event.pressed:
-		if event.button_index == MOUSE_BUTTON_LEFT and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED and is_instance_valid(target_action) and target_action.get_meta("action", "") in ["pistol", "coffee", "cup_stack", "tray", "pie", "donut", "soda", "soda_cup_stack", "customer", "bell", "oven", "dispose", "freezer_stock", "restock_cooler"]:
+		if event.button_index == MOUSE_BUTTON_LEFT and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED and is_instance_valid(target_action) and target_action.get_meta("action", "") in ["pistol", "coffee", "cup_stack", "tray", "pie", "donut", "soda", "soda_cup_stack", "bottle", "customer", "bell", "oven", "dispose", "freezer_stock", "restock_cooler"]:
 			_interact()
 			return
 		Input.mouse_mode = Input.MOUSE_MODE_CAPTURED

@@ -14,12 +14,27 @@ func run():
 	var shift = game.shift
 	shift.set_process(false)
 	shift.start_demo()
+	var drawer = shift.pistol.drawer
+	var eye := Vector3(-2.35, 1.91, -5.85)
+	await physics_frame
+	require(not shift.pistol.pickup.visible and shift.pistol.pickup.collision_layer == 0, "Closed drawer hides the gun")
+	require(game.interaction_at(eye, eye.direction_to(drawer.global_position)).action == drawer, "Drawer can be targeted from behind the counter")
+	shift.interact(drawer)
+	shift.pistol.tick()
+	await create_timer(0.3).timeout
+	var gun_center: Vector3 = shift.pistol.pickup.global_position + Vector3.UP * 0.04
+	require(game.interaction_at(eye, eye.direction_to(gun_center)).action == shift.pistol.pickup, "Open drawer exposes a reachable pickup")
 	shift.pistol.take()
 	require(shift.carried_item.is_empty(),"Pistol unavailable outside special encounter")
 	shift.customer_line.force_nude_next = true
 	shift.customer_line.next_arrival = INF
 	for i in 240: shift._process(1.0/60)
 	require(shift.refusal_required() and shift.phase == "waiting","Encounter reaches counter")
+	shift.interact(drawer)
+	shift.pistol.tick()
+	shift.pistol.take()
+	require(shift.carried_item.is_empty() and not shift.pistol.pickup.visible, "Closed drawer blocks pickup during the encounter")
+	shift.interact(drawer)
 	shift.pistol.take()
 	require(shift.carried_item == "Pistol","Kitchen pickup equips pistol")
 	shift.pistol.tick()

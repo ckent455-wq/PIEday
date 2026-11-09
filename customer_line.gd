@@ -97,9 +97,11 @@ func tick(delta: float) -> void:
 	time += delta
 	if not shift.closing_time and shift.phase in ["arriving","waiting","leaving"]:
 		next_arrival -= delta
-		if next_arrival <= 0 and waiting.size() + int(is_instance_valid(shift.customer)) < 3:
+		var rushing: bool = shift.rush_active()
+		var line_capacity := 4 if rushing else 3
+		if next_arrival <= 0 and waiting.size() + int(is_instance_valid(shift.customer)) < line_capacity:
 			waiting.append({"actor":make_actor(Vector3(0.76,-0.094,5)),"seconds":0.0,"junction":false})
-			next_arrival = 8.0
+			next_arrival = 3.0 if rushing else 8.0
 	for index in range(waiting.size()):
 		var entry: Dictionary = waiting[index]
 		entry.seconds += delta

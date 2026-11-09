@@ -163,9 +163,15 @@ func _rebuild_stack() -> void:
 	for child in stack_visual.get_children():
 		stack_visual.remove_child(child)
 		child.queue_free()
+	var rim := TorusMesh.new()
+	rim.inner_radius = 0.054
+	rim.outer_radius = 0.063
+	rim.rings = 20
+	rim.ring_segments = 8
 	for index in range(cups_left):
 		var cup := _cup(stack_visual)
 		cup.position.y = index * 0.018
+		shift._mesh(cup, rim, Vector3(0, 0.168, 0), Color(0.31, 0.20, 0.13))
 
 func _cup(parent: Node3D) -> Node3D:
 	var cup := Node3D.new()

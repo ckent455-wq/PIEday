@@ -1,6 +1,7 @@
 extends Node3D
 ## Shared, host-authoritative donut batches using the original kitchen fryers.
 const TYPES = preload("res://donut_types.gd")
+const FRIES = preload("res://fries.gd")
 const READY := 5.0
 const BURNT := 10.0
 const SHELF_CAPACITY := 8
@@ -22,19 +23,22 @@ func setup(owner_shift: Node) -> void:
 		holder.set_meta("base_y", holder.position.y)
 		var baskets: Array = []
 		var oil_pans: Array = []
+		var fries := FRIES.FROZEN_MODEL.instantiate() as Node3D
+		add_child(fries)
 		for basket in shift.game.find_children("Mesh*", "MeshInstance3D", true, false):
 			if basket.name not in ["Mesh", "Mesh_01", "Mesh_02", "Mesh_03"]: continue
 			var bounds: AABB = basket.global_transform * basket.get_aabb()
 			if absf(bounds.get_center().x - box.get_center().x) > 0.61 or absf(bounds.get_center().z - box.get_center().z) > 0.6: continue
 			basket.set_meta("action", "donut_fryer")
 			basket.set_meta("fryer_index", batches.size())
-			baskets.append({"mesh": basket, "raised": basket.position})
+			basket.set_meta("basket_index", baskets.size())
 			oil_pans.append(_make_oil(bounds))
 			# A shallow wire insert supports the batch near the basket rim.
 			# Keep its surface exactly beneath the dough rather than suspending it.
 			var rack := Node3D.new()
 			basket.add_child(rack)
 			rack.global_transform = Transform3D(Basis.IDENTITY, Vector3(bounds.get_center().x, bounds.position.y + 0.20, bounds.position.z + 0.21))
+			baskets.append({"mesh": basket, "raised": basket.position, "rack": rack, "lower": 0.0})
 			var steel := StandardMaterial3D.new()
 			steel.albedo_color = Color(0.52, 0.55, 0.56)
 			steel.metallic = 0.65
@@ -68,7 +72,7 @@ func setup(owner_shift: Node) -> void:
 		sizzle.max_distance = 12.0
 		add_child(sizzle)
 		sizzle.global_position = Vector3(box.get_center().x, box.end.y - 0.25, box.get_center().z)
-		batches.append({"state": "empty", "elapsed": 0.0, "remaining":6, "holder": holder, "baskets": baskets, "lower": 0.0, "oil": oil_pans, "audio": sizzle})
+		batches.append({"state": "empty", "elapsed": 0.0, "remaining":6, "holder": holder, "baskets": baskets, "lower": 0.0, "oil": oil_pans, "audio": sizzle, "fries": fries, "fries_basket": 0})
 	reset()
 
 func _make_oil(bounds: AABB) -> Node3D:
@@ -117,16 +121,24 @@ func reset() -> void:
 func tick(delta: float) -> void:
 	for batch in batches:
 		if batch.state == "frying": batch.elapsed += delta
+		if batch.state == "fries": batch.elapsed = minf(batch.elapsed + delta, FRIES.COOK_SECONDS)
 	refresh()
+
+func _immersed(batch: Dictionary) -> bool:
+	return batch.state == "frying" or (batch.state == "fries" and batch.elapsed < FRIES.COOK_SECONDS)
 
 func _process(delta: float) -> void:
 	effect_time += delta
 	for batch in batches:
-		batch.lower = move_toward(float(batch.lower), 0.15 if batch.state == "frying" else 0.0, delta * 0.45)
-		for basket in batch.baskets:
-			basket.mesh.position = basket.raised - Vector3.UP * float(batch.lower)
-		var active: bool = batch.state == "frying" and batch.lower > 0.10
-		for pan in batch.oil:
+		var immersed := _immersed(batch)
+		batch.lower = move_toward(float(batch.lower), 0.15 if immersed else 0.0, delta * 0.45)
+		for index in batch.baskets.size():
+			var basket: Dictionary = batch.baskets[index]
+			var lowering: bool = immersed and (batch.state != "fries" or index == batch.fries_basket)
+			basket.lower = move_toward(float(basket.lower), 0.15 if lowering else 0.0, delta * 0.45)
+			basket.mesh.position = basket.raised - Vector3.UP * float(basket.lower)
+			var active: bool = lowering and basket.lower > 0.10
+			var pan: Node3D = batch.oil[index]
 			pan.get_node("OilSurface").material_override.set_shader_parameter("frying", 1.0 if active else 0.0)
 			for i in range(1, pan.get_child_count()):
 				var bubble: MeshInstance3D = pan.get_child(i)
@@ -141,6 +153,13 @@ func prepared() -> bool:
 
 func prompt(node: Node) -> String:
 	var batch: Dictionary = batches[int(node.get_meta("fryer_index"))]
+	var basket_index := int(node.get_meta("basket_index", -1))
+	if batch.state == "fries":
+		if basket_index != batch.fries_basket: return "Aim at the basket with the fries"
+		return "[E] Take basket of fries" if batch.elapsed >= FRIES.COOK_SECONDS else "Fries cooking · %.1f / 3s" % batch.elapsed
+	if shift.carried_item == FRIES.RAW:
+		if batch.state != "empty": return "This fryer has donuts · use an empty fryer"
+		return "[E] Fry frozen fries · 3s" if basket_index >= 0 else "Aim at a basket to fry the frozen fries"
 	match batch.state:
 		"raw": return "[E] Lower basket again — donuts still raw"
 		"empty": return "[E] Lower 6 raw dough rings into fryer — ready at 5s, burns at 10s"
@@ -150,6 +169,9 @@ func prompt(node: Node) -> String:
 func use(node: Node) -> void:
 	if shift.phase == "cleanup" or shift.phase == "closed": return
 	var batch: Dictionary = batches[int(node.get_meta("fryer_index"))]
+	if batch.state == "fries" or shift.carried_item == FRIES.RAW:
+		_use_fries(batch, int(node.get_meta("basket_index", -1)))
+		return
 	if batch.state in ["empty", "raw"]:
 		var fresh: bool = batch.state == "empty"
 		batch.state = "frying"
@@ -168,6 +190,33 @@ func use(node: Node) -> void:
 			batch.state = "ready"
 			shift._message("Basket lifted! Aim at strawberry, chocolate or glazed in the display and press E to ice and stock this batch.")
 	else: shift._message("Finish this batch at the donut case before frying more.")
+	refresh()
+
+func _use_fries(batch: Dictionary, basket_index: int) -> void:
+	if batch.state == "fries":
+		if basket_index != batch.fries_basket:
+			shift._message("Aim at the basket with the fries.")
+		elif batch.elapsed < FRIES.COOK_SECONDS:
+			shift._message("The fries are still cooking.")
+		elif shift.pickup_item(FRIES.SERVING):
+			batch.state = "empty"
+			shift._message("Basket of fries ready. Put it on the serving tray and ring the bell.")
+	elif batch.state == "empty":
+		if basket_index < 0:
+			shift._message("Aim at the basket you want to use, then press E.")
+			return
+		shift._clear_carried(false)
+		batch.state = "fries"
+		batch.elapsed = 0.0
+		batch.fries_basket = basket_index
+		shift._message("Fries frying. The basket lifts after 3 seconds. Press E to take them.")
+	else:
+		shift._message("This fryer has donuts. Use an empty fryer for fries.")
+	refresh()
+
+func clear_fries() -> void:
+	for batch in batches:
+		if batch.state == "fries": batch.state = "empty"
 	refresh()
 
 func use_case(flavor: String, aimed: Node = null) -> void:
@@ -192,9 +241,6 @@ func use_case(flavor: String, aimed: Node = null) -> void:
 			refresh()
 			shift._message("Stocked %d %ss (%d/8). %s" % [added,flavor.to_lower(),stock[index], "%d donuts remain in the basket — choose another shelf." % batch.remaining if batch.remaining > 0 else "All flavors ready — flip the OPEN sign in the front window!" if prepared() and shift.phase == "prep" else "Batch finished. Fry more whenever you need them."])
 			return
-	if shift.is_practicing():
-		shift.pickup_item(flavor)
-		return
 	if stock[index] <= 0:
 		shift._message("No %ss left. Fry a batch in the kitchen first." % flavor.to_lower())
 		return
@@ -219,10 +265,17 @@ func return_item(source: Node3D) -> void:
 
 func refresh() -> void:
 	for batch in batches:
-		if batch.state == "frying":
+		if _immersed(batch):
 			if not batch.audio.playing: batch.audio.play(fposmod(float(batch.elapsed), batch.audio.stream.get_length()))
 		elif batch.audio.playing: batch.audio.stop()
-		batch.holder.visible = batch.state != "empty"
+		batch.holder.visible = batch.state not in ["empty", "fries"]
+		batch.fries.visible = batch.state == "fries"
+		if batch.fries.visible:
+			FRIES.set_golden(batch.fries, batch.elapsed >= FRIES.COOK_SECONDS)
+			var rack: Node3D = batch.baskets[batch.fries_basket].rack
+			if batch.fries.get_parent() != rack:
+				batch.fries.reparent(rack, false)
+				batch.fries.position = Vector3.UP * 0.008
 		batch.holder.position.y = float(batch.holder.get_meta("base_y")) - float(batch.lower)
 		for ring in batch.holder.get_children():
 			ring.visible = ring.get_index() < int(batch.remaining)
@@ -236,7 +289,7 @@ func refresh() -> void:
 		if shown: counts[index] += 1
 
 func snapshot() -> Dictionary:
-	return {"stock": stock.duplicate(), "missing_slots":missing_slots.duplicate(), "batches": batches.map(func(batch): return [batch.state, batch.elapsed, batch.remaining])}
+	return {"stock": stock.duplicate(), "missing_slots":missing_slots.duplicate(), "batches": batches.map(func(batch): return [batch.state, batch.elapsed, batch.remaining, batch.fries_basket])}
 
 func restore(data: Dictionary) -> void:
 	if data.is_empty(): return
@@ -246,4 +299,5 @@ func restore(data: Dictionary) -> void:
 		batches[i].state = data.batches[i][0]
 		batches[i].elapsed = data.batches[i][1]
 		batches[i].remaining = int(data.batches[i][2]) if data.batches[i].size() > 2 else 6
+		batches[i].fries_basket = clampi(int(data.batches[i][3]), 0, batches[i].baskets.size() - 1) if data.batches[i].size() > 3 else 0
 	refresh()

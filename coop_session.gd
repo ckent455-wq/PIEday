@@ -1,10 +1,10 @@
 extends Node
 
 const PORT := 27841
-const PROTOCOL := 3
+const PROTOCOL := 9
 const CAMPAIGN_PATH := "user://coop_earnings.cfg"
 const SAVE := preload("res://save_states.gd")
-const SUPPORTED_ACTIONS := ["clock", "open_sign", "burger_grill", "burger_prep", "burger_raw", "pie", "donut", "donut_fryer", "tray", "coffee", "cup_stack", "soda", "soda_cup_stack", "oven", "bell", "customer", "pistol", "corpse", "task", "table_trash", "trash_bin", "dining_customer", "freezer_stock", "restock_cooler", "dispose"]
+const SUPPORTED_ACTIONS := ["clock", "open_sign", "burger_grill", "burger_prep", "burger_raw", "burger_topping", "pie", "donut", "donut_fryer", "frozen_fries", "tray", "coffee", "cup_stack", "soda", "soda_cup_stack", "bottle", "oven", "bell", "customer", "pistol", "pistol_drawer", "corpse", "task", "table_trash", "trash_bin", "dining_customer", "freezer_stock", "restock_cooler", "dispose"]
 var hosting := false
 var partner_id := 0
 var partner_ready := false
@@ -393,7 +393,9 @@ func _snapshot() -> Dictionary:
 	return {
 		"scene": game.scene_file_path, "epoch": scene_epoch, "paused": get_tree().paused, "progress": _wallet_state(shift.earnings),
 		"donuts": shift.donut_fryer.snapshot(), "burger": shift.burger_station.snapshot(),
-		"phase": shift.phase, "remaining": shift.shift_remaining, "closing": shift.closing_time,
+		"bottles": shift.bottle_cooler.snapshot(),
+		"training": [shift.tutorial.tutorial_state, shift.tutorial.practice_order_index],
+		"phase": shift.phase, "remaining": shift.shift_remaining, "closing": shift.closing_time, "rush": shift.rush_started,
 		"order": shift.order, "taken": shift.order_taken, "cash": shift.earnings.cash, "notice": shift.notice.text,
 		"actors": actors, "customer": str(shift.customer.get_instance_id()) if is_instance_valid(shift.customer) else "",
 		"pies": pies, "tray": shift.tray, "tray_sources": tray_sources, "drinks": drinks, "doors": door_states,
@@ -407,7 +409,7 @@ func _snapshot() -> Dictionary:
 		"missing": shift.restock.missing.map(func(pie): return SAVE.source_id(shift, pie)),
 		"corpses": _capture_corpses(),
 		"events": _capture_events(),
-		"pistol": [shift.carried_item == "Pistol" or guest_item == "Pistol", shift.pistol.shot.playing],
+		"pistol": [shift.carried_item == "Pistol" or guest_item == "Pistol", shift.pistol.shot.playing, shift.pistol.drawer_open],
 		"payment": [shift.payment_label.text, shift.payment_label.visible],
 	}
 
@@ -441,10 +443,14 @@ func _sync_shift(packet: PackedByteArray) -> void:
 	partner_target = state.host[0]
 	partner_yaw = state.host[1]
 	shift.phase = state.phase
+	shift.tutorial.tutorial_state = state.training[0]
+	shift.tutorial.practice_order_index = state.training[1]
 	shift.donut_fryer.restore(state.get("donuts", {}))
+	shift.bottle_cooler.restore(state.bottles)
 	shift.burger_station.restore(state.get("burger", {}))
 	shift.shift_remaining = state.remaining
 	shift.closing_time = state.closing
+	shift.set_rush_started(state.get("rush", false))
 	shift.order.assign(state.order)
 	shift.order_taken = state.taken
 	shift.earnings.cash = state.cash
@@ -509,8 +515,8 @@ func _sync_shift(packet: PackedByteArray) -> void:
 	oven._update_display()
 	_sync_corpses(state.corpses)
 	_sync_events(state.events)
-	shift.pistol.pickup.visible = not state.pistol[0]
-	shift.pistol.pickup.collision_layer = 0 if state.pistol[0] else 4
+	shift.pistol.set_drawer_open(state.pistol[2])
+	shift.pistol.refresh_pickup(state.pistol[0])
 	if state.pistol[1] and not shift.pistol.shot.playing: shift.pistol.shot.play()
 	shift._update_shift_clock()
 	shift._update_cash_display()
@@ -669,7 +675,8 @@ func _receive_travel(destination: String, progress: Dictionary, epoch: int) -> v
 
 func modal_for_scene():
 	if not is_instance_valid(game): return null
-	return game.shift.hospital_visits.menu if game.scene_file_path == "res://main.tscn" else game.conversation
+	if game.scene_file_path != "res://main.tscn": return game.conversation
+	return game.shift.tutorial.lesson if game.shift.phase == "prep" else game.shift.hospital_visits.menu
 
 func share_modal() -> void:
 	if not hosting or ui_applying or not partner_ready: return

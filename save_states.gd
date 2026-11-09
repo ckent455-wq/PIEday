@@ -2,7 +2,7 @@ extends RefCounted
 const DIRECTORY := "user://manual_saves"
 const SLOTS := 3
 const WALLET_FIELDS := ["cash","sales","tips","service_rewards","streak_rewards","streak","correct_orders","closing_bonus","day_completed"]
-const SHIFT_FIELDS := ["phase","tasks","tray","order","order_taken","route","route_index","walking","angry","served","lost","order_index","randomize_orders","last_recipe_index","arrival_delay","shift_number","customers_this_shift","service_seconds","shift_remaining","closing_time","cleaning_progress","cleaning_task","carried_item","animation_time"]
+const SHIFT_FIELDS := ["phase","tasks","tray","order","order_taken","route","route_index","walking","angry","served","lost","order_index","randomize_orders","last_recipe_index","arrival_delay","shift_number","customers_this_shift","service_seconds","shift_remaining","rush_started","rush_order","closing_time","cleaning_progress","cleaning_task","carried_item","animation_time"]
 const LINE_FIELDS := ["next_arrival","time","last_model","nude_chance","last_was_nude","force_nude_next","force_nude_model","front_door_auto_opened","front_door_open_for"]
 const EVENT_FIELDS := ["active","encounter","elapsed","bell_at","flicker_at","figure_at","bell_done","flicker_done","figure_done","figure_seen","trash_disposed","dissolve_elapsed","seen_seconds","away_seconds","flicker_time","extra_at","extra_done","steps_left","step_timer","step_position","step_direction"]
 
@@ -36,6 +36,8 @@ static func wallet_for(scene: Node) -> RefCounted:
 
 static func source_id(shift: Node, source: Node) -> int:
 	if not is_instance_valid(source): return -1
+	var bottle_index: int = shift.bottle_cooler.bottles.find(source)
+	if bottle_index >= 0: return 2000 + bottle_index
 	var pie_index: int = shift.all_pies.find(source)
 	if pie_index >= 0: return pie_index
 	var donuts = shift.game.find_children("Donus*","MeshInstance3D",true,false)
@@ -43,6 +45,8 @@ static func source_id(shift: Node, source: Node) -> int:
 	return 1000 + donut_index if donut_index >= 0 else -1
 
 static func source_node(shift: Node, index: int) -> Node:
+	if index >= 2000:
+		return shift.bottle_cooler.bottles[index - 2000] if index - 2000 < shift.bottle_cooler.bottles.size() else null
 	if index >= 1000:
 		var donuts = shift.game.find_children("Donus*","MeshInstance3D",true,false)
 		return donuts[index-1000] if index-1000 < donuts.size() else null
@@ -72,7 +76,10 @@ static func capture(scene: Node) -> Dictionary:
 	var shift = scene.shift
 	data["shift"] = properties(shift,SHIFT_FIELDS)
 	data["donuts"] = shift.donut_fryer.snapshot()
+	data["bottles"] = shift.bottle_cooler.snapshot()
 	data["burger"] = shift.burger_station.snapshot()
+	data["training"] = [shift.tutorial.tutorial_state, shift.tutorial.practice_order_index, shift.tutorial.PRACTICE_ORDERS.size()]
+	data["drawer_open"] = shift.pistol.drawer_open
 	data["dine_in"] = shift.dine_in.snapshot()
 	data["corpses"] = shift.corpses.snapshot()
 	data["pies"] = []
@@ -162,7 +169,17 @@ static func restore(scene: Node, data: Dictionary) -> void:
 	if not data.shift.tasks.has("tables"): data.shift.tasks["tables"] = true
 	if not data.shift.tasks.has("bodies"): data.shift.tasks["bodies"] = true
 	apply(shift,data.shift,SHIFT_FIELDS)
+	var training: Array = data.get("training", ["welcome", 0])
+	shift.tutorial.tutorial_state = training[0]
+	shift.tutorial.practice_order_index = training[1]
+	# The encounter follows the last food order, including in earlier saves.
+	var saved_order_count: int = training[2] if training.size() > 2 else 3
+	if training[1] == saved_order_count:
+		shift.tutorial.practice_order_index = shift.tutorial.PRACTICE_ORDERS.size()
+	shift.pistol.set_drawer_open(data.get("drawer_open", false))
 	shift.donut_fryer.restore(data.get("donuts", {}))
+	shift.bottle_cooler.refill()
+	shift.bottle_cooler.restore(data.get("bottles", []))
 	shift.burger_station.restore(data.get("burger", {}))
 	for i in mini(data.pies.size(),shift.all_pies.size()):
 		var pie = shift.all_pies[i]
@@ -172,6 +189,7 @@ static func restore(scene: Node, data: Dictionary) -> void:
 	shift.tray_sources.clear()
 	for index in data.tray_sources: shift.tray_sources.append(source_node(shift,index))
 	shift.carried_source = source_node(shift,data.carried_source)
+	if shift.carried_item == "Pistol": shift.carried_source = shift.pistol.pickup
 	shift._refresh_tray()
 	shift._refresh_carried()
 	shift._set_carrying_trash(data.carrying_trash)

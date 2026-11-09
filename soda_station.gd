@@ -9,6 +9,7 @@ const LIQUIDS := [Color(0.10, 0.035, 0.012), Color(0.72, 0.76, 0.24), Color(0.17
 func setup(host: Node3D) -> void:
 	drink_name = "Cola"
 	super.setup(host)
+	_add_holder_rims()
 	_replace_nozzles()
 	pour_audio = AudioStreamPlayer3D.new()
 	pour_audio.name = "FizzySodaPour"
@@ -36,6 +37,25 @@ func setup(host: Node3D) -> void:
 		label.font_size = 32
 		label.outline_size = 5
 	apply_flavor()
+
+func _add_holder_rims() -> void:
+	# The three imported stacks face outward along Z and taper toward their tips.
+	var stacks := [
+		[Vector3(1.392, 0.883, -6.656), -6.396, 0.085, 0.067],
+		[Vector3(1.725, 0.882, -6.656), -6.430, 0.0675, 0.0535],
+		[Vector3(2.039, 0.882, -6.653), -6.454, 0.0555, 0.044],
+	]
+	for cups in stacks:
+		for depth in [0.29, 0.44, 0.59]:
+			var radius := lerpf(cups[2], cups[3], depth)
+			var rim := TorusMesh.new()
+			rim.inner_radius = radius - 0.002
+			rim.outer_radius = radius + 0.005
+			rim.rings = 20
+			rim.ring_segments = 8
+			var lip: MeshInstance3D = shift._mesh(stack, rim, Vector3.ZERO, Color(0.36, 0.095, 0.09))
+			lip.global_position = Vector3(cups[0].x, cups[0].y, lerpf(cups[0].z, cups[1], depth))
+			lip.rotation.x = PI / 2
 
 func interact(action: String) -> void:
 	super.interact(action)

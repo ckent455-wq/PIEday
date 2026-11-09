@@ -77,7 +77,7 @@ func ring() -> void:
 	next_ring = now + 450
 	play_ding()
 	if shift.is_practicing():
-		preload("res://playable_demo.gd").session(self).ring_practice_bell(shift)
+		shift.tutorial.ring_practice_bell(shift)
 	elif shift.refusal_required():
 		shift._message("Clothing is required. Face the customer and press E to refuse service.")
 	elif shift.phase != "waiting":

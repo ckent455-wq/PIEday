@@ -1,5 +1,6 @@
 [gd_scene format=4]
 
+[ext_resource type="PackedScene" path="res://coffee_counter_extension.tscn" id="coffee_extension"]
 [ext_resource type="Texture2D" path="res://assets/DINER/Textures/Grass.jpg" id="1_5kicg"]
 [ext_resource type="Texture2D" path="res://assets/DINER/Textures/Asphalt_02.jpg" id="2_66fnw"]
 [ext_resource type="Texture2D" path="res://assets/DINER/Textures/Asphalt_01.jpg" id="3_7b2th"]
@@ -14809,9 +14810,7 @@ mesh = SubResource("ArrayMesh_8p2x0")
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.707668, 0.5951985, -7.14064)
 mesh = SubResource("ArrayMesh_nr7bv")
 
-[node name="POPCORN" type="MeshInstance3D" parent="." unique_id=1526595818]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.3583965, 1.36627, -7.176612)
-mesh = SubResource("ArrayMesh_xh8j3")
+[node name="CoffeeCounterExtension" parent="." instance=ExtResource("coffee_extension")]
 
 [node name="Plants_02_003" type="MeshInstance3D" parent="." unique_id=1724557796]
 transform = Transform3D(-0.01164188, 0.5506978, -3.22408e-08, 0, -2.40749e-08, -0.7376797, -0.7217434, -0.008882877, 5.20051e-10, 15.43895, -2.09054, -16.23059)

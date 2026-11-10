@@ -31,13 +31,14 @@ func _init(persist := true, path := SAVE_PATH) -> void:
 
 func health_status() -> String:
 	if grandpa.is_dead(): return "Grandpa: 0% · Deceased"
+	if grandpa.campaign_won: return "Grandpa: Recovered · Back at the diner"
 	if cash >= TREATMENT_GOAL: return "Grandpa: Surgery funded · Stable"
 	var condition: String = grandpa.condition()
 	if grandpa.last_setback_day == grandpa.days: condition = "Recent setback"
 	return "Grandpa: %d%% · %s" % [grandpa.health, condition]
 
 func start_day() -> void:
-	if grandpa.is_dead(): return
+	if grandpa.is_dead() or grandpa.campaign_won: return
 	sales = 0
 	tips = 0
 	service_rewards = 0
@@ -55,7 +56,7 @@ func tip_chance(seconds: float, perfect_pie: bool) -> float:
 	return clampf(chance, 0.0, 0.80)
 
 func payout(items: Array, correct: bool, seconds: float, perfect_pie: bool, extra_tip := 0) -> Dictionary:
-	if grandpa.is_dead(): return {"sale":0,"tip":0,"service":0,"streak_bonus":0,"total":0}
+	if grandpa.is_dead() or grandpa.campaign_won: return {"sale":0,"tip":0,"service":0,"streak_bonus":0,"total":0}
 	if not correct:
 		streak = 0
 		return {"sale": 0, "tip": 0, "service": 0, "streak_bonus": 0, "total": 0}
@@ -77,7 +78,7 @@ func payout(items: Array, correct: bool, seconds: float, perfect_pie: bool, extr
 	return {"sale": sale, "tip": tip, "service": service, "streak_bonus": streak_bonus, "total": sale + tip + service + streak_bonus}
 
 func finish_day() -> int:
-	if day_completed or grandpa.is_dead(): return 0
+	if day_completed or grandpa.is_dead() or grandpa.campaign_won: return 0
 	day_completed = true
 	closing_bonus = CLOSING_BONUS if correct_orders > 0 else 0
 	cash += closing_bonus
@@ -87,6 +88,17 @@ func finish_day() -> int:
 
 func day_total() -> int:
 	return sales + tips + service_rewards + streak_rewards + closing_bonus
+
+func complete_campaign() -> bool:
+	if grandpa.is_dead() or cash < TREATMENT_GOAL: return false
+	if grandpa.campaign_won: return true
+	grandpa.campaign_won = true
+	grandpa.victory_day = grandpa.days
+	grandpa.health = 100
+	grandpa.evening_pending = false
+	grandpa.visit_in_progress = false
+	_save()
+	return true
 
 func _save() -> void:
 	if save_enabled:

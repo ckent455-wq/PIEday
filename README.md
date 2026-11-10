@@ -1,9 +1,6 @@
 # PIEday
 
-Current version: **0.12.1**. Includes two-player online campaign play, randomized campaign orders, and updated rewards. The campaign includes a kitchen pistol for clothing-required encounters,
-jointed customer ragdolls, and a closing chore to pick up bodies and carry them
-to the dumpster. Includes the full campaign, hospital visits, save/load, donut
-and soda varieties, music, and closing scares.
+Current version: **0.14.0**. Adds Grandpa's winning homecoming cutscene: complete closing duties with $15,000 saved to fund his surgery, then watch him return to the diner and celebrate with a jig. Includes online co-op, burgers and fries, donut and soda varieties, hospital visits, robberies, closing scares, and save/load.
 
 The game opens with a typewriter-style story on a black screen. Press E or
 Space to reveal each passage and advance, then choose Open the Diner. Earn $15,000 toward Grandpa's
@@ -166,3 +163,5 @@ download, verify, install and open it. Keep using your original game shortcut;
 it opens the newest version installed by the updater. Both co-op PCs need the
 same version, shown in the lobby. Existing solo and co-op saves stay available.
 Older releases without the updater need one manual download of v0.11.0.
+
+Finish a campaign shift with $15,000 saved to fund Grandpa's surgery and see his victory homecoming in the diner. Closing duties must be complete; the closing bonus can reach the goal.

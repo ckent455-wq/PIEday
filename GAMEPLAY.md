@@ -212,3 +212,7 @@ Take a raw patty from the raw-meat tray. Put it on the flat top, wait 3 seconds,
 Five-minute balance: correct orders earn $80 service pay plus menu prices, optional tips and capped streak rewards. Closing pays $300 after at least one correct order. About 9–16 correct orders per shift targets the $15,000 goal in roughly 8–12 shifts. Preparation, dialogue and closing chores do not consume service time. Existing savings are retained.
 
 The donut case holds eight of each flavor (24 total). A six-donut batch can top off a partly full shelf; unused donuts remain in the basket and can be iced for another flavor. Picking a donut removes that exact displayed item. Q returns held/tray donuts and restores their stock. Empty shelves require fresh frying.
+
+## Winning the campaign
+
+Finish closing duties with at least $15,000 saved while Grandpa is still alive. The closing bonus counts toward the goal. His surgery succeeds, and a homecoming cutscene shows him walking back into the diner and thanking the player. The campaign saves as won, Grandpa recovers, and the ending offers replay, a new campaign, or the main menu. New campaigns keep manual save slots. Loading an earlier manual save restores that earlier campaign state. The separate playable demo retains its own ending.

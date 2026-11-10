@@ -479,6 +479,15 @@ func _show_day_summary() -> void:
 	if earnings.grandpa.is_dead():
 		_end_campaign()
 		return
+	if preload("res://playable_demo.gd").session(self) == null and earnings.complete_campaign():
+		phase = "game_over"
+		closing_events.reset()
+		customer_line.clear_all()
+		dine_in.reset()
+		if is_instance_valid(dialogue): dialogue.finish()
+		if is_instance_valid(hospital_visits): hospital_visits.menu.finish()
+		preload("res://hospital_travel.gd").go(game,"res://grandpa_victory.tscn",earnings)
+		return
 	phase = "closed"
 	if not closing_events.awaiting_doorway_scare(): closing_events.reset()
 	arrival_delay = 0

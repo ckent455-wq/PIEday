@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.14.0
+
+- Finish closing with $15,000 saved to win the campaign. The closing bonus counts toward the goal.
+- Grandpa returns after successful surgery, walks through the front door, performs a celebratory jig, and thanks the player in typewriter dialogue.
+- Clear center-aisle camera framing, synchronized door timing, and hidden collision helper geometry for the cutscene.
+- Victory persists across reloads. Ending controls offer replay, a new campaign, main menu, and quit; manual save slots remain intact.
+- Co-op supports victory travel and requires matching updated builds.
+
 ## 0.12.1
 
 - Soda empty-cup pickup covers the full front holder with more vertical tolerance; rays from multiple approach angles are verified without intercepting flavor buttons or filled-cup rays.

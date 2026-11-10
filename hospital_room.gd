@@ -24,6 +24,13 @@ func _ready() -> void:
 	if get_tree().root.has_meta("pie_day_wallet"):
 		earnings = get_tree().root.get_meta("pie_day_wallet")
 		get_tree().root.remove_meta("pie_day_wallet")
+	if earnings.grandpa.campaign_won and not get_tree().root.has_meta("restore_manual_state"):
+		leaving = true
+		set_physics_process(false)
+		set_process_unhandled_input(false)
+		get_tree().root.set_meta("pie_day_wallet",earnings)
+		get_tree().change_scene_to_file.call_deferred("res://grandpa_victory.tscn")
+		return
 	if earnings.grandpa.is_dead():
 		leaving = true
 		set_process_unhandled_input(false)

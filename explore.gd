@@ -19,6 +19,12 @@ func _ready() -> void:
 	coop = preload("res://coop_session.gd").active(self)
 	var saved_wallet = get_tree().root.get_meta("pie_day_wallet") if get_tree().root.has_meta("pie_day_wallet") else null
 	if saved_wallet == null: saved_wallet = preload("res://earnings.gd").new()
+	if saved_wallet.grandpa.campaign_won and not get_tree().root.has_meta("restore_manual_state"):
+		set_physics_process(false)
+		set_process_unhandled_input(false)
+		get_tree().root.set_meta("pie_day_wallet",saved_wallet)
+		get_tree().change_scene_to_file.call_deferred("res://grandpa_victory.tscn")
+		return
 	if saved_wallet.grandpa.is_dead():
 		set_process_unhandled_input(false)
 		get_tree().root.set_meta("pie_day_wallet",saved_wallet)

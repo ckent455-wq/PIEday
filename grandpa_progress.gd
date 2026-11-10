@@ -17,6 +17,8 @@ var visit_in_progress := false
 var next_visit_day := 1
 var last_visit_day := 0
 var last_visit_choice_day := 0
+var campaign_won := false
+var victory_day := 0
 const PLEAS := [
  ["No pressure, kiddo. Just keep the place running. If anybody complains about the pie, tell them I made it. I'm conveniently unavailable for feedback.", "Take your time learning the ropes. Well, a reasonable amount of time. The doctor used the word 'soon' and then looked at a clipboard."],
  ["Quick question. How many pies does a man have to sell to purchase one functioning grandpa? Could we put that number on the specials board?", "I've been counting the ceiling tiles between visits. There are forty-eight. I've asked them to stop charging me rent for the ones I don't look at."],
@@ -35,6 +37,7 @@ const GREETINGS := [
 ]
 
 func advance_day(funded: bool) -> void:
+	if campaign_won: return
 	if is_dead(): return
 	days += 1
 	evening_pending = true
@@ -154,6 +157,8 @@ func read_config(config: ConfigFile) -> void:
 	next_visit_day = maxi(1,int(config.get_value("grandpa","next_visit_day",1)))
 	last_visit_day = maxi(0,int(config.get_value("grandpa","last_visit_day",0)))
 	last_visit_choice_day = maxi(0,int(config.get_value("grandpa","last_visit_choice_day",0)))
+	campaign_won = bool(config.get_value("grandpa","campaign_won",false)) and not is_dead()
+	victory_day = maxi(0,int(config.get_value("grandpa","victory_day",0)))
 	if is_dead():
 		evening_pending = false
 		visit_in_progress = false
@@ -171,6 +176,8 @@ func read_config(config: ConfigFile) -> void:
 					setback_history.append({"day":entry.day,"event_id":entry.event_id,"health_before":entry.get("health_before",health),"health_after":entry.get("health_after",health),"health_loss":entry.get("health_loss",0)})
 
 func write_config(config: ConfigFile) -> void:
+	config.set_value("grandpa","campaign_won",campaign_won)
+	config.set_value("grandpa","victory_day",victory_day)
 	for key in ["days","health","death_day","setback_seed","last_setback_day","last_setback_id","last_discussed_setback_day","last_witnessed_mistreatment_day","evening_pending","visit_in_progress","next_visit_day","last_visit_day","last_visit_choice_day","setback_history"]:
 		config.set_value("grandpa",key,get(key))
 	for retired in ["letters","next_letter_day","funded_announced"]:

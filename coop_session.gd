@@ -1,7 +1,7 @@
 extends Node
 
 const PORT := 27841
-const PROTOCOL := 14
+const PROTOCOL := 15
 const NAME_LIMIT := 20
 const DEFAULT_NAME := "PARTNER"
 const CAMPAIGN_PATH := "user://coop_earnings.cfg"
@@ -119,7 +119,7 @@ func _set_partner_character(model: int, apron: int, face: int, player_name: Stri
 func _load_diner() -> void:
 	if leaving: return
 	get_tree().root.set_meta("pie_day_wallet", wallet)
-	var destination := "res://grandpa_ending.tscn" if wallet.grandpa.is_dead() else "res://hospital_room.tscn" if wallet.grandpa.visit_in_progress else "res://intro.tscn" if wallet.grandpa.days == 0 else "res://main.tscn"
+	var destination := "res://grandpa_ending.tscn" if wallet.grandpa.is_dead() else "res://grandpa_victory.tscn" if wallet.grandpa.campaign_won else "res://hospital_room.tscn" if wallet.grandpa.visit_in_progress else "res://intro.tscn" if wallet.grandpa.days == 0 else "res://main.tscn"
 	get_tree().change_scene_to_file(destination)
 
 func attach(diner: Node3D) -> void:
@@ -699,7 +699,7 @@ func travel(host: Node, destination: String, progress: RefCounted) -> void:
 
 @rpc("authority", "call_remote", "reliable")
 func _receive_travel(destination: String, progress: Dictionary, epoch: int) -> void:
-	if hosting or destination not in ["res://main.tscn", "res://hospital_room.tscn", "res://grandpa_ending.tscn", "res://intro.tscn"]: return
+	if hosting or destination not in ["res://main.tscn", "res://hospital_room.tscn", "res://grandpa_ending.tscn", "res://grandpa_victory.tscn", "res://intro.tscn"]: return
 	scene_epoch = epoch
 	get_tree().paused = false
 	wallet = _read_wallet(progress)

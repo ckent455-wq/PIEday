@@ -32,6 +32,10 @@ func _ready() -> void:
 	var saved_progress = preload("res://earnings.gd").new()
 	if get_tree().root.has_meta("pie_day_wallet"):
 		saved_progress = get_tree().root.get_meta("pie_day_wallet")
+	if saved_progress.grandpa.campaign_won and not get_tree().root.has_meta("restore_manual_state"):
+		get_tree().root.set_meta("pie_day_wallet",saved_progress)
+		get_tree().change_scene_to_file.call_deferred("res://grandpa_victory.tscn")
+		return
 	if saved_progress.grandpa.is_dead():
 		get_tree().root.set_meta("pie_day_wallet",saved_progress)
 		get_tree().change_scene_to_file.call_deferred("res://grandpa_ending.tscn")

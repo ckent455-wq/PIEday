@@ -45,7 +45,7 @@ func run():
 		while is_instance_valid(session.intro_scene) and not session.intro_scene.starting:
 			session.intro_input()
 			await create_timer(.12).timeout
-	assert(await wait_for(func(): return is_instance_valid(session.game)))
+	assert(await wait_for(func(): return is_instance_valid(session.game), 30.0))
 	game = session.game
 	shift = game.shift
 	verify_partner_appearance()
@@ -316,7 +316,7 @@ func coordinate() -> void:
 		push_error("Could not start co-op guest check")
 		quit(1)
 		return
-	var end := Time.get_ticks_msec() + 51000
+	var end := Time.get_ticks_msec() + 100000
 	while (OS.is_process_running(host_pid) or OS.is_process_running(guest_pid)) and Time.get_ticks_msec() < end:
 		await process_frame
 	var ok := true

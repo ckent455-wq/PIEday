@@ -123,6 +123,8 @@ func _input(event: InputEvent) -> void:
 
 func pause_game() -> void:
 	if is_open or (get_tree().paused and coop == null): return
+	var scene := get_parent()
+	if scene.scene_file_path == "res://main.tscn" and scene.shift.robbery.blackout.visible: return
 	if coop != null and is_instance_valid(coop.game) and coop.game.scene_file_path == "res://main.tscn" and coop.game.shift.dialogue.is_open: return
 	is_open = true
 	overlay.show()

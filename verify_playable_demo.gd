@@ -103,7 +103,13 @@ func run() -> void:
 	await create_timer(.5).timeout
 	shift.service_bell.ring()
 	assert(demo.practice_order_index == demo.PRACTICE_ORDERS.size() and shift.refusal_required())
+	assert(shift.dialogue.is_open and shift.dialogue.body.text == "Give me all your money!")
+	shift.dialogue.finish()
 	shift.interact(shift.customer.get_node("Interaction"))
+	assert(shift.robbery.blackout.visible and demo.wallet.cash == 0)
+	await create_timer(2.5).timeout
+	assert(shift.dialogue.is_open)
+	shift.dialogue.finish()
 	assert(shift.is_practicing() and shift.pistol.available())
 	shift.interact(shift.pistol.drawer)
 	shift.interact(shift.pistol.pickup)

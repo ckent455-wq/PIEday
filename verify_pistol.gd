@@ -30,6 +30,7 @@ func run():
 	shift.customer_line.next_arrival = INF
 	for i in 240: shift._process(1.0/60)
 	require(shift.refusal_required() and shift.phase == "waiting","Encounter reaches counter")
+	shift.dialogue.finish()
 	shift.interact(drawer)
 	shift.pistol.tick()
 	shift.pistol.take()

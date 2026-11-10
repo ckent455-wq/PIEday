@@ -61,7 +61,7 @@ func run():
 		shift.tutorial.open_tutorial()
 		assert(await wait_for(func(): return shift.is_practicing()))
 		shift.tutorial.practice_order_index = shift.tutorial.FRIES_LESSON
-		assert(await wait_for(func(): return shift.tutorial.tutorial_state == "done", 12.0))
+		assert(await wait_for(func(): return shift.tutorial.tutorial_state == "done", 16.0))
 		assert(shift.phase == "prep" and shift.customers_this_shift == 0)
 		assert(shift.corpses.bodies.size() == 1 and session.guest_item.is_empty())
 		shift.customer_line.nude_chance = 0.0
@@ -98,9 +98,18 @@ func run():
 		assert(shift.serve_order())
 		assert(shift.dine_in.diners.size() == 1)
 		await create_timer(.6).timeout
+		assert(shift.earnings.cash > shift.earnings.SERVICE_REWARD)
+		shift.customer_line.clear_all()
+		shift._reset_customer()
+		shift.customer_line.next_arrival = INF
+		shift.customer_line.force_nude_next = true
+		shift._spawn_customer()
+		assert(await wait_for(func(): return shift.robbery.blackout.visible))
+		assert(shift.earnings.cash == 0)
+		assert(await wait_for(func(): return not shift.robbery.blackout.visible))
 		shift.begin_cleanup()
 		assert(shift.phase == "cleanup")
-		var fallen = shift.customer_line.make_actor(Vector3(-1,-.094,-5.5),"adult_unclothed")
+		var fallen = shift.customer_line.make_actor(Vector3(-1,-.094,-5.5),"robber_1")
 		shift.corpses.kill(fallen)
 		assert(await wait_for(func(): return is_instance_valid(session.guest_body), 8.0))
 		assert(await wait_for(func(): return not is_instance_valid(session.guest_body), 5.0))
@@ -151,6 +160,17 @@ func run():
 		await aim_at(shift.held_tray.global_position + Vector3.UP * .06, serving_feet, "tray")
 		await aim_at(shift.service_bell.global_position + Vector3.UP * .10, serving_feet, "bell")
 		assert(await wait_for(func(): return shift.is_practicing() and shift.refusal_required()))
+		assert(await wait_for(func(): return shift.dialogue.is_open))
+		assert(shift.dialogue.body.text == "Give me all your money!")
+		assert(is_instance_valid(shift.customer.find_child("RobberGun", true, false)))
+		shift.dialogue.finish()
+		assert(await wait_for(func(): return not paused))
+		var robber_feet := Vector3(-2.4, -0.09, -5.55)
+		await aim_at(shift.customer.global_position + Vector3.UP * 1.4, robber_feet, "customer")
+		assert(await wait_for(func(): return shift.robbery.blackout.visible))
+		assert(await wait_for(func(): return shift.dialogue.is_open and not shift.robbery.blackout.visible))
+		shift.dialogue.finish()
+		assert(await wait_for(func(): return not paused))
 		var drawer_feet := Vector3(-2.35, -0.09, -5.85)
 		await aim_at(shift.pistol.drawer.global_position, drawer_feet, "pistol_drawer")
 		assert(await wait_for(func(): return shift.pistol.drawer_open))
@@ -199,7 +219,12 @@ func run():
 				if actor.get_node("Interaction").get_meta("action") == "dining_customer" and actor.has_meta("network_meal"): return true
 			return false
 		))
-		assert(await wait_for(func(): return shift.phase == "cleanup" and shift.earnings.cash > shift.earnings.SERVICE_REWARD))
+		assert(await wait_for(func(): return shift.dialogue.is_open and shift.refusal_required()))
+		shift.dialogue.finish()
+		assert(await wait_for(func(): return not paused and shift.robbery.remaining > 0.0))
+		await aim_at(shift.customer.global_position + Vector3.UP * 1.4, robber_feet, "customer")
+		assert(await wait_for(func(): return shift.robbery.blackout.visible and shift.earnings.cash == 0))
+		assert(await wait_for(func(): return shift.phase == "cleanup"))
 		assert(await wait_for(func(): return session.mirror_bodies.size() == 1))
 		await create_timer(.8).timeout
 		var corpse: Dictionary = session.mirror_bodies.values()[0]
@@ -273,7 +298,7 @@ func coordinate() -> void:
 	var host_log := folder.path_join("coop-campaign-host.log")
 	var guest_log := folder.path_join("coop-campaign-guest.log")
 	var script := "res://verify_coop_campaign.gd"
-	var arguments := PackedStringArray(["--headless", "--path", ProjectSettings.globalize_path("res://"), "--script", script, "--max-fps", "120", "--quit-after", "5400"])
+	var arguments := PackedStringArray(["--headless", "--path", ProjectSettings.globalize_path("res://"), "--script", script, "--max-fps", "120", "--quit-after", "6500"])
 	var port := str(30000 + OS.get_process_id() % 15000)
 	var host_args := arguments.duplicate()
 	host_args.append_array(["--log-file", host_log, "--", "--coop-lobby", "host", port])
@@ -291,7 +316,7 @@ func coordinate() -> void:
 		push_error("Could not start co-op guest check")
 		quit(1)
 		return
-	var end := Time.get_ticks_msec() + 43000
+	var end := Time.get_ticks_msec() + 51000
 	while (OS.is_process_running(host_pid) or OS.is_process_running(guest_pid)) and Time.get_ticks_msec() < end:
 		await process_frame
 	var ok := true

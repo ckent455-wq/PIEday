@@ -32,10 +32,10 @@ func practice_hint(shift: Node) -> String:
 
 func _practice_instruction(shift: Node) -> String:
 	if practice_order_index == PRACTICE_ORDERS.size():
-		if shift.carried_item == "Pistol": return "Aim at the unclothed customer and left-click or press E to fire."
+		if shift.carried_item == "Pistol": return "Aim at the robber and left-click or press E to fire."
 		if not shift.carried_item.is_empty() or shift.has_empty_cup(): return "Press Q to free your hands before taking the pistol."
 		if shift.pistol.drawer_open: return "Look inside the drawer and press E on the pistol to take it."
-		return "An unclothed customer is at the counter. Press E to open the drawer beneath the service bell."
+		return "A masked robber is demanding cash at the counter. Press E to open the drawer beneath the service bell."
 	if shift.carried_item.is_empty() and not shift.has_empty_cup() and shift.tray.any(func(item): return not item in PRACTICE_ORDERS[practice_order_index] or shift.tray.count(item) > 1):
 		return "Take items off the tray with E and return any extras with Q."
 	if practice_order_index == 2: return _burger_instruction(shift)
@@ -150,10 +150,10 @@ func ring_practice_bell(shift: Node) -> void:
 		FRIES_LESSON: shift._message("Next up: a basket of fries. Start at the frozen fries rack in the freezer.")
 
 func begin_encounter(shift: Node) -> void:
-	var actor: Node3D = shift.customer_line.make_actor(Vector3(-2.4, -0.094, -3.6), "adult_unclothed")
+	var actor: Node3D = shift.customer_line.make_actor(Vector3(-2.4, -0.094, -3.6), "robber_1")
 	actor.rotation.y = PI
 	shift._bind_customer_actor(actor)
-	shift._message("An unclothed customer is at the counter. Get the pistol from the drawer under the bell.")
+	shift.start_robbery_dialogue()
 
 func complete_encounter(shift: Node) -> void:
 	shift._reset_customer()

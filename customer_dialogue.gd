@@ -113,7 +113,7 @@ func _show_page() -> void:
 	typewriter.start(body,str(pages[page][1]))
 
 func _page_ready() -> void:
-	next_button.text = "Start order" if page == pages.size() - 1 else "Continue"
+	next_button.text = "Start order" if page == pages.size() - 1 and pages[page][0] != "MASKED ROBBER" else "Continue"
 
 func advance() -> void:
 	var coop = preload("res://coop_session.gd").active(self)

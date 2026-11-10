@@ -92,7 +92,9 @@ This file records provenance; it does not relicense third-party material.
 - **Hospital music — Still Here:** original sentimental piano composition for PIEday, created with BeepBox, 58 BPM in 3/4, sixteen bars (about fifty seconds). Grand piano melody and broken chords with a quiet string-like layer. Editable JSON and BeepBox URL are in art/music/; runtime assets/music/still_here.wav. No third-party musical recordings.
 
 ## Kitchen pistol
-Long Slide Magnum Pistol from 3D Low-Poly Guns Pack 2 by Polyy (https://polyy.ai), user-provided download. CC0; license and pack readme included under assets/pistol/. Gunshot is generated procedurally by pistol_encounter.gd.
+Long Slide Magnum Pistol from 3D Low-Poly Guns Pack 2 by Polyy (https://polyy.ai), user-provided download. CC0; license and pack readme included under assets/pistol/.
+
+- **Pistol shot:** Heather’s Gunshot Effect 2 by okieactor, CC0. PIEday uses the trimmed 16-bit PCM copy from ET Remastered as `assets/audio/pistol_shot.wav`. [Freesound source](https://freesound.org/people/okieactor/sounds/415912/)
 
 ## v0.12.0 kitchen and hospital additions
 

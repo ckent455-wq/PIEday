@@ -15,22 +15,7 @@ func setup(host: Node3D) -> void:
 	_build_drawer()
 	shot = AudioStreamPlayer.new()
 	add_child(shot)
-	var stream := AudioStreamWAV.new()
-	stream.format = AudioStreamWAV.FORMAT_16_BITS
-	stream.mix_rate = 22050
-	var samples := PackedByteArray()
-	samples.resize(11025*2)
-	var rng := RandomNumberGenerator.new()
-	rng.seed = 451
-	for i in 11025:
-		var t := float(i)/22050
-		var crack := rng.randf_range(-1,1)*exp(-t*85)
-		var thump := sin(t*TAU*(125-90*t))*exp(-t*26)
-		var echo: float = rng.randf_range(-1,1)*exp(-maxf(t-.045,0)*18)*(.22 if t>.045 else 0)
-		var value := clampf(crack*.85+thump*.6+echo,-1,1)
-		samples.encode_s16(i*2,int(value*30000))
-	stream.data = samples
-	shot.stream = stream
+	shot.stream = preload("res://assets/audio/pistol_shot.wav")
 	shot.volume_db = -5
 
 func _build_drawer() -> void:
@@ -112,7 +97,7 @@ func available() -> bool:
 	return shift.refusal_required() and (shift.phase == "waiting" or shift.is_practicing())
 
 func prompt() -> String:
-	if not available(): return "Pistol · only available during a clothing-required encounter"
+	if not available(): return "Pistol · only available during a robbery"
 	return "[E] Take pistol · Q returns it" if shift.carried_item.is_empty() and not shift.has_empty_cup() else "Free your hands first"
 
 func take() -> void:
@@ -122,7 +107,7 @@ func take() -> void:
 		shift._message("Your partner has the pistol.")
 		return
 	if not available():
-		shift._message("The pistol is only available during a clothing-required encounter.")
+		shift._message("The pistol is only available during a robbery.")
 		return
 	if not shift.carried_item.is_empty() or shift.has_empty_cup():
 		shift._message("Free your hands before taking the pistol.")
@@ -130,7 +115,7 @@ func take() -> void:
 	shift.carried_item = "Pistol"
 	shift.carried_source = pickup
 	shift._refresh_carried()
-	shift._message("Aim at the unclothed customer and click or press E. Q returns the pistol.")
+	shift._message("Aim at the robber and click or press E. Q returns the pistol.")
 
 func tick() -> void:
 	if shift.carried_item == "Pistol" and not available(): shift._clear_carried(false)
@@ -154,7 +139,7 @@ func fire(target: Node) -> bool:
 		return true
 	shift.customers_this_shift += 1
 	shift._depart_customer(false)
-	shift._message("The customer is dead. Dispose of the body during closing cleanup. Pistol returned to the drawer.")
+	shift._message("The robber is down. Dispose of the body during closing cleanup. Pistol returned to the drawer.")
 	tick()
 	return true
 

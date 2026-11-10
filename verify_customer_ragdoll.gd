@@ -14,7 +14,7 @@ func run():
 	var shift = game.shift
 	shift.set_process(false)
 	shift.start_demo()
-	for model in ["adult_unclothed","adult_female_unclothed"]:
+	for model in ["robber_1","robber_2"]:
 		shift.corpses.reset()
 		game.player.position = Vector3(-2.4,.03,-5.2)
 		var actor = shift.customer_line.make_actor(Vector3(-2.4,-.094,-3.6),model)

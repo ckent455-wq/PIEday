@@ -1,7 +1,7 @@
 extends Node
 
 const PORT := 27841
-const PROTOCOL := 12
+const PROTOCOL := 14
 const NAME_LIMIT := 20
 const DEFAULT_NAME := "PARTNER"
 const CAMPAIGN_PATH := "user://coop_earnings.cfg"
@@ -289,6 +289,7 @@ func request_action(return_item := false) -> void:
 func _guest_action(position: Vector3, yaw: float, pitch: float, return_item: bool) -> void:
 	if leaving or not hosting or not partner_ready or multiplayer.get_remote_sender_id() != partner_id: return
 	if not is_instance_valid(game) or get_tree().paused: return
+	if game.scene_file_path == "res://main.tscn" and game.shift.robbery.blackout.visible: return
 	if not _valid_pose(position, yaw) or not is_finite(pitch) or absf(pitch) > 1.51: return
 	var now := Time.get_ticks_msec()
 	if now - last_action < 75 and not return_item: return
@@ -361,6 +362,9 @@ func _apply_guest_interaction(action: Node, return_item: bool, callback: Callabl
 
 func begin_dialogue(actor: Node3D, items: Array, reminder: bool) -> void:
 	var lines: Array = game.shift.dialogue.make_pages(actor, items, reminder)
+	show_shared_dialogue(lines)
+
+func show_shared_dialogue(lines: Array) -> void:
 	game.shift.dialogue.show_pages(lines)
 	_broadcast_customer_dialogue()
 
@@ -424,6 +428,7 @@ func _snapshot() -> Dictionary:
 		"bottles": shift.bottle_cooler.snapshot(),
 		"training": [shift.tutorial.tutorial_state, shift.tutorial.practice_order_index],
 		"phase": shift.phase, "remaining": shift.shift_remaining, "closing": shift.closing_time, "rush": shift.rush_started,
+		"robbery_remaining": shift.robbery.remaining,
 		"order": shift.order, "taken": shift.order_taken, "cash": shift.earnings.cash, "notice": shift.notice.text,
 		"actors": actors, "customer": str(shift.customer.get_instance_id()) if is_instance_valid(shift.customer) else "",
 		"pies": pies, "tray": shift.tray, "tray_sources": tray_sources, "drinks": drinks, "doors": door_states,
@@ -477,6 +482,7 @@ func _sync_shift(packet: PackedByteArray) -> void:
 	shift.bottle_cooler.restore(state.bottles)
 	shift.burger_station.restore(state.get("burger", {}))
 	shift.shift_remaining = state.remaining
+	shift.robbery.remaining = state.robbery_remaining
 	shift.closing_time = state.closing
 	shift.set_rush_started(state.get("rush", false))
 	shift.order.assign(state.order)
@@ -901,6 +907,14 @@ func share_bell() -> void:
 
 func share_shot(guest_fired: bool) -> void:
 	if hosting and partner_ready: _hear_shot.rpc_id(partner_id, guest_fired)
+
+func share_robbery_failure(stolen: int, practice: bool) -> void:
+	if hosting and partner_ready: _show_robbery_failure.rpc_id(partner_id, stolen, practice)
+
+@rpc("authority", "call_remote", "reliable")
+func _show_robbery_failure(stolen: int, practice: bool) -> void:
+	if not hosting and is_instance_valid(game) and game.scene_file_path == "res://main.tscn":
+		game.shift.robbery.show_blackout(stolen, practice)
 
 @rpc("authority", "call_remote", "reliable")
 func _hear_shot(guest_fired: bool) -> void:

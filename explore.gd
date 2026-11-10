@@ -156,6 +156,7 @@ func set_night(night: bool) -> void:
 		yard_light.light_energy = 1.0 if night else 1.4
 
 func _unhandled_input(event: InputEvent) -> void:
+	if is_instance_valid(shift) and shift.robbery.blackout.visible: return
 	if is_instance_valid(pause_menu) and pause_menu.is_open: return
 	if is_instance_valid(shift) and is_instance_valid(shift.dialogue) and shift.dialogue.is_open: return
 	if event is InputEventMouseMotion and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
@@ -195,6 +196,7 @@ func face_point(target: Vector3) -> void:
 func _physics_process(delta: float) -> void:
 	if not is_instance_valid(player):
 		return
+	if shift.robbery.blackout.visible: return
 	if coop != null and is_instance_valid(pause_menu) and pause_menu.is_open: return
 	if coop != null and shift.dialogue.is_open: return
 	var direction := Vector3(float(Input.is_physical_key_pressed(KEY_D)) - float(Input.is_physical_key_pressed(KEY_A)), 0, float(Input.is_physical_key_pressed(KEY_S)) - float(Input.is_physical_key_pressed(KEY_W)))

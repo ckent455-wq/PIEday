@@ -80,6 +80,7 @@ static func capture(scene: Node) -> Dictionary:
 	data["burger"] = shift.burger_station.snapshot()
 	data["training"] = [shift.tutorial.tutorial_state, shift.tutorial.practice_order_index, shift.tutorial.PRACTICE_ORDERS.size()]
 	data["drawer_open"] = shift.pistol.drawer_open
+	data["robbery_remaining"] = shift.robbery.remaining
 	data["dine_in"] = shift.dine_in.snapshot()
 	data["corpses"] = shift.corpses.snapshot()
 	data["pies"] = []
@@ -178,6 +179,7 @@ static func restore(scene: Node, data: Dictionary) -> void:
 	if training[1] == saved_order_count:
 		shift.tutorial.practice_order_index = shift.tutorial.PRACTICE_ORDERS.size()
 	shift.pistol.set_drawer_open(data.get("drawer_open", false))
+	shift.robbery.remaining = data.get("robbery_remaining", -1.0)
 	shift.donut_fryer.restore(data.get("donuts", {}))
 	shift.bottle_cooler.refill()
 	shift.bottle_cooler.restore(data.get("bottles", []))

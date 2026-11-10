@@ -94,6 +94,7 @@ var restock: Node3D
 var hospital_visits: Node
 var dine_in: Node3D
 var pistol: Node3D
+var robbery: CanvasLayer
 var corpses: Node3D
 var burger_station: Node3D
 var donut_fryer: Node3D
@@ -253,6 +254,9 @@ func setup(host: Node3D) -> void:
 	dialogue = preload("res://customer_dialogue.gd").new()
 	add_child(dialogue)
 	dialogue.setup(self)
+	robbery = preload("res://robbery.gd").new()
+	add_child(robbery)
+	robbery.setup(self)
 	restock = preload("res://pie_restock.gd").new()
 	add_child(restock)
 	restock.setup(self)
@@ -312,8 +316,8 @@ func setup(host: Node3D) -> void:
 	elif "--refusal-demo" in OS.get_cmdline_user_args() or "--female-refusal-demo" in OS.get_cmdline_user_args():
 		start_demo()
 		customer_line.force_nude_next = true
-		customer_line.force_nude_model = "adult_female_unclothed" if "--female-refusal-demo" in OS.get_cmdline_user_args() else "adult_unclothed"
-		_message("REFUSAL DEMO: Wait for the customer to reach the counter, then face them and press E to refuse service. Clothing is required.")
+		customer_line.force_nude_model = "robber_2" if "--female-refusal-demo" in OS.get_cmdline_user_args() else "robber_1"
+		_message("ROBBERY DEMO: Wait for the robber at the counter. Press E to tell them to leave, or use the pistol in the drawer.")
 	elif "--customer-demo" in OS.get_cmdline_user_args():
 		start_demo()
 	elif earnings.grandpa.evening_pending:
@@ -395,7 +399,7 @@ func _build_hud() -> void:
 func _refresh_hud() -> void:
 	notice_panel.visible = not notice.text.is_empty() and not (is_instance_valid(dialogue) and dialogue.is_open)
 	payment_panel.visible = payment_label.visible
-	order_panel.visible = phase in ["arriving", "waiting", "leaving", "cleanup"] and not (is_instance_valid(dialogue) and dialogue.is_open)
+	order_panel.visible = (phase in ["arriving", "waiting", "leaving", "cleanup"] or refusal_required()) and not (is_instance_valid(dialogue) and dialogue.is_open)
 	var lines := PackedStringArray()
 	if phase == "cleanup":
 		order_heading.text = "CLOSING CHECKLIST"
@@ -407,7 +411,9 @@ func _refresh_hud() -> void:
 			lines.append(("[color=#a9c6a0]✓  " + title + "[/color]") if tasks[id] else "○  " + title)
 	elif refusal_required():
 		order_heading.text = "SERVICE NOTICE"
-		lines.append(str(customer.get_meta("display_name", "Customer")) + "\nClothing is required.\nRefuse service at the counter.")
+		lines.append("Masked robber\nGive me all your money!\nPistol drawer under the bell.")
+		if robbery.remaining >= 0.0:
+			lines.append("[color=#ff8e80]Time to react: %.1fs[/color]" % robbery.remaining)
 	elif order_taken:
 		order_heading.text = "ORDER / " + str(customer.get_meta("display_name", "Customer")).to_upper() if is_instance_valid(customer) else "CURRENT ORDER"
 		var shown: Array[String] = []
@@ -452,7 +458,7 @@ func _finish_day() -> void:
 	close_service()
 
 func close_service() -> void:
-	if phase == "waiting" and order_taken and is_instance_valid(customer) and not refusal_required():
+	if phase == "waiting" and is_instance_valid(customer) and (order_taken or refusal_required()):
 		closing_time = true
 		shift_remaining = 0
 		arrival_delay = 0
@@ -460,7 +466,10 @@ func close_service() -> void:
 		dine_in.close_for_night()
 		game.set_night(true)
 		_update_shift_clock()
-		_message("DINER CLOSED! Finish this customer's order and ring the bell. Everyone else is heading home; closing duties begin after this order.")
+		if refusal_required():
+			_message("DINER CLOSED. Deal with the robber before starting closing duties.")
+		else:
+			_message("DINER CLOSED! Finish this customer's order and ring the bell. Everyone else is heading home; closing duties begin after this order.")
 	else:
 		begin_cleanup()
 
@@ -832,6 +841,9 @@ func _process(delta: float) -> void:
 	if phase == "game_over": return
 	if not is_instance_valid(game):
 		return
+	if robbery.blackout.visible: return
+	robbery.tick(delta)
+	if robbery.blackout.visible: return
 	donut_fryer.tick(delta)
 	burger_station.tick(delta)
 	animation_time += delta
@@ -864,7 +876,8 @@ func _process(delta: float) -> void:
 			_spawn_customer()
 	if is_instance_valid(customer) and walking:
 		var goal := route[route_index]
-		var speed := (6.5 if angry else 5.5) if phase == "leaving" else 4.0
+		var running := phase == "arriving" and refusal_required()
+		var speed: float = (6.5 if angry else 5.5) if phase == "leaving" else customer_line.arrival_speed(customer)
 		var movement := goal - customer.position
 		var passage_ready: bool = customer_line.front_door_passage_ready(customer, goal)
 		if not passage_ready:
@@ -876,14 +889,15 @@ func _process(delta: float) -> void:
 				walking = false
 				phase = "waiting"
 				customer.rotation.y = PI
-				speech.text = "CLOTHING REQUIRED - E: REFUSE SERVICE" if refusal_required() else "E: TAKE MY ORDER"
+				if refusal_required(): start_robbery_dialogue()
+				else: speech.text = "E: TAKE MY ORDER"
 		else:
 			customer.position += movement.normalized() * speed * delta
 			customer.rotation.y = atan2(movement.x, movement.z)
 		if is_instance_valid(customer_visual):
-			var gait_speed := minf(speed, 2.5)
+			var gait_speed := minf(speed, 4.0 if running else 2.5)
 			customer_visual.position.y = absf(sin(animation_time * gait_speed * 8)) * 0.018 if passage_ready else 0.0
-			_pose_customer(sin(animation_time * gait_speed * 7) if passage_ready else 0.0)
+			_pose_customer(sin(animation_time * gait_speed * 7) * (1.35 if running else 1.0) if passage_ready else 0.0)
 	elif is_instance_valid(customer_visual):
 		customer_visual.position.y = 0
 		_pose_customer(0)
@@ -899,6 +913,14 @@ func _pose_customer(stride: float) -> void:
 		var rest := customer_skeleton.get_bone_global_rest(bone_id).basis.get_rotation_quaternion()
 		var baseline: Quaternion = limb_rest_rotations[bone_id]
 		customer_skeleton.set_bone_pose_rotation(bone_id, baseline * rest.inverse() * Quaternion(Vector3.RIGHT, angle) * rest)
+
+func start_robbery_dialogue() -> void:
+	var lines := [["MASKED ROBBER", "Give me all your money!"]]
+	robbery.remaining = -1.0
+	speech.text = lines[0][1]
+	_message("The pistol is in the drawer under the service bell.")
+	if game.coop == null: dialogue.show_pages(lines)
+	else: game.coop.show_shared_dialogue(lines)
 
 func _update_cleaning(delta: float) -> void:
 	if phase != "cleanup" or not is_instance_valid(target) or not target.has_meta("task") or not Input.is_action_pressed("interact") or Input.mouse_mode != Input.MOUSE_MODE_CAPTURED:
@@ -934,7 +956,7 @@ func action_prompt(node: Node) -> String:
 	if action == "corpse": return corpses.prompt()
 	if action == "dispose" and is_instance_valid(corpses.carried_body): return "[E] Dispose of body in dumpster"
 	if carried_item == "Pistol":
-		return "[Click / E] Fire · Q return pistol" if action == "customer" and pistol.available() else "Pistol equipped · aim at the unclothed customer · Q return"
+		return "[Click / E] Fire · Q return pistol" if action == "customer" and pistol.available() else "Pistol equipped · aim at the robber · Q return"
 	if action == "pistol": return pistol.prompt()
 	if action == "pistol_drawer": return "[E] Close drawer" if pistol.drawer_open else "[E] Open drawer"
 	match action:
@@ -959,12 +981,12 @@ func action_prompt(node: Node) -> String:
 		"soda": return soda_station.flavor_prompt(str(node.get_meta("flavor", "Cola")))
 		"soda_cup_stack": return soda_station.prompt(action)
 		"bell":
-			if refusal_required(): return "Find the pistol under the bell" if is_practicing() else "Refuse this customer service first"
+			if refusal_required(): return "Find the pistol under the bell" if is_practicing() else "Deal with the robber first"
 			return "[Click / E] Ding bell and serve the tray"
 		"oven": return oven.prompt()
 		"customer":
-			if refusal_required() and is_practicing(): return "Clothing required · get the pistol from under the bell"
-			if refusal_required() and phase == "waiting": return "[E] Refuse service - clothing required"
+			if refusal_required() and is_practicing(): return "Robbery · get the pistol from under the bell"
+			if refusal_required() and phase == "waiting": return "[E] Tell the robber to leave"
 			if phase != "waiting": return "Customer is leaving" if phase == "leaving" else "Customer is approaching"
 			return "[E] " + ("Hear order again - ring bell to serve" if order_taken else "Take customer's order")
 		"queued_customer": return "Waiting in line"
@@ -981,6 +1003,7 @@ func action_prompt(node: Node) -> String:
 	return ""
 
 func interact(node: Node) -> void:
+	if robbery.blackout.visible: return
 	if earnings.grandpa.is_dead(): return
 	var action: String = node.get_meta("action", "")
 	if carried_item == "Carrying body":
@@ -989,7 +1012,7 @@ func interact(node: Node) -> void:
 		else: _message("Release the body with Q before using other items.")
 		return
 	if carried_item == "Pistol":
-		if not pistol.fire(node): _message("Only the unclothed customer is a valid target. Q returns the pistol.")
+		if not pistol.fire(node): _message("Only the robber is a valid target. Q returns the pistol.")
 		return
 	match action:
 		"corpse": corpses.grab(node)
@@ -1024,7 +1047,7 @@ func interact(node: Node) -> void:
 		"oven": oven.interact()
 		"customer":
 			if is_practicing() and refusal_required():
-				_message("Take the pistol from the drawer under the bell, then aim at the customer.")
+				robbery.fail()
 				return
 			if phase != "waiting": return
 			if refusal_required():
@@ -1129,11 +1152,7 @@ func refusal_required() -> bool:
 
 func refuse_service() -> void:
 	if phase != "waiting" or not refusal_required(): return
-	speech.text = "Okay. I'm leaving."
-	_message("SERVICE REFUSED: Clothing is required. The customer is leaving. No penalty.")
-	# Keep prepared food, cash, correct/incorrect counts and streak untouched.
-	customers_this_shift += 1
-	_depart_customer(false)
+	robbery.fail()
 
 func _depart_customer(angry_exit: bool, meal_items: Array = []) -> void:
 	if is_instance_valid(dialogue): dialogue.finish()
@@ -1154,7 +1173,7 @@ func _depart_customer(angry_exit: bool, meal_items: Array = []) -> void:
 
 func serve_order() -> bool:
 	if refusal_required():
-		_message("Clothing is required. Face the customer and press E to refuse service.")
+		_message("Deal with the robber before serving orders.")
 		return false
 	if not carried_item.is_empty() or has_empty_cup():
 		_message("Place the held item on the counter tray, or return it, before serving.")

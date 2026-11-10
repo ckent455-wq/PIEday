@@ -1,9 +1,12 @@
 extends Node
 
 const PORT := 27841
-const PROTOCOL := 9
+const PROTOCOL := 12
+const NAME_LIMIT := 20
+const DEFAULT_NAME := "PARTNER"
 const CAMPAIGN_PATH := "user://coop_earnings.cfg"
 const SAVE := preload("res://save_states.gd")
+const UNIFORM := preload("res://coop_uniform.gd")
 const SUPPORTED_ACTIONS := ["clock", "open_sign", "burger_grill", "burger_prep", "burger_raw", "burger_topping", "pie", "donut", "donut_fryer", "frozen_fries", "tray", "coffee", "cup_stack", "soda", "soda_cup_stack", "bottle", "oven", "bell", "customer", "pistol", "pistol_drawer", "corpse", "task", "table_trash", "trash_bin", "dining_customer", "freezer_stock", "restock_cooler", "dispose"]
 var hosting := false
 var partner_id := 0
@@ -44,12 +47,24 @@ var partner_hand: Node3D
 var partner_hand_key := ""
 var intro_scene: Control
 var connection_confirmed := false
+var character_model := 0
+var character_apron := 0
+var character_face := 0
+var character_name := ""
+var partner_model := 0
+var partner_apron := 0
+var partner_face := 0
+var partner_name := DEFAULT_NAME
+var character_received := false
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
 
 static func active(node: Node):
 	return node.get_tree().root.get_node_or_null("CoopSession")
+
+static func clean_name(value: String) -> String:
+	return value.strip_escapes().strip_edges().left(NAME_LIMIT).strip_edges()
 
 func connect_game(as_host: bool, address: String, port := PORT) -> Error:
 	hosting = as_host
@@ -69,8 +84,10 @@ func _peer_connected(id: int) -> void:
 	partner_id = id
 	_check_connection_timeout()
 	if wallet == null: wallet = preload("res://earnings.gd").new(true, CAMPAIGN_PATH)
-	_enter_diner.rpc_id(id, PROTOCOL, _wallet_state(wallet))
-	_load_diner.call_deferred()
+	var progress := _wallet_state(wallet)
+	progress["character"] = Vector3i(character_model, character_apron, character_face)
+	progress["character_name"] = clean_name(character_name)
+	_enter_diner.rpc_id(id, PROTOCOL, progress)
 
 @rpc("authority", "call_remote", "reliable")
 func _enter_diner(version: int, progress: Dictionary) -> void:
@@ -79,8 +96,25 @@ func _enter_diner(version: int, progress: Dictionary) -> void:
 		leave("Your partner is using a different co-op build.")
 		return
 	partner_id = 1
+	var character: Vector3i = progress.character
+	_set_partner_character(character.x, character.y, character.z, str(progress.get("character_name", "")))
 	wallet = _read_wallet(progress)
+	_join_character.rpc_id(1, character_model, character_apron, character_face, clean_name(character_name))
 	_load_diner.call_deferred()
+
+@rpc("any_peer", "call_remote", "reliable")
+func _join_character(model: int, apron: int, face: int, player_name: String) -> void:
+	if not hosting or leaving or character_received or multiplayer.get_remote_sender_id() != partner_id: return
+	character_received = true
+	_set_partner_character(model, apron, face, player_name)
+	_load_diner.call_deferred()
+
+func _set_partner_character(model: int, apron: int, face: int, player_name: String) -> void:
+	partner_model = clampi(model, 0, UNIFORM.MODELS.size() - 1)
+	partner_apron = clampi(apron, 0, UNIFORM.APRONS.size() - 1)
+	partner_face = clampi(face, 0, UNIFORM.FACES[partner_model].size() - 1)
+	var cleaned := clean_name(player_name)
+	partner_name = DEFAULT_NAME if cleaned.is_empty() else cleaned
 
 func _load_diner() -> void:
 	if leaving: return
@@ -101,7 +135,7 @@ func attach(diner: Node3D) -> void:
 	guest_trash = false
 	guest_table = -1
 	guest_body = null
-	_create_partner(game.shift)
+	_create_partner()
 	game.player.position = Vector3(-2.4 if hosting else -0.9, 0.03, -5.8)
 	game.spawn_point = game.player.position
 	game.player.rotation.y = PI
@@ -116,13 +150,12 @@ func attach(diner: Node3D) -> void:
 		game.shift.corpses.set_physics_process(false)
 		_ready_to_play.rpc_id(1, scene_epoch)
 
-func _create_partner(scaffold: Node3D) -> void:
-	partner = scaffold.customer_line.make_actor(Vector3.ZERO, "male_1" if not hosting else "female_1")
+func _create_partner() -> void:
+	partner = Node3D.new()
+	game.add_child(partner)
+	var visual := UNIFORM.add_character(partner, partner_model, partner_apron, partner_face)
 	# Customer meshes face +Z; the first-person player's forward is -Z.
-	partner.get_node("Visual").rotation.y = PI
-	preload("res://coop_uniform.gd").dress(partner.get_node("Visual"), hosting)
-	partner.get_node("Interaction").free()
-	partner.reparent(game, false)
+	visual.rotation.y = PI
 	partner.name = "CoopPartner"
 	partner_camera = Camera3D.new()
 	partner_camera.current = false
@@ -134,11 +167,13 @@ func _create_partner(scaffold: Node3D) -> void:
 	partner_hand.rotation.y = PI
 	partner_hand_key = ""
 	var label := Label3D.new()
-	label.text = "PARTNER"
+	label.name = "PlayerName"
+	label.text = partner_name
 	label.position.y = 2.35
 	label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 	label.modulate = Color("e6bb78")
 	label.font_size = 32
+	label.pixel_size *= minf(1.0, 12.0 / partner_name.length())
 	partner.add_child(label)
 
 func attach_hospital(room: Node3D) -> void:
@@ -148,14 +183,7 @@ func attach_hospital(room: Node3D) -> void:
 	mirror_bodies.clear()
 	partner_ready = hosting and guest_loaded_epoch == scene_epoch
 	wallet = room.earnings
-	var scaffold: Node3D = load("res://shift.gd").new()
-	room.add_child(scaffold)
-	scaffold.game = room
-	scaffold.customer_line = preload("res://customer_line.gd").new()
-	scaffold.customer_line.shift = scaffold
-	_create_partner(scaffold)
-	scaffold.customer_line.free()
-	scaffold.free()
+	_create_partner()
 	game.player.position.x += -0.55 if hosting else 0.55
 	partner_target = game.player.position + Vector3(1.1 if hosting else -1.1, 0, 0)
 	partner.position = partner_target

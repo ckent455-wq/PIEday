@@ -33,6 +33,10 @@ func run():
 	hosting = "host" in OS.get_cmdline_user_args()
 	session = SESSION.new()
 	session.name = "CoopSession"
+	session.character_model = 1 if hosting else 0
+	session.character_apron = 2 if hosting else 3
+	session.character_face = 3
+	session.character_name = "  Ellis  " if hosting else "Morgan"
 	root.add_child(session)
 	if hosting: session.wallet = preload("res://earnings.gd").new(false)
 	assert(session.connect_game(hosting, "127.0.0.1", int(OS.get_cmdline_user_args()[-1])) == OK)
@@ -44,6 +48,7 @@ func run():
 	assert(await wait_for(func(): return is_instance_valid(session.game)))
 	game = session.game
 	shift = game.shift
+	verify_partner_appearance()
 	var visual: Node3D = session.partner.get_node("Visual")
 	var visible_forward := visual.global_basis.z.normalized()
 	var camera_forward: Vector3 = -session.partner_camera.global_basis.z.normalized()
@@ -114,6 +119,7 @@ func run():
 		shift.hospital_visits.open_departure()
 		assert(await wait_for(func(): return is_instance_valid(session.game) and session.game.scene_file_path == "res://hospital_room.tscn", 8.0))
 		game = session.game
+		verify_partner_appearance()
 		assert(await wait_for(func(): return session.partner_ready))
 		game.target = "grandpa"
 		game.interact()
@@ -228,6 +234,7 @@ func run():
 		modal._choose(0)
 		assert(await wait_for(func(): return is_instance_valid(session.game) and session.game.scene_file_path == "res://hospital_room.tscn", 8.0))
 		game = session.game
+		verify_partner_appearance()
 		assert(await wait_for(func(): return game.conversation.is_open))
 		while game.conversation.is_open:
 			game.conversation.advance()
@@ -242,6 +249,20 @@ func front_cola() -> Node3D:
 	var colas: Array = shift.bottle_cooler.bottles.filter(func(bottle): return bottle.get_meta("item") == "2-liter Cola")
 	colas.sort_custom(func(a, b): return a.position.z > b.position.z)
 	return colas[0]
+
+func verify_partner_appearance() -> void:
+	var model: String = "male_1" if hosting else "female_1"
+	var apron: int = 3 if hosting else 2
+	assert(session.partner.get_meta("customer_model") == model)
+	assert(session.partner.get_node("PlayerName").text == ("Morgan" if hosting else "Ellis"))
+	var panel: MeshInstance3D = session.partner.get_node("Visual/DinerApron/Apron")
+	assert(panel.material_override.albedo_color == SESSION.UNIFORM.APRON_COLORS[apron])
+	var face: Texture2D = SESSION.UNIFORM.FACES[0][3] if hosting else SESSION.UNIFORM.FACES[1][3]
+	var meshes: Array[Node] = session.partner.get_node("Visual").find_children("*", "MeshInstance3D", true, false)
+	assert(meshes.any(func(mesh):
+		var material := mesh.get_surface_override_material(0) as StandardMaterial3D
+		return material != null and material.albedo_texture == face
+	))
 
 func has_burger_and_fries() -> bool:
 	return shift.order.has(shift.FRIES.SERVING) and shift.order.any(func(item): return item in shift.BURGER_STATION.BURGERS)

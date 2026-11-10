@@ -35,10 +35,7 @@ func make_actor(at: Vector3, saved_model := "") -> Node3D:
 	if saved_model in CUSTOMER_MODELS or saved_model in ADULT_MODELS:
 		model_name = saved_model
 		unclothed = saved_model in ADULT_MODELS
-	var visual: Node3D = load("res://assets/customers/" + model_name + ".glb").instantiate()
-	visual.name = "Visual"
-	actor.add_child(visual)
-	visual.scale = Vector3.ONE * 1.17
+	attach_visual(actor, model_name)
 	actor.set_meta("customer_model", model_name)
 	actor.set_meta("requires_refusal", unclothed)
 	var body := StaticBody3D.new()
@@ -54,6 +51,14 @@ func make_actor(at: Vector3, saved_model := "") -> Node3D:
 	collider.shape = shape
 	collider.position.y = 1.075
 	body.add_child(collider)
+	actor.set_meta("queue_wait", 0.0)
+	return actor
+
+static func attach_visual(actor: Node3D, model_name: String) -> Node3D:
+	var visual: Node3D = load("res://assets/customers/" + model_name + ".glb").instantiate()
+	visual.name = "Visual"
+	actor.add_child(visual)
+	visual.scale = Vector3.ONE * 1.17
 	var bones: Dictionary = {}
 	for skeleton in visual.find_children("*", "Skeleton3D", true, false):
 		for bone_name in ["Arm_L","Arm_R","Leg_L","Leg_R"]:
@@ -68,8 +73,7 @@ func make_actor(at: Vector3, saved_model := "") -> Node3D:
 		actor.set_meta("skeleton", skeleton)
 		break
 	actor.set_meta("rest_bones", bones)
-	actor.set_meta("queue_wait", 0.0)
-	return actor
+	return visual
 
 func pop_front() -> Node3D:
 	var entry: Dictionary = waiting.pop_front()

@@ -7,6 +7,7 @@ or open its matching BeepBox URL. Export WAV to regenerate runtime music.
 - **Counter Service:** 116 BPM, sixteen bars in 4/4, daytime diner.
 - **Last Customer:** 58 BPM, sixteen bars in 4/4, ominous closing atmosphere.
 - **Still Here:** 58 BPM, sixteen bars in 3/4, sentimental hospital piano.
+- **Grandpa's Home:** 114 BPM, sixteen bars in 4/4, winning ending and credits.
 
 Runtime WAVs live in `assets/music/`. These are original PIEday compositions,
 using BeepBox synthesis rather than third-party musical recordings.

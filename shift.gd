@@ -399,16 +399,18 @@ func _build_hud() -> void:
 func _refresh_hud() -> void:
 	notice_panel.visible = not notice.text.is_empty() and not (is_instance_valid(dialogue) and dialogue.is_open)
 	payment_panel.visible = payment_label.visible
-	order_panel.visible = (phase in ["arriving", "waiting", "leaving", "cleanup"] or refusal_required()) and not (is_instance_valid(dialogue) and dialogue.is_open)
+	order_panel.visible = (phase in ["arriving", "waiting", "leaving", "cleanup", "robbery_cleanup"] or refusal_required()) and not (is_instance_valid(dialogue) and dialogue.is_open)
 	var lines := PackedStringArray()
 	if phase == "cleanup":
 		order_heading.text = "CLOSING CHECKLIST"
-		for id in ["bathroom", "kitchen", "tables", "trash", "restock", "bodies"]:
-			if id == "bodies" and tasks.bodies: continue
-			var title: String = {"bathroom": "Clean the bathroom", "kitchen": "Clean the kitchen", "tables": "Clear table trash", "trash": "Take out the trash", "restock": "Replenish cooler", "bodies":"Dispose of bodies (%d left)" % corpses.bodies.size()}[id]
+		for id in ["bathroom", "kitchen", "tables", "trash", "restock"]:
+			var title: String = {"bathroom": "Clean the bathroom", "kitchen": "Clean the kitchen", "tables": "Clear table trash", "trash": "Take out the trash", "restock": "Replenish cooler"}[id]
 			if id == "tables" and not tasks[id]: title += " (%d left)" % dine_in.dirty_count()
 			if id == "restock" and not tasks[id]: title += " (%d left)" % restock.missing.size()
 			lines.append(("[color=#a9c6a0]✓  " + title + "[/color]") if tasks[id] else "○  " + title)
+	elif phase == "robbery_cleanup":
+		order_heading.text = "SERVICE PAUSED"
+		lines.append("Carry the robber to the outdoor dumpster to reopen.")
 	elif refusal_required():
 		order_heading.text = "SERVICE NOTICE"
 		lines.append("Masked robber\nGive me all your money!\nPistol drawer under the bell.")
@@ -449,6 +451,7 @@ func _update_shift_clock() -> void:
 	else:
 		var seconds := int(ceil(shift_remaining))
 		shift_clock.text = "SHIFT  %d:%02d" % [seconds / 60, seconds % 60]
+		if phase == "robbery_cleanup": shift_clock.text = "PAUSED  %d:%02d" % [seconds / 60, seconds % 60]
 	if rush_active():
 		var rush_seconds := ceili(shift_remaining - (RUSH_START - RUSH_DURATION))
 		shift_clock.text = "RUSH  %ds   |   " % rush_seconds + shift_clock.text
@@ -458,7 +461,7 @@ func _finish_day() -> void:
 	close_service()
 
 func close_service() -> void:
-	if phase == "waiting" and is_instance_valid(customer) and (order_taken or refusal_required()):
+	if refusal_required() or (phase == "waiting" and is_instance_valid(customer) and order_taken):
 		closing_time = true
 		shift_remaining = 0
 		arrival_delay = 0
@@ -684,7 +687,7 @@ func begin_cleanup() -> void:
 	if is_instance_valid(oven): oven.reset_oven()
 	restock.begin()
 	dine_in.begin_cleanup()
-	corpses.begin_cleanup()
+	corpses.drop()
 	game.set_night(true)
 	closing_events.begin()
 	_update_shift_clock()
@@ -738,7 +741,6 @@ func start_shift(use_random_orders := true) -> bool:
 		return false
 	if tutorial.tutorial_state == "done" and tutorial.practice_order_index == tutorial.PRACTICE_ORDERS.size():
 		corpses.reset()
-		tasks.bodies = true
 	for done in tasks.values():
 		if not done:
 			_message("Finish all closing duties before opening the next shift.")
@@ -762,22 +764,36 @@ func start_shift(use_random_orders := true) -> bool:
 	return true
 
 func _spawn_customer() -> void:
-	if phase in ["cleanup", "closed"] or closing_time: return
+	if phase in ["cleanup", "closed", "robbery_cleanup"] or closing_time: return
 	if is_instance_valid(customer): return
 	var queued: bool = not customer_line.waiting.is_empty()
 	_reset_customer()
 	var demo_orders := [["Glazed donut", "Coffee"], ["Apple pie", "Cola"], ["Chocolate donut", "Lemon Fizz"], ["Cherry pie", "Dr. Paw Paw"]]
 	order_taken = false
 	angry = false
-	customer = customer_line.pop_front() if queued else customer_line.make_actor(Vector3(0.76,-0.094,5))
-	if not customer.get_meta("requires_refusal", false):
-		if preload("res://playable_demo.gd").session(self) != null:
-			order.assign(demo_orders[order_index % demo_orders.size()])
-		elif randomize_orders:
-			_pick_random_order()
-		else:
-			order.assign(ORDERS[order_index % ORDERS.size()])
-	_bind_customer_actor(customer)
+	var actor: Node3D = customer_line.pop_front() if queued else customer_line.make_actor(Vector3(0.76,-0.094,5))
+	if actor.get_meta("requires_refusal", false):
+		_begin_robbery_arrival(actor)
+		return
+	if preload("res://playable_demo.gd").session(self) != null:
+		order.assign(demo_orders[order_index % demo_orders.size()])
+	elif randomize_orders:
+		_pick_random_order()
+	else:
+		order.assign(ORDERS[order_index % ORDERS.size()])
+	_begin_customer_arrival(actor)
+
+func _begin_robbery_arrival(actor: Node3D) -> void:
+	if is_instance_valid(speech): speech.hide()
+	customer_line.evacuate(false, true)
+	dine_in.close_for_night(true)
+	_reset_customer()
+	order_taken = false
+	angry = false
+	_begin_customer_arrival(actor)
+
+func _begin_customer_arrival(actor: Node3D) -> void:
+	_bind_customer_actor(actor)
 	phase = "arriving"
 	if customer.position.z <= 0.2:
 		_set_route([Vector3(-2.4,-0.094,-3.6)])
@@ -896,10 +912,10 @@ func _process(delta: float) -> void:
 			route_index += 1
 			if route_index >= route.size():
 				walking = false
-				phase = "waiting"
 				customer.rotation.y = PI
-				if refusal_required(): start_robbery_dialogue()
-				else: speech.text = "E: TAKE MY ORDER"
+				if not refusal_required():
+					phase = "waiting"
+					speech.text = "E: TAKE MY ORDER"
 		else:
 			customer.position += movement.normalized() * speed * delta
 			customer.rotation.y = atan2(movement.x, movement.z)
@@ -910,6 +926,10 @@ func _process(delta: float) -> void:
 	elif is_instance_valid(customer_visual):
 		customer_visual.position.y = 0
 		_pose_customer(0)
+	# The demand pauses the scene. Let fleeing customers reach the exit first.
+	if phase == "arriving" and not walking and refusal_required() and customer_line.departing.is_empty():
+		phase = "waiting"
+		start_robbery_dialogue()
 	_update_cleaning(delta)
 	_refresh_hud()
 
@@ -990,6 +1010,7 @@ func action_prompt(node: Node) -> String:
 		"soda": return soda_station.flavor_prompt(str(node.get_meta("flavor", "Cola")))
 		"soda_cup_stack": return soda_station.prompt(action)
 		"bell":
+			if phase == "robbery_cleanup": return "Dispose of the robber before serving"
 			if refusal_required(): return "Find the pistol under the bell" if is_practicing() else "Deal with the robber first"
 			return "[Click / E] Ding bell and serve the tray"
 		"oven": return oven.prompt()
@@ -1007,7 +1028,8 @@ func action_prompt(node: Node) -> String:
 				if _training_available() and tutorial.tutorial_state != "done": return "[E] Training\n" + earnings.health_status()
 				return "Flip the OPEN sign in the front window to start the shift\n" + earnings.health_status()
 			if phase == "closed": return ("[E] Visit Grandpa / Go Home" if earnings.grandpa.visit_available() else "[E] Go Home") + "\n" + earnings.health_status()
-			if phase == "cleanup": return "Finish closing chores to end the day"
+			if phase == "cleanup":
+				return "[E] Finish the day" if tasks.values().all(func(done): return done) else "Finish closing chores to end the day"
 			return earnings.health_status()
 	return ""
 
@@ -1097,7 +1119,9 @@ func interact(node: Node) -> void:
 				elif _training_available() and tutorial.tutorial_state == "welcome": tutorial.open_tutorial()
 				else: _message("Finish donut prep, then flip the OPEN sign in the front window to start the shift.")
 			elif phase == "closed": hospital_visits.open_departure()
-			elif phase == "cleanup": _message("Finish cleaning, take out the trash, and replenish the cooler before starting the next day.")
+			elif phase == "cleanup":
+				if tasks.values().all(func(done): return done): _show_day_summary()
+				else: _message("Finish cleaning, take out the trash, and replenish the cooler before starting the next day.")
 			else: _message("Your shift is already open. Customers are waiting at the counter.")
 
 func _set_carrying_trash(value: bool) -> void:
@@ -1165,7 +1189,6 @@ func refuse_service() -> void:
 
 func _depart_customer(angry_exit: bool, meal_items: Array = []) -> void:
 	if is_instance_valid(dialogue): dialogue.finish()
-	phase = "leaving"
 	if is_instance_valid(customer):
 		if angry_exit or meal_items.is_empty() or not dine_in.try_seat(customer,meal_items):
 			customer_line.leave(customer, angry_exit)
@@ -1175,12 +1198,24 @@ func _depart_customer(angry_exit: bool, meal_items: Array = []) -> void:
 	limbs.clear()
 	walking = false
 	order_taken = false
+	if not corpses.bodies.is_empty():
+		phase = "robbery_cleanup"
+		arrival_delay = 0.0
+		_message("Service paused. Carry the robber to the outdoor dumpster.")
+		return
+	_resume_service()
+
+func _resume_service() -> void:
+	phase = "leaving"
 	arrival_delay = 0.15
 	if closing_time:
 		begin_cleanup()
 	elif not customer_line.waiting.is_empty(): _spawn_customer()
 
 func serve_order() -> bool:
+	if phase == "robbery_cleanup":
+		_message("Dispose of the robber before serving.")
+		return false
 	if refusal_required():
 		_message("Deal with the robber before serving orders.")
 		return false

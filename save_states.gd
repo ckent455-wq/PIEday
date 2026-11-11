@@ -168,7 +168,7 @@ static func restore(scene: Node, data: Dictionary) -> void:
 	shift._reset_customer()
 	shift.closing_events.reset()
 	if not data.shift.tasks.has("tables"): data.shift.tasks["tables"] = true
-	if not data.shift.tasks.has("bodies"): data.shift.tasks["bodies"] = true
+	data.shift.tasks.erase("bodies")
 	apply(shift,data.shift,SHIFT_FIELDS)
 	shift.fries_order_offered = data.shift.get("fries_order_offered", shift.order.has(shift.FRIES.SERVING))
 	var training: Array = data.get("training", ["welcome", 0])

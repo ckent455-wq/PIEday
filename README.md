@@ -1,6 +1,6 @@
 # PIEday
 
-Current version: **0.14.0**. Adds Grandpa's winning homecoming cutscene: complete closing duties with $15,000 saved to fund his surgery, then watch him return to the diner and celebrate with a jig. Includes online co-op, burgers and fries, donut and soda varieties, hospital visits, robberies, closing scares, and save/load.
+Current version: **0.14.1**. Robberies now clear the diner and pause service until the robber's body is disposed of. Grandpa's winning homecoming now has an original victory theme and rolling credits. Includes online co-op, burgers and fries, donut and soda varieties, hospital visits, closing scares, and save/load.
 
 The game opens with a typewriter-style story on a black screen. Press E or
 Space to reveal each passage and advance, then choose Open the Diner. Earn $15,000 toward Grandpa's

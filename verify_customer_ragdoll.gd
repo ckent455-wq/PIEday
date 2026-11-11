@@ -46,8 +46,7 @@ func run():
 		await physics_frame
 		hip = shift.corpses.bodies[0].ragdoll.hip
 		require(hip.global_position.distance_to(before) < .15,"Settled physics pose survives save/load without standing back up")
-		shift.phase = "cleanup"
-		shift.corpses.begin_cleanup()
+		shift.phase = "robbery_cleanup"
 		shift.corpses.grab(shift.corpses.bodies[0].body)
 		game.player.position = hip.global_position+Vector3(0,.03-hip.global_position.y,3)
 		game.player.rotation = Vector3.ZERO

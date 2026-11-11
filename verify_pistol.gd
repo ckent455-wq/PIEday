@@ -58,12 +58,14 @@ func run():
 	require(shift.corpses.bodies.size() == 1,"Body persists in diner")
 	require(shift.earnings.cash == cash and shift.lost == 0,"No order penalty")
 	require(not shift.pistol.fire(target),"No duplicate shot")
-	shift.corpses.grab(target)
-	require(not is_instance_valid(shift.corpses.carried_body),"Body cleanup only available after closing")
+	require(shift.phase == "robbery_cleanup", "Shooting the robber suspends service")
+	var time_left: float = shift.shift_remaining
+	shift.customer_line.next_arrival = 0
+	for i in 60: shift._process(1.0 / 60.0)
+	require(not is_instance_valid(shift.customer) and shift.customer_line.waiting.is_empty(), "Customers stay away while the body is inside")
+	require(shift.shift_remaining == time_left, "The service clock pauses during disposal")
 	await physics_frame
 	require(shift.corpses.bodies[0].ragdoll.bones.size() >= 10,"Death uses articulated physical bones")
-	shift.begin_cleanup()
-	require(not shift.tasks.bodies,"Body disposal is a required closing chore")
 	shift.corpses.grab(target)
 	require(is_instance_valid(shift.corpses.carried_body) and shift.carried_item == "Carrying body","Body can be picked up")
 	game.player.position.x += 1
@@ -88,9 +90,16 @@ func run():
 		require(bone.collision_layer == 4 and PhysicsServer3D.body_get_mode(bone.get_rid()) == PhysicsServer3D.BODY_MODE_RIGID,"Setting body down restores ragdoll physics")
 	var body = shift.corpses.bodies[0].body
 	shift.corpses.grab(body)
-	shift.corpses.dispose()
-	require(shift.corpses.bodies.is_empty() and shift.tasks.bodies,"Dumpster disposal completes body chore")
-	require(shift.phase == "cleanup","Other unfinished chores still block ending")
+	shift.interact(game.find_child("OutdoorDumpster", true, false))
+	require(shift.corpses.bodies.is_empty(), "Dumpster disposal removes the body")
+	require(shift.phase == "leaving", "Disposing of the body reopens service")
+	for i in 240: shift._process(1.0 / 60.0)
+	require(shift.phase == "waiting" and is_instance_valid(shift.customer), "New customers arrive after disposal")
+	shift.begin_cleanup()
+	var legacy_save: Dictionary = saves.capture(game)
+	legacy_save.shift.tasks.bodies = false
+	saves.restore(game, legacy_save)
+	require(not shift.tasks.has("bodies") and not shift.order_text.text.contains("Dispose of bodies"), "Closing ignores the retired task in older saves")
 	other.free()
 	if failures == 0: print("PASS: pistol restrictions, ragdoll, body pickup, fixed carry pose, Q set down, save/load and disposal")
 	quit(failures)

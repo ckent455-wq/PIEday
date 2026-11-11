@@ -7,10 +7,6 @@ var carried_body: Node3D
 func setup(host: Node3D) -> void:
 	shift = host
 	name = "BodyCleanup"
-	var marker := StaticBody3D.new()
-	add_child(marker)
-	shift.task_nodes["bodies"] = marker
-	shift.tasks["bodies"] = true
 
 func kill(actor: Node3D, animate := true) -> Dictionary:
 	var body := Node3D.new()
@@ -48,7 +44,7 @@ func ignore_customer(interaction: PhysicsBody3D) -> void:
 
 func _physics_process(_delta: float) -> void:
 	if not is_instance_valid(carried_body): return
-	if shift.phase != "cleanup":
+	if not can_dispose():
 		drop()
 		return
 	for entry in bodies:
@@ -83,13 +79,17 @@ func _position_carried(entry: Dictionary, camera_override: Camera3D = null) -> v
 		bone.global_transform = target
 		PhysicsServer3D.body_set_state(bone.get_rid(),PhysicsServer3D.BODY_STATE_TRANSFORM,target)
 
+func can_dispose() -> bool:
+	# Older saves can still contain a body when the diner is already closed.
+	return shift.phase in ["cleanup", "robbery_cleanup"]
+
 func prompt() -> String:
-	if shift.phase != "cleanup": return "Body · dispose of it during closing cleanup"
-	return "[E] Release body · drag it to the outdoor dumpster" if is_instance_valid(carried_body) else "[E] Pick up body"
+	if not can_dispose(): return "Body · disposal is part of the robbery"
+	return "[E] Release body · carry it to the outdoor dumpster" if is_instance_valid(carried_body) else "[E] Pick up body"
 
 func grab(target: Node) -> void:
-	if shift.phase != "cleanup":
-		shift._message("Bodies must be disposed of during closing cleanup.")
+	if not can_dispose():
+		shift._message("Body disposal is part of the robbery.")
 		return
 	if is_instance_valid(carried_body):
 		drop()
@@ -126,7 +126,7 @@ func drop() -> void:
 		shift._refresh_carried()
 
 func dispose() -> void:
-	if shift.phase != "cleanup" or not is_instance_valid(carried_body): return
+	if not can_dispose() or not is_instance_valid(carried_body): return
 	var body := carried_body
 	drop()
 	for i in bodies.size():
@@ -134,15 +134,10 @@ func dispose() -> void:
 			bodies.remove_at(i)
 			break
 	body.queue_free()
-	shift.tasks.bodies = bodies.is_empty()
 	shift._message("Body disposed of. %d remaining." % bodies.size())
-	if shift.tasks.values().all(func(done): return done): shift._show_day_summary()
-
-func begin_cleanup() -> void:
-	drop()
-	shift.tasks.bodies = bodies.is_empty()
-	shift.task_nodes.bodies.hide()
-	shift.task_nodes.bodies.collision_layer = 0
+	if shift.phase == "robbery_cleanup" and bodies.is_empty():
+		shift._message("Body disposed of. Service is back open.")
+		shift._resume_service()
 
 func reset() -> void:
 	drop()
@@ -162,8 +157,5 @@ func restore(data: Dictionary) -> void:
 		actor.global_transform = global_transform*saved.transform*actor.transform
 		var entry := kill(actor,false)
 		preload("res://customer_ragdoll.gd").restore(entry.ragdoll,saved.get("ragdoll",[]))
-		if saved.get("carried",saved.get("dragged",false)) and shift.phase == "cleanup":
+		if saved.get("carried",saved.get("dragged",false)) and can_dispose():
 			_begin_carry(entry)
-	shift.tasks.bodies = bodies.is_empty()
-	shift.task_nodes.bodies.hide()
-	shift.task_nodes.bodies.collision_layer = 0

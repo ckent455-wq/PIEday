@@ -199,9 +199,9 @@ his room. Replay starts a fresh demo. Campaign autosaves and manual slots are ke
 separate; saving/loading is disabled during the demo. Small contextual hints guide
 new players. The full Windows Desktop preset retains the campaign.
 
-During a clothing-required encounter, the pistol in the center of the kitchen's right-hand table can be picked up with E using an empty hand. Aim at the unclothed customer at the counter and click/E to fire. They collapse with jointed ragdoll physics, collide with the diner furniture and floor, and remain for cleanup without gore. Q returns the pistol. It cannot be put on the tray, used on ordinary customers, or kept after the encounter. Normal E refusal remains available when unarmed.
+When the robber enters, customers flee through the front door. After the demand, you have three seconds to take the pistol from the drawer under the service bell, aim at the robber, and click or press E to fire. Q returns the pistol.
 
-If bodies remain at closing, the checklist includes body disposal. With empty hands, press E on a body to pick it up, carry it through the kitchen to the outdoor dumpster, then press E at the dumpster to dispose of it. Q sets it down. The body holds a fixed carry pose while lifted and resumes ragdoll physics when set down. All bodies must be removed before the day can end. Manual saves preserve physical poses and the carried body.
+If you shoot the robber, service and the shift clock pause. With empty hands, press E to pick up the body, carry it through the kitchen to the outdoor dumpster, then press E at the dumpster. Q sets the body down. Service resumes automatically after disposal. Manual saves preserve the body pose and whether you were carrying it.
 
 ## Donut frying and burgers
 

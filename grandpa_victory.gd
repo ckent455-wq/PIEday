@@ -5,6 +5,11 @@ const RETRO := preload("res://retro_dialogue.gd")
 const DIALOGUE_AT := 13.8
 const JIG_START := 8.2
 const JIG_END := 12.8
+const BEAT_SECONDS := 60.0 / 114.0
+const BAR_SECONDS := BEAT_SECONDS * 4.0
+const FADE_SECONDS := BEAT_SECONDS * 2.0
+const CREDITS_SECONDS := BAR_SECONDS * 12.0
+const MUSIC_VOLUME := -10.0
 const LINES: Array[String] = [
 	"Look at me, kiddo. Walking through my own front door. The surgery worked. You did it.",
 	"You kept the diner alive. You kept ME alive. I'm proud of you.",
@@ -30,6 +35,12 @@ var end_card: CenterContainer
 var skip: Button
 var restart_dialog: ConfirmationDialog
 var music: AudioStreamPlayer
+var credits: ColorRect
+var credits_roll: ScrollContainer
+var credits_lead_in: Control
+var credits_elapsed := 0.0
+var fade_countdown := 0.0
+var previous_music_position := 0.0
 
 func _ready() -> void:
 	if get_tree().root.has_meta("restore_manual_state"): get_tree().root.remove_meta("restore_manual_state")
@@ -81,8 +92,11 @@ func _ready() -> void:
 	add_child(camera)
 	_build_ui()
 	music = AudioStreamPlayer.new()
-	music.stream = preload("res://assets/music/counter_service.wav")
-	music.volume_db = -13
+	var track: AudioStreamWAV = preload("res://assets/music/grandpas_home.wav").duplicate()
+	track.loop_mode = AudioStreamWAV.LOOP_FORWARD
+	track.loop_end = roundi(track.get_length() * track.mix_rate)
+	music.stream = track
+	music.volume_db = MUSIC_VOLUME
 	add_child(music)
 	music.play()
 	_update_shot()
@@ -102,7 +116,7 @@ func _build_ui() -> void:
 		bar.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE if top else Control.PRESET_BOTTOM_WIDE)
 		bar.offset_top = 0 if top else -48
 		bar.offset_bottom = 48 if top else 0
-	skip = _button(ui,"Skip cutscene [Esc]",finish)
+	skip = _button(ui,"Skip cutscene [Esc]",_begin_credits)
 	skip.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT)
 	skip.position = Vector2(-245,8)
 	skip.size = Vector2(225,34)
@@ -139,6 +153,7 @@ func _build_ui() -> void:
 	message.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	ending.add_child(message)
 	_button(ending,"Replay Grandpa's Homecoming",replay)
+	_button(ending,"View Credits",_begin_credits)
 	var new_game := _button(ending,"Start a New Campaign",func(): restart_dialog.popup_centered())
 	var coop = preload("res://coop_session.gd").active(self)
 	if coop != null: new_game.disabled = not coop.hosting
@@ -160,6 +175,52 @@ func _build_ui() -> void:
 	opening_text.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	opening_text.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	opening_text.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	_build_credits()
+
+func _build_credits() -> void:
+	credits = ColorRect.new()
+	credits.color = Color.BLACK
+	ui.add_child(credits)
+	credits.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	credits_roll = ScrollContainer.new()
+	credits.add_child(credits_roll)
+	credits_roll.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	credits_roll.offset_bottom = -64
+	credits_roll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	credits_roll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_SHOW_NEVER
+	var column := VBoxContainer.new()
+	credits_roll.add_child(column)
+	column.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	column.add_theme_constant_override("separation", 18)
+	credits_lead_in = Control.new()
+	column.add_child(credits_lead_in)
+	_credit_text(column, "PIEday", 48, UI.GOLD)
+	_credit_text(column, "Written by ckent455-wq", 36)
+	_credit_text(column, "Created by ckent455-wq", 32)
+	_credit_text(column, "Game Design · Development · Original Art", 20, UI.MUTED)
+	_credit_text(column, "Original Food Models · ckent455-wq\nDonuts · Burgers · Cheese · Lettuce · Tomato · Fries", 20)
+	_credit_text(column, "Original Music\nckent455-wq · BeepBox", 20)
+	_credit_text(column, "THIRD-PARTY ASSETS", 24, UI.GOLD)
+	_credit_text(column, "Character models\nPSX Rigged Character Bases · New Heads · Base Humanoid Mesh", 20)
+	_credit_text(column, "Environment and props\nDINER · Hospital Assets · Trash Dumpster · Retro PSX Trash Bag", 20)
+	_credit_text(column, "Yard monster\nZombie pack by Pxltiger", 20)
+	_credit_text(column, "Food reference sprites and pistol model\nPolyy", 20)
+	_credit_text(column, "Typography and typewriter assets\nPress Start 2P Project Authors · Text Typerwriter pack\nTypewriter code adapted from George Blackwell", 20)
+	_credit_text(column, "Freesound recordings\ntheplax · Rudmer_Rotteveel · Maajora · sethlind\nBeeProductive · naxxfish · okieactor · elynch0901", 20)
+	_credit_text(column, "Thanks for playing.", 28, UI.GOLD)
+	var continue_button := _button(credits, "Continue [E]", finish)
+	continue_button.set_anchors_and_offsets_preset(Control.PRESET_CENTER_BOTTOM)
+	continue_button.offset_left = -95
+	continue_button.offset_right = 95
+	continue_button.offset_top = -56
+	continue_button.offset_bottom = -12
+	credits.hide()
+
+func _credit_text(parent: VBoxContainer, text: String, font_size: int, color := UI.CREAM) -> void:
+	var label := UI.label(text, font_size, color)
+	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	parent.add_child(label)
 
 func _button(parent: Node, text: String, callback: Callable) -> Button:
 	var button := Button.new()
@@ -171,6 +232,14 @@ func _button(parent: Node, text: String, callback: Callable) -> Button:
 
 func _process(delta: float) -> void:
 	if state == "ending": return
+	if state in ["credits_fade", "credits"]:
+		var position := _music_position()
+		var step := fposmod(position - previous_music_position, music.stream.get_length())
+		# Ignore tiny backwards jumps from the audio mixer clock.
+		if step > music.stream.get_length() - 0.02: return
+		previous_music_position = position
+		_advance_credits(step)
+		return
 	if state == "walk": elapsed += delta
 	_update_shot()
 	if state == "walk" and elapsed >= DIALOGUE_AT:
@@ -187,7 +256,7 @@ func _update_shot() -> void:
 	grandpa.rotation.z = 0
 	var stride := sin((elapsed-2.8)*10)*minf(1,progress*12)*minf(1,(1-progress)*12)
 	var jig := smoothstep(JIG_START,JIG_START+.4,elapsed)*(1-smoothstep(JIG_END-.4,JIG_END,elapsed))
-	var beat := (elapsed-JIG_START)*TAU*2.1
+	var beat := elapsed * TAU / BEAT_SECONDS
 	if jig > 0:
 		grandpa.position.x += sin(beat*.5)*.24*jig
 		grandpa.position.y += (1-cos(beat*2))*.035*jig
@@ -224,8 +293,40 @@ func advance() -> void:
 	if state != "speech": return
 	if typewriter.reveal_if_typing(): return
 	page += 1
-	if page >= LINES.size(): finish()
+	if page >= LINES.size(): _begin_credits()
 	else: typewriter.start(body_text,LINES[page])
+
+func _music_position() -> float:
+	return fposmod(music.get_playback_position() + AudioServer.get_time_since_last_mix() - AudioServer.get_output_latency(), music.stream.get_length())
+
+func _begin_credits() -> void:
+	state = "credits_fade"
+	typewriter.stop()
+	speech.hide()
+	skip.hide()
+	end_card.hide()
+	opening.show()
+	opening_text.hide()
+	previous_music_position = _music_position()
+	# Reserve two beats for the fade and land on a bar line.
+	fade_countdown = BAR_SECONDS - fposmod(previous_music_position + FADE_SECONDS, BAR_SECONDS) + FADE_SECONDS
+	credits_elapsed = 0.0
+
+func _advance_credits(step: float) -> void:
+	if state == "credits_fade":
+		fade_countdown -= step
+		opening.modulate.a = maxf(opening.modulate.a, 1.0 - clampf(fade_countdown / FADE_SECONDS, 0.0, 1.0))
+		if fade_countdown > 0.0: return
+		step = -fade_countdown
+		state = "credits"
+		credits.show()
+		credits_lead_in.custom_minimum_size.y = credits_roll.size.y - 32
+		credits_roll.scroll_vertical = 0
+	credits_elapsed += step
+	var scroll := credits_roll.get_v_scroll_bar()
+	var progress := clampf(credits_elapsed / CREDITS_SECONDS, 0.0, 1.0)
+	credits_roll.scroll_vertical = roundi((scroll.max_value - scroll.page) * progress)
+	if credits_elapsed >= CREDITS_SECONDS + FADE_SECONDS: finish()
 
 func finish() -> void:
 	state = "ending"
@@ -234,6 +335,7 @@ func finish() -> void:
 	typewriter.stop()
 	speech.hide()
 	skip.hide()
+	credits.hide()
 	end_card.show()
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 
@@ -241,6 +343,8 @@ func replay() -> void:
 	state = "walk"
 	elapsed = 0
 	end_card.hide()
+	credits.hide()
+	opening_text.show()
 	speech.hide()
 	skip.show()
 	music.play()
@@ -260,5 +364,6 @@ func main_menu() -> void:
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed and not event.echo:
-		if event.keycode == KEY_ESCAPE and state != "ending": finish()
+		if event.keycode in [KEY_ESCAPE,KEY_E,KEY_SPACE,KEY_ENTER] and state == "credits": finish()
+		elif event.keycode == KEY_ESCAPE and state in ["walk", "speech"]: _begin_credits()
 		elif event.keycode in [KEY_E,KEY_SPACE,KEY_ENTER] and state == "speech": advance()

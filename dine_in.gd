@@ -135,7 +135,7 @@ func stand(actor: Node3D) -> void:
 	actor.get_node("Visual").position = Vector3.ZERO
 	actor.get_node("Visual").rotation.x = 0
 
-func finish_meal(entry: Dictionary) -> void:
+func finish_meal(entry: Dictionary, emergency := false) -> void:
 	var table: Dictionary = tables[entry.table]
 	if entry.state == "eating" and entry.mess:
 		table.dirty = true
@@ -144,7 +144,7 @@ func finish_meal(entry: Dictionary) -> void:
 	if is_instance_valid(entry.meal): entry.meal.queue_free()
 	table.meal = null
 	stand(entry.actor)
-	shift.customer_line.leave(entry.actor,false,true)
+	shift.customer_line.leave(entry.actor,false,true,emergency)
 	var exit_route: Array = []
 	if entry.state == "eating":
 		# Stand in the booth gap, then retrace the inbound path.
@@ -192,8 +192,8 @@ func trash_visual(parent: Node3D) -> void:
 	for i in range(4):
 		shift._box(parent,Vector3(-.15+i*.06,.015+i*.008,-.07+(i%2)*.11),Vector3(.14,.025,.12),Color("c8c1a8"))
 
-func close_for_night() -> void:
-	for entry in diners.duplicate(): finish_meal(entry)
+func close_for_night(emergency := false) -> void:
+	for entry in diners.duplicate(): finish_meal(entry, emergency)
 
 func dirty_count() -> int:
 	var total := 0

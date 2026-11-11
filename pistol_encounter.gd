@@ -139,7 +139,6 @@ func fire(target: Node) -> bool:
 		return true
 	shift.customers_this_shift += 1
 	shift._depart_customer(false)
-	shift._message("The robber is down. Dispose of the body during closing cleanup. Pistol returned to the drawer.")
 	tick()
 	return true
 

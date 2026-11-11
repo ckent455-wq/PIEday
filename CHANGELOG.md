@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.14.1
+
+- The robber rushes past the queue while customers at the counter, in line, and at the booths flee through the front door.
+- Shooting the robber pauses arrivals and the shift clock. Service resumes after the body is taken to the outdoor dumpster. Body disposal has been removed from the closing checklist.
+- Grandpa's homecoming plays the original BeepBox track Grandpa's Home. After his last line, the screen fades to black and the credits begin on the next downbeat.
+- The credits recognize ckent455-wq for writing and original food models, credit ckent455-wq and BeepBox for original music, and list third-party assets separately.
+
 ## 0.14.0
 
 - Finish closing with $15,000 saved to win the campaign. The closing bonus counts toward the goal.

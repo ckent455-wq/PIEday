@@ -114,7 +114,6 @@ func run():
 		assert(await wait_for(func(): return is_instance_valid(session.guest_body), 8.0))
 		assert(await wait_for(func(): return not is_instance_valid(session.guest_body), 5.0))
 		shift.corpses.reset()
-		shift.tasks.bodies = true
 		shift.closing_events.reset()
 		shift.closing_events.active = true
 		shift.closing_events.encounter = "figure"

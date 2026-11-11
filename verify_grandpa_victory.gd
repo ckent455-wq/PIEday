@@ -50,7 +50,12 @@ func run():
 	for i in scene.LINES.size()*2:
 		scene.advance()
 		await process_frame
-	require(scene.state == "ending" and scene.end_card.visible and not paused,"Finishing dialogue reaches victory card without pausing")
+	require(scene.state == "credits_fade" and not scene.end_card.visible and not paused,"Finishing dialogue begins the credits fade")
+	require(scene.music.playing and scene.music.stream.loop_mode == AudioStreamWAV.LOOP_FORWARD,"Victory music continues through the credits transition")
+	scene._advance_credits(scene.fade_countdown + 0.01)
+	require(scene.state == "credits" and scene.credits.visible and is_equal_approx(scene.opening.modulate.a, 1.0),"Credits roll begins over a black screen")
+	scene._advance_credits(scene.CREDITS_SECONDS + scene.FADE_SECONDS)
+	require(scene.state == "ending" and scene.end_card.visible and not scene.credits.visible,"Credits lead to the victory card")
 	scene.replay()
 	require(scene.state == "walk" and scene.elapsed == 0 and not scene.end_card.visible,"Cutscene can be replayed")
 	scene.finish()

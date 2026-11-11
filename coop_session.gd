@@ -500,7 +500,7 @@ func _sync_shift(packet: PackedByteArray) -> void:
 	shift.tasks.merge(state.tasks, true)
 	for id in shift.tasks:
 		var node: Node3D = shift.task_nodes[id]
-		node.visible = shift.phase == "cleanup" and not shift.tasks[id] and id not in ["trash", "restock", "tables", "bodies"]
+		node.visible = shift.phase == "cleanup" and not shift.tasks[id] and id not in ["trash", "restock", "tables"]
 		node.collision_layer = 4 if node.visible else 0
 	var bag: Node3D = shift.task_nodes.trash
 	bag.visible = shift.phase == "cleanup" and not shift.tasks.trash and not state.trash[0] and not state.trash[1]

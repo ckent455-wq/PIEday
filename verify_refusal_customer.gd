@@ -7,6 +7,47 @@ func require(value: bool, message: String):
 		failures += 1
 func advance(shift, seconds: float):
 	for frame in range(int(seconds * 60)): shift._process(1.0 / 60.0)
+func check_evacuation(shift):
+	shift.start_demo()
+	var line = shift.customer_line
+	line.nude_chance = 0.0
+	line.next_arrival = INF
+	advance(shift, 4)
+	var counter: Node3D = shift.customer
+	shift.order_taken = true
+	shift.add_item("Coffee")
+	var queued: Node3D = line.make_actor(Vector3(-1.55, -0.094, -2.05), "male_1")
+	var queued_behind: Node3D = line.make_actor(Vector3(-0.75, -0.094, -0.55), "female_1")
+	for actor in [queued, queued_behind]:
+		line.waiting.append({"actor": actor, "seconds": 4.0, "junction": true})
+	var seated: Node3D = line.make_actor(counter.position, "male_2")
+	var dining = shift.dine_in
+	require(dining.try_seat(seated, ["Coffee"], true), "Customer can take a booth before the robbery")
+	dining.sit(dining.diners[0])
+	var walking: Node3D = line.make_actor(counter.position, "female_2")
+	require(dining.try_seat(walking, ["Coffee"], true), "Customer can be on their way to a booth")
+	dining.tick(0.3)
+	line.next_arrival = 0.0
+	line.force_nude_next = true
+	shift._process(1.0 / 60.0)
+	require(shift.refusal_required() and shift.phase == "arriving", "Robber interrupts a full line and takes the counter")
+	require(line.waiting.is_empty() and dining.diners.is_empty(), "Queue and dining area are evacuated")
+	require(shift.tray == ["Coffee"] and shift.order.is_empty() and not shift.order_taken, "The interrupted order clears while prepared food stays")
+	require(line.departing.size() == 5, "All five customers head for the exit")
+	for entry in line.departing:
+		require(entry.speed == line.EVACUATION_RUN_SPEED, "Evacuating customers run")
+	line.next_arrival = 0.0
+	advance(shift, 5)
+	require(line.departing.is_empty() and shift.dialogue.is_open, "Evacuation completes before the robbery dialogue pauses play")
+	require(line.waiting.is_empty() and line.next_arrival == 0.0, "Regular arrivals are suspended during the robbery")
+	shift.dialogue.finish()
+	shift.pistol.drawer_open = true
+	shift.pistol.take()
+	require(shift.pistol.fire(shift.customer.get_node("Interaction")), "The robber can be stopped after evacuation")
+	shift.corpses.grab(shift.corpses.bodies[0].body)
+	shift.corpses.dispose()
+	advance(shift, 4)
+	require(shift.phase == "waiting" and not shift.refusal_required(), "Regular service resumes after the robbery")
 func check():
 	var game = load("res://main.tscn").instantiate()
 	root.add_child(game)
@@ -73,11 +114,13 @@ func check():
 	require(shift.earnings.cash == 0 and shift.robbery.blackout.visible, "Running out of time causes the same failure")
 	advance(shift, 10)
 	require(shift.phase == "cleanup", "Final refusal allows closing chores")
+	await create_timer(2.5).timeout
+	check_evacuation(shift)
 	line.nude_chance = 1.0
 	line.last_was_nude = false
 	for i in range(6):
 		var sample = line.make_actor(Vector3.ZERO)
 		require(bool(sample.get_meta("requires_refusal")) == (i % 2 == 0), "Back-to-back special customers are prevented")
 		sample.queue_free()
-	if failures == 0: print("PASS: armed demand, countdown, immediate and timed blackout, savings loss, queue handoff and closing")
+	if failures == 0: print("PASS: armed demand, countdown, blackouts, savings loss, closing and full-diner evacuation")
 	quit(1 if failures else 0)

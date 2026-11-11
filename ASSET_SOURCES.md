@@ -91,6 +91,8 @@ This file records provenance; it does not relicense third-party material.
 
 - **Hospital music — Still Here:** original sentimental piano composition for PIEday, created with BeepBox, 58 BPM in 3/4, sixteen bars (about fifty seconds). Grand piano melody and broken chords with a quiet string-like layer. Editable JSON and BeepBox URL are in art/music/; runtime assets/music/still_here.wav. No third-party musical recordings.
 
+- **Victory music — Grandpa's Home:** original BeepBox composition for the winning ending and credits. Its 114 BPM, sixteen-bar loop quotes the opening of Still Here before the brass fanfare. Editable JSON and BeepBox URL are in art/music/; runtime assets/music/grandpas_home.wav.
+
 ## Kitchen pistol
 Long Slide Magnum Pistol from 3D Low-Poly Guns Pack 2 by Polyy (https://polyy.ai), user-provided download. CC0; license and pack readme included under assets/pistol/.
 

@@ -11,12 +11,16 @@ const CUSTOMER_MODELS := ["male_1", "female_1", "male_2", "female_2", "male_3", 
 const ROBBER_MODELS := ["robber_1", "robber_2"]
 const WALK_SPEED := 4.0
 const ROBBER_RUN_SPEED := 7.5
+const EVACUATION_RUN_SPEED := 8.0
 const LEGACY_ENCOUNTERS := {"adult_unclothed": "robber_1", "adult_female_unclothed": "robber_2"}
 var last_model := -1
 var nude_chance := 0.08
 var last_was_nude := false
 var force_nude_next := false
 var force_nude_model := ""
+
+func _roll_robber() -> bool:
+	return force_nude_next or (not last_was_nude and randf() < nude_chance)
 
 func make_actor(at: Vector3, saved_model := "") -> Node3D:
 	var actor := Node3D.new()
@@ -28,7 +32,7 @@ func make_actor(at: Vector3, saved_model := "") -> Node3D:
 	if last_model >= 0:
 		model_index = (last_model + randi_range(1, CUSTOMER_MODELS.size() - 1)) % CUSTOMER_MODELS.size()
 	last_model = model_index
-	var robber := force_nude_next or (not last_was_nude and randf() < nude_chance)
+	var robber := _roll_robber()
 	force_nude_next = false
 	last_was_nude = robber
 	var model_name: String = CUSTOMER_MODELS[model_index]
@@ -108,31 +112,52 @@ func pop_front() -> Node3D:
 func arrival_speed(actor: Node3D) -> float:
 	return ROBBER_RUN_SPEED if actor.get_meta("requires_refusal", false) else WALK_SPEED
 
-func leave(actor: Node3D, angry: bool, closing := false) -> void:
+func leave(actor: Node3D, angry: bool, closing := false, emergency := false) -> void:
 	actor.get_node("Interaction").set_meta("action", "departing_customer")
 	var route := [Vector3(-2.4,-0.094,-0.2),Vector3(0.76,-0.094,0.2),Vector3(0.76,-0.094,6.1)]
 	if closing:
 		route = [Vector3(0.76,-0.094,0.2),Vector3(0.76,-0.094,6.1)] if actor.position.z < 0.2 else [Vector3(0.76,-0.094,6.1)]
-	departing.append({"actor":actor,"route":route,"step":0,"speed":6.5 if angry else 5.5})
+	var speed := 6.5 if angry else 5.5
+	if emergency: speed = EVACUATION_RUN_SPEED
+	departing.append({"actor":actor,"route":route,"step":0,"speed":speed})
 
-func evacuate(keep_active := false) -> void:
+func evacuate(keep_active := false, emergency := false) -> void:
 	if not keep_active and is_instance_valid(shift.customer):
-		if is_instance_valid(shift.speech): shift.speech.text = "Diner's closed. Good night."
-		leave(shift.customer, false, true)
+		if not emergency and is_instance_valid(shift.speech): shift.speech.text = "Diner's closed. Good night."
+		leave(shift.customer, false, true, emergency)
 		shift.customer = null
 	for entry in waiting:
-		leave(entry.actor, false, true)
+		leave(entry.actor, false, true, emergency)
 	waiting.clear()
+	if emergency:
+		for entry in departing: entry.speed = EVACUATION_RUN_SPEED
+
+func _tick_arrivals(delta: float) -> void:
+	# Older saves can contain a robber who was already in line.
+	for index in range(waiting.size()):
+		var queued: Node3D = waiting[index].actor
+		if queued.get_meta("requires_refusal", false):
+			waiting.remove_at(index)
+			shift._begin_robbery_arrival(queued)
+			return
+	next_arrival -= delta
+	if next_arrival > 0: return
+	var rushing: bool = shift.rush_active()
+	var line_capacity := 4 if rushing else 3
+	next_arrival = 3.0 if rushing else 8.0
+	if waiting.size() + int(is_instance_valid(shift.customer)) >= line_capacity:
+		force_nude_next = _roll_robber()
+		if not force_nude_next: return
+	var actor := make_actor(Vector3(0.76,-0.094,5))
+	if actor.get_meta("requires_refusal", false):
+		shift._begin_robbery_arrival(actor)
+	else:
+		waiting.append({"actor":actor,"seconds":0.0,"junction":false})
 
 func tick(delta: float) -> void:
 	time += delta
-	if not shift.closing_time and shift.phase in ["arriving","waiting","leaving"]:
-		next_arrival -= delta
-		var rushing: bool = shift.rush_active()
-		var line_capacity := 4 if rushing else 3
-		if next_arrival <= 0 and waiting.size() + int(is_instance_valid(shift.customer)) < line_capacity:
-			waiting.append({"actor":make_actor(Vector3(0.76,-0.094,5)),"seconds":0.0,"junction":false})
-			next_arrival = 3.0 if rushing else 8.0
+	if not shift.closing_time and not shift.refusal_required() and shift.phase in ["arriving","waiting","leaving"]:
+		_tick_arrivals(delta)
 	for index in range(waiting.size()):
 		var entry: Dictionary = waiting[index]
 		entry.seconds += delta
@@ -145,7 +170,8 @@ func tick(delta: float) -> void:
 		entry.actor.get_node("Visual").rotation.z = sin(time*1.8 + index)*0.018 if entry.seconds > 45 and not moving else 0
 	for entry in departing.duplicate():
 		var moving := _move(entry.actor,entry.route[entry.step],entry.speed,delta)
-		_pose(entry.actor,sin(time*17.5))
+		var running: bool = entry.speed == EVACUATION_RUN_SPEED
+		_pose(entry.actor, sin(time * 28.0) * 1.35 if running else sin(time * 17.5))
 		if not moving:
 			entry.step += 1
 			if entry.step >= entry.route.size():

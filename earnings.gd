@@ -14,10 +14,13 @@ var streak := 0
 var correct_orders := 0
 var closing_bonus := 0
 var day_completed := false
+var shift_takings := 0
+var robbery_losses := 0
 var save_enabled := true
 var save_path := SAVE_PATH
 var rng := RandomNumberGenerator.new()
 var grandpa := preload("res://grandpa_progress.gd").new()
+var equipment := {"broken":{},"roll_day":-1,"pending":false,"break_at":100.0,"seed":0,"spent":0}
 
 func _init(persist := true, path := SAVE_PATH) -> void:
 	save_path = path
@@ -27,7 +30,11 @@ func _init(persist := true, path := SAVE_PATH) -> void:
 		var config := ConfigFile.new()
 		if config.load(save_path) == OK:
 			cash = maxi(0, int(config.get_value("earnings", "cash", 0)))
+			shift_takings = maxi(0,int(config.get_value("earnings","shift_takings",0)))
+			robbery_losses = maxi(0,int(config.get_value("earnings","robbery_losses",0)))
 			grandpa.read_config(config)
+			var saved = config.get_value("earnings","equipment",{})
+			if saved is Dictionary: equipment.merge(saved,true)
 
 func health_status() -> String:
 	if grandpa.is_dead(): return "Grandpa: 0% · Deceased"
@@ -47,6 +54,8 @@ func start_day() -> void:
 	correct_orders = 0
 	closing_bonus = 0
 	day_completed = false
+	shift_takings = 0
+	robbery_losses = 0
 
 func tip_chance(seconds: float, perfect_pie: bool) -> float:
 	var chance := 0.50
@@ -74,6 +83,7 @@ func payout(items: Array, correct: bool, seconds: float, perfect_pie: bool, extr
 	service_rewards += service
 	streak_rewards += streak_bonus
 	cash += sale + tip + service + streak_bonus
+	shift_takings += sale + tip + service + streak_bonus
 	_save()
 	return {"sale": sale, "tip": tip, "service": service, "streak_bonus": streak_bonus, "total": sale + tip + service + streak_bonus}
 
@@ -87,7 +97,15 @@ func finish_day() -> int:
 	return closing_bonus
 
 func day_total() -> int:
-	return sales + tips + service_rewards + streak_rewards + closing_bonus
+	return maxi(0,sales + tips + service_rewards + streak_rewards + closing_bonus - robbery_losses)
+
+func lose_shift_takings() -> int:
+	var stolen := mini(cash,shift_takings)
+	cash -= stolen
+	shift_takings = 0
+	robbery_losses += stolen
+	_save()
+	return stolen
 
 func complete_campaign() -> bool:
 	if grandpa.is_dead() or cash < TREATMENT_GOAL: return false
@@ -104,5 +122,8 @@ func _save() -> void:
 	if save_enabled:
 		var config := ConfigFile.new()
 		config.set_value("earnings", "cash", cash)
+		config.set_value("earnings", "shift_takings", shift_takings)
+		config.set_value("earnings", "robbery_losses", robbery_losses)
+		config.set_value("earnings", "equipment", equipment)
 		grandpa.write_config(config)
 		if config.save(save_path) != OK: push_warning("Could not save game progress.")

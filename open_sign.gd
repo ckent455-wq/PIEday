@@ -114,7 +114,7 @@ func _process(_delta: float) -> void:
  _update_neon()
 
 func prompt() -> String:
- if shift.phase == "prep": return "[E] Switch neon OPEN sign on — start shift" if shift.donut_fryer.prepared() else "Sign off — fry and stock all three donut flavors first"
+ if shift.phase == "prep": return "[E] Switch neon OPEN sign on — start shift" if shift.donut_fryer.prepared() or shift.maintenance.is_broken("fryer") else "Sign off — fry and stock all three donut flavors first"
  return "OPEN — serving customers" if opened else "Sign off — service finished for today"
 
 func use() -> void:

@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.15.0
+
+- Appliances can break with a bang, smoke, and an out-of-order sign. Pay for repairs to restore their menu items.
+- Eight customer appearances now include two photo-based customers, with gray polo/khaki and checked-shirt outfits, improved proportions, and corrected head placement.
+- Customers use retargeted idle, walk, and jog animations.
+- Robberies wait for an accepted order and staff at the front counter. Robbers take only unspent current-shift takings; previous days remain safe.
+- Equipment state and robbery accounting persist in saves and co-op.
+
+
 ## 0.14.1
 
 - The robber rushes past the queue while customers at the counter, in line, and at the booths flee through the front door.

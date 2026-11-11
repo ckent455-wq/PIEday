@@ -80,6 +80,7 @@ func check():
 		root.get_texture().get_image().save_png("res://builds/customer-import/refusal-counter.png")
 	shift.earnings.streak = 3
 	shift.earnings.cash = 1234
+	shift.earnings.shift_takings = 234
 	shift.add_item("Coffee")
 	var tray = shift.tray.duplicate()
 	shift.service_bell.ring()
@@ -89,8 +90,8 @@ func check():
 	line.waiting.append({"actor": next, "seconds": 4.0, "junction": true})
 	shift.interact(action)
 	require(shift.customer == next and line.departing.size() == 1, "Refused customer leaves and queue advances")
-	require(shift.earnings.cash == 0 and shift.robbery.blackout.visible, "Telling the robber to leave causes a blackout and empties the fund")
-	require(shift.robbery.caption.text.contains("$1234"), "The blackout reports the amount stolen")
+	require(shift.earnings.cash == 1000 and shift.robbery.blackout.visible, "Refusing the robber loses only current shift earnings")
+	require(shift.robbery.caption.text.contains("$234"), "The blackout reports the amount stolen")
 	require(shift.tray == tray, "Prepared food is preserved")
 	require(actor.get_node("Interaction").get_meta("action") == "departing_customer", "No duplicate refusal")
 	await create_timer(2.5).timeout
@@ -108,16 +109,18 @@ func check():
 	require(shift.phase == "waiting" and shift.closing_time and shift.refusal_required(), "Closing preserves the chance to confront an active robber")
 	require(shift.robbery.remaining == shift.robbery.REACTION_SECONDS, "The countdown starts when control returns")
 	shift.earnings.cash = 800
+	shift.earnings.shift_takings = 200
 	shift.robbery.tick(shift.robbery.REACTION_SECONDS - 0.1)
 	require(shift.earnings.cash == 800 and not shift.robbery.blackout.visible, "The player gets the full response window")
 	shift.robbery.tick(0.2)
-	require(shift.earnings.cash == 0 and shift.robbery.blackout.visible, "Running out of time causes the same failure")
+	require(shift.earnings.cash == 600 and shift.robbery.blackout.visible, "Running out of time also protects previous savings")
 	advance(shift, 10)
 	require(shift.phase == "cleanup", "Final refusal allows closing chores")
 	await create_timer(2.5).timeout
 	check_evacuation(shift)
 	line.nude_chance = 1.0
 	line.last_was_nude = false
+	shift.order_taken = true
 	for i in range(6):
 		var sample = line.make_actor(Vector3.ZERO)
 		require(bool(sample.get_meta("requires_refusal")) == (i % 2 == 0), "Back-to-back special customers are prevented")

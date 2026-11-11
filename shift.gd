@@ -20,6 +20,7 @@ const ORDERS := [
 	["Cheese and tomato burger", FRIES.SERVING], ["Lettuce and tomato burger", FRIES.SERVING],
 ]
 var game: Node3D
+var maintenance: Node3D
 var phase := "prep"
 var tasks := {"bathroom": false, "kitchen": false, "trash": false, "restock": false, "tables": false}
 var tray: Array[String] = []
@@ -272,6 +273,9 @@ func setup(host: Node3D) -> void:
 	hospital_visits = preload("res://hospital_visits.gd").new()
 	add_child(hospital_visits)
 	hospital_visits.setup(self)
+	maintenance = preload("res://appliance_maintenance.gd").new()
+	add_child(maintenance)
+	maintenance.setup(self)
 	if get_tree().root.has_meta("restore_manual_state"):
 		return
 	if "--scare-test" in OS.get_cmdline_user_args():
@@ -444,7 +448,7 @@ func set_rush_started(value: bool) -> void:
 		cue.tween_callback(rush_bell.play)
 
 func _update_shift_clock() -> void:
-	if phase == "prep": shift_clock.text = "READY TO OPEN" if is_instance_valid(donut_fryer) and donut_fryer.prepared() else "PREP: FRY & STOCK DONUTS"
+	if phase == "prep": shift_clock.text = "READY TO OPEN · FRYER BROKEN" if is_instance_valid(maintenance) and maintenance.is_broken("fryer") else "READY TO OPEN" if is_instance_valid(donut_fryer) and donut_fryer.prepared() else "PREP: FRY & STOCK DONUTS"
 	elif phase == "cleanup": shift_clock.text = "AFTER HOURS - CLEANUP"
 	elif phase == "closed": shift_clock.text = "CLOSED"
 	elif closing_time and phase == "waiting" and order_taken: shift_clock.text = "CLOSED · LAST ORDER"
@@ -494,7 +498,7 @@ func _show_day_summary() -> void:
 	phase = "closed"
 	if not closing_events.awaiting_doorway_scare(): closing_events.reset()
 	arrival_delay = 0
-	_message("SHIFT COMPLETE! Sales: $%d | Tips: $%d | Service: $%d | Streak: $%d\nClosing bonus: $%d | Today: $%d | Cash: $%d\n%s" % [earnings.sales, earnings.tips, earnings.service_rewards, earnings.streak_rewards, earnings.closing_bonus, earnings.day_total(), earnings.cash, ("HOSPITAL VISITING HOURS ARE OPEN. Visit Grandpa or go home using the diner exit." if earnings.grandpa.visit_available() else "Use the diner exit to head home for the night.")])
+	_message("SHIFT COMPLETE! Sales: $%d | Tips: $%d | Service: $%d | Streak: $%d\nClosing bonus: $%d | Robbery loss: $%d | Today: $%d | Cash: $%d\n%s" % [earnings.sales, earnings.tips, earnings.service_rewards, earnings.streak_rewards, earnings.closing_bonus, earnings.robbery_losses, earnings.day_total(), earnings.cash, ("HOSPITAL VISITING HOURS ARE OPEN. Visit Grandpa or go home using the diner exit." if earnings.grandpa.visit_available() else "Use the diner exit to head home for the night.")])
 	notice_time = 0
 	_update_shift_clock()
 
@@ -694,6 +698,7 @@ func begin_cleanup() -> void:
 	_message("DINER CLOSED! Clean the bathroom and kitchen, clear table trash into the indoor bin, then take the bag to the dumpster. Replenish missing cooler pies from the freezer.")
 
 func start_demo() -> void:
+	if is_instance_valid(maintenance): maintenance.enabled = false
 	if is_instance_valid(corpses): corpses.reset()
 	if is_instance_valid(scrubbing_audio): scrubbing_audio.stop()
 	if earnings.grandpa.is_dead(): return
@@ -736,7 +741,7 @@ func start_shift(use_random_orders := true) -> bool:
 	if game.coop != null and not game.coop.partner_ready:
 		_message("Waiting for your partner to load the diner.")
 		return false
-	if use_random_orders and not donut_fryer.prepared():
+	if use_random_orders and not maintenance.is_broken("fryer") and not donut_fryer.prepared():
 		_message("Opening prep: fry and stock strawberry, chocolate and glazed donuts before opening.")
 		return false
 	if tutorial.tutorial_state == "done" and tutorial.practice_order_index == tutorial.PRACTICE_ORDERS.size():
@@ -756,6 +761,7 @@ func start_shift(use_random_orders := true) -> bool:
 	shift_remaining = SHIFT_SECONDS
 	_update_shift_clock()
 	earnings.start_day()
+	maintenance.begin_shift(use_random_orders)
 	service_seconds = 0
 	payment_label.visible = false
 	customers_this_shift = 0
@@ -767,6 +773,7 @@ func _spawn_customer() -> void:
 	if phase in ["cleanup", "closed", "robbery_cleanup"] or closing_time: return
 	if is_instance_valid(customer): return
 	var queued: bool = not customer_line.waiting.is_empty()
+	if queued and customer_line.waiting[0].actor.get_meta("requires_refusal",false) and not robbery.staff_at_counter(): return
 	_reset_customer()
 	var demo_orders := [["Glazed donut", "Coffee"], ["Apple pie", "Cola"], ["Chocolate donut", "Lemon Fizz"], ["Cherry pie", "Dr. Paw Paw"]]
 	order_taken = false
@@ -775,12 +782,14 @@ func _spawn_customer() -> void:
 	if actor.get_meta("requires_refusal", false):
 		_begin_robbery_arrival(actor)
 		return
+	maintenance.before_customer()
 	if preload("res://playable_demo.gd").session(self) != null:
 		order.assign(demo_orders[order_index % demo_orders.size()])
 	elif randomize_orders:
 		_pick_random_order()
 	else:
 		order.assign(ORDERS[order_index % ORDERS.size()])
+	order.assign(maintenance.adapt_order(order))
 	_begin_customer_arrival(actor)
 
 func _begin_robbery_arrival(actor: Node3D) -> void:
@@ -801,7 +810,7 @@ func _begin_customer_arrival(actor: Node3D) -> void:
 		_set_route([Vector3(0.76,-0.094,0.2),Vector3(-2.4,-0.094,-3.6)])
 
 func _pick_random_order() -> void:
-	var fries_due := not fries_order_offered and order_index >= 2
+	var fries_due: bool = not maintenance.is_broken("fryer") and not maintenance.is_broken("grill") and not fries_order_offered and order_index >= 2
 	var burger_order := fries_due or randf() < BURGER_ORDER_CHANCE
 	var first_recipe := FIRST_BURGER_ORDER if burger_order else 0
 	var recipe_end := ORDERS.size() if burger_order else FIRST_BURGER_ORDER
@@ -921,19 +930,20 @@ func _process(delta: float) -> void:
 			customer.rotation.y = atan2(movement.x, movement.z)
 		if is_instance_valid(customer_visual):
 			var gait_speed := minf(speed, 4.0 if running else 2.5)
-			customer_visual.position.y = absf(sin(animation_time * gait_speed * 8)) * 0.018 if passage_ready else 0.0
+			customer_visual.position.y = absf(sin(animation_time * gait_speed * 8)) * 0.018 if passage_ready and not customer.has_meta("locomotion") else 0.0
 			_pose_customer(sin(animation_time * gait_speed * 7) * (1.35 if running else 1.0) if passage_ready else 0.0)
 	elif is_instance_valid(customer_visual):
 		customer_visual.position.y = 0
 		_pose_customer(0)
 	# The demand pauses the scene. Let fleeing customers reach the exit first.
-	if phase == "arriving" and not walking and refusal_required() and customer_line.departing.is_empty():
+	if phase == "arriving" and not walking and refusal_required() and customer_line.departing.is_empty() and robbery.staff_at_counter():
 		phase = "waiting"
 		start_robbery_dialogue()
 	_update_cleaning(delta)
 	_refresh_hud()
 
 func _pose_customer(stride: float) -> void:
+	if is_instance_valid(customer) and customer.has_meta("locomotion"): return
 	if not is_instance_valid(customer_skeleton): return
 	for bone_id in limbs:
 		var bone_name := customer_skeleton.get_bone_name(bone_id)
@@ -988,6 +998,8 @@ func action_prompt(node: Node) -> String:
 		return "[Click / E] Fire · Q return pistol" if action == "customer" and pistol.available() else "Pistol equipped · aim at the robber · Q return"
 	if action == "pistol": return pistol.prompt()
 	if action == "pistol_drawer": return "[E] Close drawer" if pistol.drawer_open else "[E] Open drawer"
+	var appliance: String = maintenance.action_id(action,node)
+	if not appliance.is_empty() and maintenance.is_broken(appliance): return maintenance.repair_prompt(appliance)
 	match action:
 		"table_trash", "trash_bin", "dining_customer": return dine_in.prompt(action)
 		"freezer_stock", "restock_cooler": return restock.prompt(action, node)
@@ -1044,6 +1056,10 @@ func interact(node: Node) -> void:
 		return
 	if carried_item == "Pistol":
 		if not pistol.fire(node): _message("Only the robber is a valid target. Q returns the pistol.")
+		return
+	var appliance: String = maintenance.action_id(action,node)
+	if not appliance.is_empty() and maintenance.is_broken(appliance):
+		maintenance.repair(appliance)
 		return
 	match action:
 		"corpse": corpses.grab(node)

@@ -9,3 +9,5 @@ __pycache__/
 .DS_Store
 __MACOSX/
 art/hospital/source/
+# PYROLUX permits game exports but restricts redistribution of the raw asset.
+addons/pyrolux_fx/

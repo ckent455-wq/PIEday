@@ -7,7 +7,7 @@ var next_arrival := 6.0
 var time := 0.0
 var front_door_auto_opened := false
 var front_door_open_for := 0.0
-const CUSTOMER_MODELS := ["male_1", "female_1", "male_2", "female_2", "male_3", "female_3"]
+const CUSTOMER_MODELS := ["male_1", "female_1", "male_2", "female_2", "male_3", "female_3", "male_photo", "male_glasses"]
 const ROBBER_MODELS := ["robber_1", "robber_2"]
 const WALK_SPEED := 4.0
 const ROBBER_RUN_SPEED := 7.5
@@ -20,7 +20,9 @@ var force_nude_next := false
 var force_nude_model := ""
 
 func _roll_robber() -> bool:
-	return force_nude_next or (not last_was_nude and randf() < nude_chance)
+	# Explicit practice/test requests bypass scheduling; random encounters require
+	# an accepted order and a staff member physically at the service counter.
+	return force_nude_next or (shift.robbery.can_start_encounter() and not last_was_nude and randf() < nude_chance)
 
 func make_actor(at: Vector3, saved_model := "") -> Node3D:
 	var actor := Node3D.new()
@@ -46,7 +48,7 @@ func make_actor(at: Vector3, saved_model := "") -> Node3D:
 		robber = saved_model in ROBBER_MODELS
 	if robber:
 		var variant := ROBBER_MODELS.find(model_name)
-		var visual := attach_visual(actor, "male_1" if variant == 0 else "female_1")
+		var visual := attach_visual(actor, "male_1" if variant == 0 else "female_1", false)
 		_disguise_robber(visual, variant)
 		preload("res://robber_weapon.gd").equip(actor)
 		actor.set_meta("display_name", "Masked robber")
@@ -82,7 +84,7 @@ static func _disguise_robber(visual: Node3D, variant: int) -> void:
 			disguise.set_shader_parameter("jacket", Vector3(0.085, 0.10, 0.13) if variant == 0 else Vector3(0.13, 0.085, 0.10))
 			mesh.set_surface_override_material(surface, disguise)
 
-static func attach_visual(actor: Node3D, model_name: String) -> Node3D:
+static func attach_visual(actor: Node3D, model_name: String, animate := true) -> Node3D:
 	var visual: Node3D = load("res://assets/customers/" + model_name + ".glb").instantiate()
 	visual.name = "Visual"
 	actor.add_child(visual)
@@ -101,6 +103,12 @@ static func attach_visual(actor: Node3D, model_name: String) -> Node3D:
 		actor.set_meta("skeleton", skeleton)
 		break
 	actor.set_meta("rest_bones", bones)
+	if animate and model_name in CUSTOMER_MODELS and not actor.has_meta("locomotion"):
+		# Robbers retain their raised weapon arm and existing combat poses.
+		var locomotion := preload("res://customer_locomotion.gd").new()
+		actor.add_child(locomotion)
+		locomotion.setup(actor,visual,model_name)
+		actor.set_meta("locomotion",locomotion)
 	return visual
 
 func pop_front() -> Node3D:
@@ -137,6 +145,7 @@ func _tick_arrivals(delta: float) -> void:
 	for index in range(waiting.size()):
 		var queued: Node3D = waiting[index].actor
 		if queued.get_meta("requires_refusal", false):
+			if not shift.robbery.staff_at_counter(): return
 			waiting.remove_at(index)
 			shift._begin_robbery_arrival(queued)
 			return
@@ -228,6 +237,7 @@ func _move(actor: Node3D, goal: Vector3, speed: float, delta: float) -> bool:
 	return true
 
 func _pose(actor: Node3D, stride: float) -> void:
+	if actor.has_meta("locomotion"): return
 	var skeleton: Skeleton3D = actor.get_meta("skeleton", null)
 	if not is_instance_valid(skeleton): return
 	var baselines: Dictionary = actor.get_meta("rest_bones")

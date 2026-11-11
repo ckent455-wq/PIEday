@@ -1,7 +1,7 @@
 extends RefCounted
 const DIRECTORY := "user://manual_saves"
 const SLOTS := 3
-const WALLET_FIELDS := ["cash","sales","tips","service_rewards","streak_rewards","streak","correct_orders","closing_bonus","day_completed"]
+const WALLET_FIELDS := ["cash","sales","tips","service_rewards","streak_rewards","streak","correct_orders","closing_bonus","day_completed","equipment","shift_takings","robbery_losses"]
 const SHIFT_FIELDS := ["phase","tasks","tray","order","order_taken","route","route_index","walking","angry","served","lost","order_index","randomize_orders","last_recipe_index","fries_order_offered","arrival_delay","shift_number","customers_this_shift","service_seconds","shift_remaining","rush_started","rush_order","closing_time","cleaning_progress","cleaning_task","carried_item","animation_time"]
 const LINE_FIELDS := ["next_arrival","time","last_model","nude_chance","last_was_nude","force_nude_next","force_nude_model","front_door_auto_opened","front_door_open_for"]
 const EVENT_FIELDS := ["active","encounter","elapsed","bell_at","flicker_at","figure_at","bell_done","flicker_done","figure_done","figure_seen","trash_disposed","dissolve_elapsed","seen_seconds","away_seconds","flicker_time","extra_at","extra_done","steps_left","step_timer","step_position","step_direction"]

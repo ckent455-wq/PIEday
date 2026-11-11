@@ -105,6 +105,7 @@ func tick(delta: float) -> void:
 			if entry.remaining <= 0: finish_meal(entry)
 
 func sit(entry: Dictionary) -> void:
+	if entry.actor.has_meta("locomotion"): entry.actor.get_meta("locomotion").suspend(true)
 	var table: Dictionary = tables[entry.table]
 	entry.state = "eating"
 	entry.actor.position = table.seat
@@ -129,6 +130,7 @@ func sit(entry: Dictionary) -> void:
 	table.meal = entry.meal
 
 func stand(actor: Node3D) -> void:
+	if actor.has_meta("locomotion"): actor.get_meta("locomotion").suspend(false)
 	var skeleton: Skeleton3D = actor.get_meta("skeleton")
 	var baseline: Dictionary = actor.get_meta("dining_base_pose",{})
 	for id in baseline: skeleton.set_bone_pose_rotation(id,baseline[id])

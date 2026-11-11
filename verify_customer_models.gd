@@ -51,5 +51,5 @@ func check():
 		await create_timer(0.2).timeout
 		await RenderingServer.frame_post_draw
 		root.get_texture().get_image().save_png("res://builds/customer-import/customer-counter.png")
-	if failures == 0: print("PASS: six new rigged customer appearances, walking, arrival, order interaction")
+	if failures == 0: print("PASS: all ",line.CUSTOMER_MODELS.size()," rigged customer appearances, walking, arrival, order interaction")
 	quit(1 if failures else 0)

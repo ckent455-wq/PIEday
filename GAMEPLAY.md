@@ -201,6 +201,10 @@ new players. The full Windows Desktop preset retains the campaign.
 
 When the robber enters, customers flee through the front door. After the demand, you have three seconds to take the pistol from the drawer under the service bell, aim at the robber, and click or press E to fire. Q returns the pistol.
 
+Random robberies can only begin while an order is accepted and a player is at the service counter. They cannot trigger while everyone is working in the kitchen or freezer. If staff leave before the robber arrives, the demand waits for someone to return to the counter; the reaction timer starts after the demand closes. Once announced, leaving the counter does not stop the countdown. Either connected co-op player can staff the counter.
+
+A failed robbery takes only the current shift's unspent earnings, including sales, tips, service pay and streak rewards. Previous shifts' savings stay protected. Repairs spend current earnings first, and another robbery can only take newly earned money. If you have earned nothing, the robber takes $0. The closing summary reports robbery losses separately; saves and co-op retain the remaining takings.
+
 If you shoot the robber, service and the shift clock pause. With empty hands, press E to pick up the body, carry it through the kitchen to the outdoor dumpster, then press E at the dumpster. Q sets the body down. Service resumes automatically after disposal. Manual saves preserve the body pose and whether you were carrying it.
 
 ## Donut frying and burgers
@@ -212,6 +216,16 @@ Take a raw patty from the raw-meat tray. Put it on the flat top, wait 3 seconds,
 Five-minute balance: correct orders earn $80 service pay plus menu prices, optional tips and capped streak rewards. Closing pays $300 after at least one correct order. About 9–16 correct orders per shift targets the $15,000 goal in roughly 8–12 shifts. Preparation, dialogue and closing chores do not consume service time. Existing savings are retained.
 
 The donut case holds eight of each flavor (24 total). A six-donut batch can top off a partly full shelf; unused donuts remain in the basket and can be iced for another flavor. Picking a donut removes that exact displayed item. Q returns held/tray donuts and restores their stock. Empty shelves require fresh frying.
+
+## Appliance breakdowns
+
+From day two, each campaign shift has a 40% chance of one breakdown. Failures occur between orders on idle equipment, never while fulfilling an accepted order. At most two appliances can remain broken. New customers order only items available from working equipment.
+
+Aim at a broken appliance or its yellow repair sign and press E to pay directly from Grandpa's surgery fund. Repairs are immediate: pie oven $350, burger grill $400, shared donut/fries fryer $300, coffee machine $250, soda fountain $275. Bottled drinks remain available when the fountain breaks. Broken equipment and repair spending persist across shifts, autosaves, manual save slots, and co-op sessions.
+
+Broken appliances display a yellow OUT OF ORDER sign and pour smoke until repaired. A loud positional metallic bang announces each new failure. Loading existing damage restores its sign and smoke without replaying the bang.
+
+If you cannot afford a repair, keep serving the working menu to earn the money. A broken fryer lets you open without the usual donut preparation. The introductory shift and standalone playable demo do not generate breakdowns.
 
 ## Winning the campaign
 

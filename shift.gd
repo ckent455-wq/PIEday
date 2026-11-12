@@ -28,6 +28,7 @@ var tray_sources: Array[Node3D] = []
 var order: Array[String] = []
 var order_taken := false
 var customer: Node3D
+var complaint_customer: Node3D
 var customer_visual: Node3D
 var speech: Label3D
 var limbs: Array[int] = []
@@ -420,6 +421,9 @@ func _refresh_hud() -> void:
 		lines.append("Masked robber\nGive me all your money!\nPistol drawer under the bell.")
 		if robbery.remaining >= 0.0:
 			lines.append("[color=#ff8e80]Time to react: %.1fs[/color]" % robbery.remaining)
+	elif is_complaint_customer(customer):
+		order_heading.text = "COUNTER"
+		lines.append("Hear him out." if phase == "waiting" else "A customer is approaching.")
 	elif order_taken:
 		order_heading.text = "ORDER / " + str(customer.get_meta("display_name", "Customer")).to_upper() if is_instance_valid(customer) else "CURRENT ORDER"
 		var shown: Array[String] = []
@@ -782,6 +786,9 @@ func _spawn_customer() -> void:
 	if actor.get_meta("requires_refusal", false):
 		_begin_robbery_arrival(actor)
 		return
+	if is_complaint_customer(actor):
+		_begin_customer_arrival(actor)
+		return
 	maintenance.before_customer()
 	if preload("res://playable_demo.gd").session(self) != null:
 		order.assign(demo_orders[order_index % demo_orders.size()])
@@ -836,6 +843,9 @@ func _bind_customer_actor(actor: Node3D) -> void:
 	customer = actor
 	customer.name = "Customer"
 	if customer.get_meta("requires_refusal", false): order.clear()
+	if is_complaint_customer(customer):
+		order.clear()
+		order_taken = false
 	customer_visual = customer.get_node("Visual")
 	customer_visual.rotation.z = 0
 	limbs.clear()
@@ -876,6 +886,10 @@ func _process(delta: float) -> void:
 	if not is_instance_valid(game):
 		return
 	if robbery.blackout.visible: return
+	if is_instance_valid(complaint_customer) and not dialogue.is_open:
+		var finished_visit := complaint_customer == customer
+		complaint_customer = null
+		if finished_visit: _depart_customer(false)
 	robbery.tick(delta)
 	if robbery.blackout.visible: return
 	donut_fryer.tick(delta)
@@ -924,7 +938,7 @@ func _process(delta: float) -> void:
 				customer.rotation.y = PI
 				if not refusal_required():
 					phase = "waiting"
-					speech.text = "E: TAKE MY ORDER"
+					speech.text = "E: TALK" if is_complaint_customer(customer) else "E: TAKE MY ORDER"
 		else:
 			customer.position += movement.normalized() * speed * delta
 			customer.rotation.y = atan2(movement.x, movement.z)
@@ -952,6 +966,19 @@ func _pose_customer(stride: float) -> void:
 		var rest := customer_skeleton.get_bone_global_rest(bone_id).basis.get_rotation_quaternion()
 		var baseline: Quaternion = limb_rest_rotations[bone_id]
 		customer_skeleton.set_bone_pose_rotation(bone_id, baseline * rest.inverse() * Quaternion(Vector3.RIGHT, angle) * rest)
+
+func is_complaint_customer(actor: Node3D) -> bool:
+	return is_instance_valid(actor) and actor.get_meta("customer_model", "") == "male_glasses"
+
+func _start_complaint_dialogue() -> void:
+	if is_instance_valid(complaint_customer) or dialogue.is_open or get_tree().paused: return
+	complaint_customer = customer
+	var lines := [
+		["CUSTOMER", "Your food sucks. And lunch is overrated anyway."],
+		["CUSTOMER", "You'd make a lot more sales if you sold smoked sausage. That's all I'm saying."]
+	]
+	if game.coop == null: dialogue.show_pages(lines)
+	else: game.coop.show_shared_dialogue(lines)
 
 func start_robbery_dialogue() -> void:
 	var lines := [["MASKED ROBBER", "Give me all your money!"]]
@@ -1024,12 +1051,14 @@ func action_prompt(node: Node) -> String:
 		"bell":
 			if phase == "robbery_cleanup": return "Dispose of the robber before serving"
 			if refusal_required(): return "Find the pistol under the bell" if is_practicing() else "Deal with the robber first"
+			if is_complaint_customer(customer): return "This customer isn't ordering"
 			return "[Click / E] Ding bell and serve the tray"
 		"oven": return oven.prompt()
 		"customer":
 			if refusal_required() and is_practicing(): return "Robbery · get the pistol from under the bell"
 			if refusal_required() and phase == "waiting": return "[E] Tell the robber to leave"
 			if phase != "waiting": return "Customer is leaving" if phase == "leaving" else "Customer is approaching"
+			if is_complaint_customer(customer): return "[E] Hear him out"
 			return "[E] " + ("Hear order again - ring bell to serve" if order_taken else "Take customer's order")
 		"queued_customer": return "Waiting in line"
 		"departing_customer": return "Customer is leaving"
@@ -1099,6 +1128,9 @@ func interact(node: Node) -> void:
 			if phase != "waiting": return
 			if refusal_required():
 				refuse_service()
+				return
+			if is_complaint_customer(customer):
+				_start_complaint_dialogue()
 				return
 			var reminder := order_taken
 			if not order_taken: service_seconds = 0.0
@@ -1229,6 +1261,7 @@ func _resume_service() -> void:
 	elif not customer_line.waiting.is_empty(): _spawn_customer()
 
 func serve_order() -> bool:
+	if is_complaint_customer(customer): return false
 	if phase == "robbery_cleanup":
 		_message("Dispose of the robber before serving.")
 		return false
@@ -1319,6 +1352,7 @@ func _reset_stock() -> void:
 		_set_pickup_visible(pie, true)
 
 func _reset_customer() -> void:
+	complaint_customer = null
 	walking = false
 	arrival_delay = 0
 	limbs.clear()

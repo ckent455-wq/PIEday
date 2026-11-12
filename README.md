@@ -1,6 +1,6 @@
 # PIEday
 
-Current version: **0.15.1**. Adds appliance breakdowns and repairs, smoother customer animations, four custom customers, including blue and gray hoodie appearances, and fairer robbery timing and losses.
+Current version: **0.15.2**. The glasses-wearing regular visits to complain about the food and pitch smoked sausage in solo and co-op. Includes appliance breakdowns and repairs, smoother customer animations, custom customers, and updated robbery timing and losses.
 
 The game opens with a typewriter-style story on a black screen. Press E or
 Space to reveal each passage and advance, then choose Open the Diner. Earn $15,000 toward Grandpa's

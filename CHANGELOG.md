@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.15.2
+
+- The glasses-wearing regular visits to complain about the food and suggest smoked sausage. The shared dialogue works in solo and co-op.
+
 ## 0.15.1
 
 - Add blue and gray hoodie customers based on the provided portraits, bringing the normal customer rotation to ten appearances.

@@ -80,6 +80,8 @@ func ring() -> void:
 		shift.tutorial.ring_practice_bell(shift)
 	elif shift.refusal_required():
 		shift._message("Deal with the robber before serving orders.")
+	elif shift.is_complaint_customer(shift.customer):
+		shift._message("This customer isn't ordering.")
 	elif shift.phase != "waiting":
 		shift._message("Ding! Wait for a customer to reach the counter.")
 	elif not shift.order_taken:

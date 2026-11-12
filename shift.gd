@@ -1402,8 +1402,7 @@ func _item_model(parent: Node3D, item: String, at: Vector3, size: float, source:
 	elif item in BURGER_STATION.BURGERS:
 		BURGER_STATION.model(holder, item)
 	elif item in ["Raw patty", "Cooked patty"]:
-		var patty = load("res://assets/burger/burger_patty_" + ("raw" if item == "Raw patty" else "cooked") + ".glb").instantiate()
-		holder.add_child(patty)
+		holder.add_child(BURGER_STATION.patty_model(item == "Cooked patty"))
 	elif item in BURGER_STATION.PRODUCE_ITEMS:
 		BURGER_STATION.produce_model(holder, item, Vector3(0, 0.07, 0))
 	elif item.ends_with(" stock"):

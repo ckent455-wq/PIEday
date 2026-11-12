@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.15.4
+
+- Widen burger patties by 12% on the raw tray, flat top, in hand, and in assembled burgers.
+
 ## 0.15.3
 
 - Restock tomato, onion, lettuce, and cheese from labeled freezer crates before opening. The topping trays empty at closing.

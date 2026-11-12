@@ -2,6 +2,9 @@ extends Node3D
 
 const SIDE_SECONDS := 3.0
 const BURNS_AT := 12.0
+const PATTY_SCALE := Vector3(1.12, 1.0, 1.12)
+const RAW_PATTY := preload("res://assets/burger/burger_patty_raw.glb")
+const COOKED_PATTY := preload("res://assets/burger/burger_patty_cooked.glb")
 const LETTUCE_LEAF := preload("res://assets/burger/lettuce_leaf.glb")
 const TOMATO_SLICE := preload("res://assets/burger/tomato_slice.glb")
 const TOMATO_STOCK := "Tomato stock"
@@ -71,7 +74,7 @@ func setup(owner_shift: Node) -> void:
 			shift._box(tray,Vector3(0,-0.033,z),Vector3(0.70,0.035,0.012),Color(0.62,0.64,0.63))
 	var patties := _ingredient_group(raw_tray)
 	for i in range(3):
-		var raw := preload("res://assets/burger/burger_patty_raw.glb").instantiate()
+		var raw := patty_model(false)
 		patties.add_child(raw)
 		raw.position = Vector3(-0.20 + i * 0.20,-0.034,0)
 	var buns := _ingredient_group(prep)
@@ -443,7 +446,7 @@ func refresh() -> void:
 			child.queue_free()
 		visual.rotation = Vector3.ZERO
 		if cooking:
-			var model = load("res://assets/burger/burger_patty_" + ("raw" if state == "raw" and flipped_at < 0 else "cooked") + ".glb").instantiate()
+			var model := patty_model(state != "raw" or flipped_at >= 0)
 			visual.add_child(model)
 			model.position.y = -0.011
 			if state == "burnt":
@@ -471,10 +474,15 @@ func restore(data: Dictionary) -> void:
 	flipped_at = data.flipped_at
 	refresh()
 
+static func patty_model(cooked: bool) -> Node3D:
+	var patty := (COOKED_PATTY if cooked else RAW_PATTY).instantiate() as Node3D
+	patty.scale *= PATTY_SCALE
+	return patty
+
 static func model(parent: Node3D, item := "Burger") -> void:
 	var bottom = preload("res://assets/burger/burger_bun_bottom.glb").instantiate()
 	parent.add_child(bottom)
-	var patty = preload("res://assets/burger/burger_patty_cooked.glb").instantiate()
+	var patty := patty_model(true)
 	parent.add_child(patty)
 	patty.position.y = 0.018
 	var top = preload("res://assets/burger/burger_bun_top.glb").instantiate()

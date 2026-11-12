@@ -1,6 +1,6 @@
 # PIEday
 
-Current version: **0.15.3**. Restock burger toppings from the freezer before opening, try the rearranged burger station and onion Deluxe, meet a new portrait customer, and load manual saves from the title screen.
+Current version: **0.15.4**. Burger patties are wider on the raw tray, the flat top, and finished burgers. Includes freezer restocking, the onion Deluxe, and title-screen save loading.
 
 The game opens with a typewriter-style story on a black screen. Press E or
 Space to reveal each passage and advance, then choose Open the Diner. Earn $15,000 toward Grandpa's

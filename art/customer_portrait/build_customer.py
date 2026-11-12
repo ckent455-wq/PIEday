@@ -16,6 +16,7 @@ parser.add_argument('--source', default=str(SCRIPT))
 args = parser.parse_args(sys.argv[sys.argv.index('--')+1:] if '--' in sys.argv else [])
 HERE = Path(args.source).resolve()
 VARIANT = args.variant
+HOODIE = VARIANT in ['male_blue_hoodie', 'male_gray_hoodie']
 HEAD_LIFT = .0225 if VARIANT == 'male_glasses' else 0.0
 OUT = ROOT / 'assets' / 'customers'
 bpy.ops.object.select_all(action='SELECT')
@@ -61,6 +62,11 @@ for obj in list(bpy.data.objects):
             vertex.co.x *= (1.10 if .2 < height < .75 else 1.04) if VARIANT == 'male_photo' else 1.02
             if VARIANT == 'male_glasses' and vertex.co.z > 1.73:
                 vertex.co.z = 1.73+(vertex.co.z-1.73)*.7
+            if HOODIE and vertex.co.z > 1.71:
+                # The references have a fringe and a buzzcut, not a tall quiff.
+                vertex.co.z = 1.71+(vertex.co.z-1.71)*(.8 if VARIANT == 'male_blue_hoodie' else .48)
+            if VARIANT == 'male_blue_hoodie':
+                vertex.co.x *= 1.10
         # The donor head was offset left and forward relative to this body's
         # neck. Center the actual mesh over the spine, not just its head bone.
         xs = [v.co.x for v in obj.data.vertices]
@@ -117,6 +123,16 @@ for obj in list(bpy.data.objects):
                     if all(obj.data.vertices[i].co.z > .97 for i in polygon.vertices):
                         polygon.use_smooth = True
                 obj.data.update()
+            if HOODIE:
+                for vertex in obj.data.vertices:
+                    co = vertex.co
+                    if abs(co.x) < .30 and .95 < co.z < 1.43:
+                        fullness = max(0.0, 1.0-((co.z-1.16)/.25)**2)
+                        co.x *= 1.0+.19*fullness
+                        if co.y < .04: co.y -= .035*fullness
+                for polygon in obj.data.polygons:
+                    polygon.use_smooth = True
+                obj.data.update()
         if VARIANT == 'male_glasses':
             # The generated collar opening crosses the donor shoulder UVs.
             # Project the shoulder caps onto a continuous gray fabric swatch,
@@ -128,6 +144,26 @@ for obj in list(bpy.data.objects):
                     for index in polygon.loop_indices:
                         co = obj.data.vertices[obj.data.loops[index].vertex_index].co
                         uv.data[index].uv = (.43+co.x*.12,.65+(co.z-1.38)*.25)
+        if HOODIE:
+            uv = obj.data.uv_layers.active
+            for polygon in obj.data.polygons:
+                center = polygon.center
+                for index in polygon.loop_indices:
+                    co = obj.data.vertices[obj.data.loops[index].vertex_index].co
+                    if .10 < center.z < .99 and abs(center.x) < .30:
+                        # Both legs sample the denim island, never the newly
+                        # generated sleeve that occupies the old front-leg UV.
+                        t = max(0,min(1,(.99-co.z)/.89))
+                        uv.data[index].uv = (.66+.25*t+(abs(co.x)-.12)*.12,.69+.22*t)
+                    elif .28 < abs(center.x) < .59 and center.z > 1.0:
+                        # Extend fabric down both forearms, stopping at hands.
+                        uv.data[index].uv = (.16+abs(co.x)*.08,.81+(co.z-1.0)*.12)
+                    elif center.z > 1.38 and abs(center.x) > .07:
+                        uv.data[index].uv = (.17+co.x*.03,.83+(co.z-1.38)*.08)
+                    elif VARIANT == 'male_blue_hoodie' and 1.0 < center.z < 1.42 and center.y < .025 and abs(center.x) < .27:
+                        # The blue wordmark was painted upright in its atlas;
+                        # project it upright across the chest, not a shoulder.
+                        uv.data[index].uv = (.455+(co.x+.24)/.48*.24,.19+(co.z-1.0)/.46*.22)
         # Remove the original body's long rear neck stub. It protruded behind
         # the separate portrait head when the locomotion pose straightened it.
         mesh = bmesh.new()
@@ -137,6 +173,34 @@ for obj in list(bpy.data.objects):
         bmesh.ops.delete(mesh, geom=remove, context='FACES')
         mesh.to_mesh(obj.data)
         mesh.free()
+        if HOODIE and obj.name.startswith('male_body'):
+            # A clean waist seam and simple cloth materials avoid stretching
+            # the generated atlas across unrelated trouser/sleeve islands.
+            mesh = bmesh.new()
+            mesh.from_mesh(obj.data)
+            bmesh.ops.bisect_plane(mesh,geom=list(mesh.verts)+list(mesh.edges)+list(mesh.faces),dist=.0001,plane_co=(0,0,1.02),plane_no=(0,0,1),clear_inner=False,clear_outer=False)
+            mesh.to_mesh(obj.data)
+            mesh.free()
+            fabric = bpy.data.materials.new('SweatshirtFabric')
+            fabric.diffuse_color = (.006,.065,.25,1) if VARIANT == 'male_blue_hoodie' else (.23,.25,.27,1)
+            denim = bpy.data.materials.new('Denim')
+            denim.diffuse_color = (.018,.028,.055,1) if VARIANT == 'male_blue_hoodie' else (.035,.065,.11,1)
+            for mat in [fabric,denim]:
+                mat.use_nodes = True
+                shader = mat.node_tree.nodes.get('Principled BSDF')
+                shader.inputs['Base Color'].default_value = mat.diffuse_color
+                shader.inputs['Roughness'].default_value = .96
+            obj.data.materials.append(fabric)
+            obj.data.materials.append(denim)
+            hand_groups = {g.index for g in obj.vertex_groups if 'hand' in g.name.lower() or 'finger' in g.name.lower() or 'thumb' in g.name.lower() or 'palm' in g.name.lower() or 'f_' in g.name.lower()}
+            for polygon in obj.data.polygons:
+                center = sum((obj.data.vertices[i].co for i in polygon.vertices), __import__('mathutils').Vector())/len(polygon.vertices)
+                hand_weight = sum(sum(g.weight for g in obj.data.vertices[i].groups if g.group in hand_groups) for i in polygon.vertices)/len(polygon.vertices)
+                if center.z > 1.02 and hand_weight < .5:
+                    polygon.material_index = 1
+                elif .105 < center.z <= 1.02 and abs(center.x) < .32:
+                    polygon.material_index = 2
+            obj.data.update()
 
 # Short, centered neck bridges the collar and head without a rear shelf.
 vertices = []
@@ -166,6 +230,48 @@ lower.add(list(range(12)),1,'REPLACE')
 upper.add(list(range(12,24)),1,'REPLACE')
 modifier = neck.modifiers.new('Skin','ARMATURE')
 modifier.object = rig
+
+if HOODIE:
+    # The chest graphic is a small skinned fabric panel with explicit UVs,
+    # keeping its orientation independent of the donor's rotated UV islands.
+    graphic = bpy.data.meshes.new('ChestGraphic')
+    w, bottom, top = (.245,1.23,1.365) if VARIANT == 'male_blue_hoodie' else (.25,1.205,1.395)
+    graphic.from_pydata([(-w/2,-.073,bottom),(w/2,-.073,bottom),(w/2,-.064,top),(-w/2,-.064,top)],[],[(0,1,2,3)])
+    graphic.materials.append(clothes)
+    layer = graphic.uv_layers.new()
+    coords = [(.55,.30),(.685,.30),(.685,.38),(.55,.38)] if VARIANT == 'male_blue_hoodie' else [(.53,.255),(.53,.42),(.62,.42),(.62,.255)]
+    for loop in graphic.loops: layer.data[loop.index].uv = coords[loop.vertex_index]
+    panel = bpy.data.objects.new('ChestGraphic',graphic)
+    bpy.context.collection.objects.link(panel)
+    panel.parent = rig
+    panel.vertex_groups.new(name='DEF-spine.003').add([0,1,2,3],1,'REPLACE')
+    panel.modifiers.new('Skin','ARMATURE').object = rig
+    # A lowered hood gives the sweatshirt an actual 3D silhouette around the
+    # back of the neck. It follows the upper spine, leaving the face clear.
+    hood_mat = bpy.data.materials.new('HoodFabric')
+    hood_mat.diffuse_color = (.018,.16,.36,1) if VARIANT == 'male_blue_hoodie' else (.27,.29,.31,1)
+    hood_mat.use_nodes = True
+    hood_mat.node_tree.nodes.get('Principled BSDF').inputs['Base Color'].default_value = (.006,.065,.25,1) if VARIANT == 'male_blue_hoodie' else (.23,.25,.27,1)
+    hood_mat.node_tree.nodes.get('Principled BSDF').inputs['Roughness'].default_value = .96
+    hood_vertices, hood_faces = [], []
+    for i in range(17):
+        angle = math.pi*i/16
+        for j in range(6):
+            cross = math.tau*j/6
+            radius = .105+.027*math.cos(cross)
+            hood_vertices.append((math.cos(angle)*radius,.04+math.sin(angle)*radius,1.475+.032*math.sin(cross)-.035*math.sin(angle)))
+    for i in range(16):
+        for j in range(6):
+            hood_faces.append((i*6+j,i*6+(j+1)%6,(i+1)*6+(j+1)%6,(i+1)*6+j))
+    mesh = bpy.data.meshes.new('LoweredHood')
+    mesh.from_pydata(hood_vertices,[],hood_faces)
+    mesh.materials.append(hood_mat)
+    hood = bpy.data.objects.new('LoweredHood',mesh)
+    bpy.context.collection.objects.link(hood)
+    hood.parent = rig
+    hood.vertex_groups.new(name='DEF-spine.003').add(list(range(len(hood_vertices))),1,'REPLACE')
+    hood.modifiers.new('Skin','ARMATURE').object = rig
+    for polygon in mesh.polygons: polygon.use_smooth = True
 
 bpy.ops.wm.save_as_mainfile(filepath=str(HERE / 'portrait_customer.blend'))
 bpy.ops.export_scene.gltf(filepath=str(OUT / (VARIANT+'.glb')), export_format='GLB',

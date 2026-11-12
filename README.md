@@ -1,6 +1,6 @@
 # PIEday
 
-Current version: **0.15.0**. Adds appliance breakdowns and repairs, smoother customer animations, two custom customers, and fairer robbery timing and losses.
+Current version: **0.15.1**. Adds appliance breakdowns and repairs, smoother customer animations, four custom customers, including blue and gray hoodie appearances, and fairer robbery timing and losses.
 
 The game opens with a typewriter-style story on a black screen. Press E or
 Space to reveal each passage and advance, then choose Open the Diner. Earn $15,000 toward Grandpa's

@@ -78,7 +78,7 @@ func _ready() -> void:
 	view_button.pressed.connect(toggle_view)
 	controls.add_child(view_button)
 	var hint := Label.new()
-	hint.text = "1–8: choose customer  ·  Esc: close preview\nIn-place loops: customer routes control movement in the game."
+	hint.text = "1–9, 0: choose customer  ·  Esc: close preview\nIn-place loops: customer routes control movement in the game."
 	hint.add_theme_font_size_override("font_size",16)
 	ui.add_child(hint)
 	show_model(0)
@@ -123,4 +123,5 @@ func _unhandled_key_input(event: InputEvent) -> void:
 	elif event.keycode == KEY_SPACE: toggle_pause()
 	elif event.keycode == KEY_TAB: show_model((model_index+1)%MODELS.size())
 	elif event.keycode == KEY_V: toggle_view()
+	elif event.keycode == KEY_0 and MODELS.size() >= 10: show_model(9)
 	elif event.keycode >= KEY_1 and event.keycode < KEY_1+MODELS.size(): show_model(event.keycode-KEY_1)

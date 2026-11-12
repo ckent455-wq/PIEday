@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.15.1
+
+- Add blue and gray hoodie customers based on the provided portraits, bringing the normal customer rotation to ten appearances.
+- Include editable Blender sources, generated face/clothing atlases, and shared animation support.
+- Match the younger customer with smaller proportions, interaction collider, and seated height.
+- Correct hoodie sleeve, chest graphic, and trouser mapping; expand animation preview controls to 1–9 and 0.
+
+
 ## 0.15.0
 
 - Appliances can break with a bang, smoke, and an out-of-order sign. Pay for repairs to restore their menu items.

@@ -68,6 +68,10 @@ func run():
 	shift.donut_fryer.reset()
 	require(maintenance.break_appliance("fryer"),"Fryer can break with depleted stock")
 	shift.tutorial.tutorial_state = "done"
+	shift.burger_station.tomatoes_stocked = true
+	shift.burger_station.onions_stocked = true
+	shift.burger_station.lettuce_stocked = true
+	shift.burger_station.cheese_stocked = true
 	require(shift.start_shift(),"Broken fryer cannot soft-lock opening prep")
 	wallet.equipment.broken.clear()
 	wallet.equipment.roll_day = -1

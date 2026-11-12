@@ -29,6 +29,11 @@ func _ready() -> void:
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	column.add_child(title)
 	_add_button(column, "Solo Campaign", func(): _open("res://intro.tscn"))
+	var saves := preload("res://save_load_menu.gd").new()
+	saves.name = "SaveLoadMenu"
+	add_child(saves)
+	saves.setup(self)
+	_add_button(column, "Load Game", func(): saves.open(false))
 	_add_button(column, "Online Co-op", func(): _open("res://coop_lobby.tscn"))
 	_add_button(column, "Quit", func(): get_tree().quit())
 	var version := UI.label("v" + str(ProjectSettings.get_setting("application/config/version")), 14, UI.MUTED)

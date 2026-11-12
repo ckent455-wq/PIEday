@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.15.3
+
+- Restock tomato, onion, lettuce, and cheese from labeled freezer crates before opening. The topping trays empty at closing.
+- Reorganize the burger station, add onion slices to Deluxe burgers, and move the recipe sheet above the toppings.
+- Add an auburn-haired hoodie customer, a Load Game button on the main menu, and the updated counter stool layout.
+
 ## 0.15.2
 
 - The glasses-wearing regular visits to complain about the food and suggest smoked sausage. The shared dialogue works in solo and co-op.

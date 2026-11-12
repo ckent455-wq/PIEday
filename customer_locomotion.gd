@@ -10,7 +10,7 @@ var sample_distance := 0.0
 func setup(host: Node3D, visual: Node3D, model: String) -> void:
 	actor = host
 	name = "Locomotion"
-	var rig := "male_1" if model.begins_with("male") else "female_1" if model == "female_1" else "female_2"
+	var rig := "female_1" if model == "female_1" else "female_2" if model.begins_with("female") else "male_1"
 	player = AnimationPlayer.new()
 	visual.add_child(player)
 	player.add_animation_library("",load("res://assets/animations/customers/"+rig+".res"))

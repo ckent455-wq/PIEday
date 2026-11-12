@@ -79,6 +79,10 @@ func run_checks() -> void:
 	assert(shift.phase == "prep" and shift.tasks.values().all(func(done): return done), "Next morning starts clean after evening flow")
 	shift.earnings.grandpa.days = 1
 	shift.donut_fryer.stock = [6,6,6]
+	shift.burger_station.tomatoes_stocked = true
+	shift.burger_station.onions_stocked = true
+	shift.burger_station.lettuce_stocked = true
+	shift.burger_station.cheese_stocked = true
 	assert(shift.start_shift())
 	shift.customer_line.nude_chance = 0.0
 	var previous := -1

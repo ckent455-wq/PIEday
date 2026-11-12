@@ -111,6 +111,7 @@ func sit(entry: Dictionary) -> void:
 	entry.actor.position = table.seat
 	entry.actor.rotation.y = table.facing
 	entry.actor.get_node("Visual").position.y = -.12 if entry.actor.get_meta("customer_model", "") == "male_blue_hoodie" else -.32
+	if entry.actor.get_meta("customer_model", "") == "auburn_hoodie": entry.actor.get_node("Visual").position.y = -.18
 	var skeleton: Skeleton3D = entry.actor.get_meta("skeleton")
 	var baseline := {}
 	for i in skeleton.get_bone_count(): baseline[i] = skeleton.get_bone_pose_rotation(i)

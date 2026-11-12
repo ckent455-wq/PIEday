@@ -94,7 +94,7 @@ func refresh() -> void:
 func choose(slot: int) -> void:
 	selected_slot = slot
 	var existing := SAVES.read(slot,directory)
-	if saving and existing.is_empty():
+	if (saving and existing.is_empty()) or (not saving and _from_main_menu()):
 		execute(slot)
 		return
 	confirm.title = "Overwrite Save?" if saving else "Load Save?"
@@ -114,7 +114,7 @@ func execute(slot: int) -> void:
 		if data.is_empty():
 			status.text = "This save is unavailable. Choose another slot."
 			return
-		var persist: bool = SAVES.wallet_for(host).save_enabled
+		var persist: bool = _from_main_menu() or SAVES.wallet_for(host).save_enabled
 		close()
 		if is_instance_valid(origin_pause): origin_pause.resume_game()
 		get_tree().paused = false
@@ -126,7 +126,10 @@ func close() -> void:
 	is_open = false
 	overlay.hide()
 	get_tree().paused = previously_paused
-	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE if previously_paused or host.scene_file_path == "res://grandpa_ending.tscn" else Input.MOUSE_MODE_CAPTURED
+	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE if previously_paused or _from_main_menu() or host.scene_file_path == "res://grandpa_ending.tscn" else Input.MOUSE_MODE_CAPTURED
+
+func _from_main_menu() -> bool:
+	return host.scene_file_path == "res://main_menu.tscn"
 
 func _input(event: InputEvent) -> void:
 	if not is_open: return

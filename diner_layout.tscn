@@ -14920,18 +14920,6 @@ mesh = SubResource("ArrayMesh_oughs")
 transform = Transform3D(0.769733, 0, 0, 0, 0.769733, 0, 0, 0, 0.769733, 10.9916, 2.157537, -8.203897)
 mesh = SubResource("ArrayMesh_g4nid")
 
-[node name="Package_Refreshments_05" type="MeshInstance3D" parent="." unique_id=1822197370]
-transform = Transform3D(0.769733, 0, 0, 0, 0.769733, 0, 0, 0, 0.769733, 10.87288, 1.400394, -9.747596)
-mesh = SubResource("ArrayMesh_hrmsu")
-
-[node name="Package_Refreshments_04" type="MeshInstance3D" parent="." unique_id=530256319]
-transform = Transform3D(0.769733, 0, 0, 0, 0.769733, 0, 0, 0, 0.769733, 10.95893, 1.400394, -8.807098)
-mesh = SubResource("ArrayMesh_0c3ne")
-
-[node name="Package_Refreshments_03" type="MeshInstance3D" parent="." unique_id=1622807019]
-transform = Transform3D(0.769733, 0, 0, 0, 0.769733, 0, 0, 0, 0.769733, 10.84377, 1.400394, -7.831252)
-mesh = SubResource("ArrayMesh_d7ndy")
-
 [node name="Package_Refreshments_02" type="MeshInstance3D" parent="." unique_id=1157720882]
 transform = Transform3D(0.769733, 0, 0, 0, 0.769733, 0, 0, 0, 0.769733, 10.92653, 0.6404969, -10.0207)
 mesh = SubResource("ArrayMesh_f6kr3")
@@ -15509,7 +15497,7 @@ transform = Transform3D(0.7553759, 0, 0, 0, 0.7553759, 0, 0, 0, 0.7553759, -1.08
 mesh = SubResource("ArrayMesh_sji71")
 
 [node name="Chair" type="MeshInstance3D" parent="." unique_id=504940303]
-transform = Transform3D(0.7553759, 0, 0, 0, 0.7553759, 0, 0, 0, 0.7553759, -2.743483, -0.09395576, -3.410294)
+transform = Transform3D(0.7553759, 0, 0, 0, 0.7553759, 0, 0, 0, 0.7553759, 0.08, -0.09395576, -3.410294)
 mesh = SubResource("ArrayMesh_bwiqq")
 
 [node name="caps" type="MeshInstance3D" parent="." unique_id=1162647258]

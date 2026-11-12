@@ -28,6 +28,8 @@ func run() -> void:
 	shift.set_process(false)
 	game.set_physics_process(false)
 	shift.customer_line.next_arrival = INF
+	var buyer = shift.customer_line.make_actor(Vector3(-1.55, -.094, -2.05), "male_1")
+	shift.customer_line.waiting.append({"actor":buyer,"seconds":0.0,"junction":true})
 	for i in range(620): shift._process(1.0/60)
 	require(shift.phase == "waiting","Test customer reaches counter")
 	shift.order_taken = true
@@ -130,6 +132,23 @@ func run() -> void:
 		root.get_texture().get_image().save_png("res://builds/save-load-slots.png")
 		room.paused.saves.close()
 		room.paused.resume_game()
+	var title = load("res://main_menu.tscn").instantiate()
+	root.add_child(title)
+	var title_saves = title.get_node("SaveLoadMenu")
+	title_saves.directory = directory
+	var load_button: Button
+	for button in title.find_children("*", "Button", true, false):
+		if button.text == "Load Game":
+			load_button = button
+			break
+	require(is_instance_valid(load_button), "The title screen has a Load Game button")
+	if is_instance_valid(load_button):
+		load_button.pressed.emit()
+		require(title_saves.is_open and title_saves.rows.get_child_count() == SAVES.SLOTS, "Load Game opens the manual save slots")
+		require(not title_saves.rows.get_child(0).disabled, "The title menu can select an existing save")
+		title_saves.close()
+		require(not paused, "Closing the slot picker returns to the title menu")
+	title.queue_free()
 	for slot in range(1,4): DirAccess.remove_absolute("%s/slot_%d.cfg" % [directory,slot])
 	DirAccess.remove_absolute(directory)
 	if failures == 0: print("PASS: three independent slots, overwrite, midshift restore, death recovery, orders/queue/food, closing duties, hospital state and no writes to real saves")

@@ -10,6 +10,10 @@ func check():
  shift.set_process(false)
  shift.customer_line.nude_chance = 0.0
  shift.donut_fryer.stock = [8,8,8]
+ shift.burger_station.tomatoes_stocked = true
+ shift.burger_station.onions_stocked = true
+ shift.burger_station.lettuce_stocked = true
+ shift.burger_station.cheese_stocked = true
  assert(shift.start_shift())
  shift.shift_remaining = 180.1
  shift._process(0.2)

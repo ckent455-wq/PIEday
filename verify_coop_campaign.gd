@@ -67,6 +67,10 @@ func run():
 		shift.customer_line.nude_chance = 0.0
 		shift.dine_in.mess_chance = 0.0
 		shift.donut_fryer.stock = [6, 6, 6]
+		shift.burger_station.tomatoes_stocked = true
+		shift.burger_station.onions_stocked = true
+		shift.burger_station.lettuce_stocked = true
+		shift.burger_station.cheese_stocked = true
 		assert(shift.start_shift())
 		shift.order_index = 2
 		assert(shift.corpses.bodies.is_empty())

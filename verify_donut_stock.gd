@@ -10,6 +10,10 @@ func check():
  var fryer=shift.donut_fryer
  fryer.stock=[6,6,6]
  fryer.refresh()
+ shift.burger_station.tomatoes_stocked = true
+ shift.burger_station.onions_stocked = true
+ shift.burger_station.lettuce_stocked = true
+ shift.burger_station.cheese_stocked = true
  assert(shift.start_shift())
  var flavor="Glazed donut"
  var slots=game.find_children("Donus*","MeshInstance3D",true,false).filter(func(mesh):return mesh.get_meta("item","")==flavor)

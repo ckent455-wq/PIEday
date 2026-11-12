@@ -41,6 +41,10 @@ func check():
   fryer.tick(5)
   fryer.use(target)
   fryer.use_case(flavor)
+ shift.burger_station.tomatoes_stocked = true
+ shift.burger_station.onions_stocked = true
+ shift.burger_station.lettuce_stocked = true
+ shift.burger_station.cheese_stocked = true
  assert(shift.start_shift())
  var saved = fryer.snapshot()
  fryer.reset()

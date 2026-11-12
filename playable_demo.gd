@@ -18,7 +18,7 @@ func setup_lesson(shift: Node) -> void:
 	lesson.setup(shift.game)
 	lesson.selected.connect(func(choice: int):
 		tutorial_state = "practice" if choice == 0 else "done"
-		if choice == 1: shift._message("Stock all three donut flavors, then flip the OPEN sign.")
+		if choice == 1: shift._message("Stock all three donut flavors and bring the burger toppings from the freezer to the bun counter. Then flip the OPEN sign.")
 	)
 
 func open_tutorial() -> void:
@@ -106,7 +106,7 @@ func _burger_instruction(shift: Node) -> String:
 			if toppings < 0: return "Press Q to return the extra item."
 			for index in grill.TOPPINGS.size():
 				if not (toppings & (1 << index)):
-					return "At the toppings table, press E on the %s tray. The wall sheet lists the Deluxe recipe." % grill.TOPPINGS[index].to_lower()
+					return "At the bun counter, press E on the %s tray. The wall sheet lists the Deluxe recipe." % grill.TOPPINGS[index].to_lower()
 	return ""
 
 func _fries_instruction(shift: Node) -> String:
@@ -146,7 +146,7 @@ func ring_practice_bell(shift: Node) -> void:
 		return
 	match practice_order_index:
 		1: shift._message("First order done. Next up: a cola and a baked apple pie.")
-		2: shift._message("Next up: a Deluxe burger with cheese, lettuce and tomato.")
+		2: shift._message("Next up: a Deluxe burger with cheese, lettuce, tomato and onion.")
 		FRIES_LESSON: shift._message("Next up: a basket of fries. Start at the frozen fries rack in the freezer.")
 
 func begin_encounter(shift: Node) -> void:
@@ -205,7 +205,7 @@ func _process(_delta: float) -> void:
 				"prep":
 					match tutorial_state:
 						"practice": guide.text = practice_hint(shift)
-						"done": guide.text = "Stock all three donut flavors, then flip the OPEN sign."
+						"done": guide.text = "Stock the donuts and burger toppings, then flip the OPEN sign."
 						_: guide.text = "WASD to move · Mouse to look · E to interact\nFind the wall clipboard behind the counter to begin."
 				"cleanup": guide.text = "Finish the closing checklist. Hold E to scrub floors.\nCarry the trash through the back door to the dumpster."
 				"closed": guide.text = "Your work is done. Use the front exit or clipboard to visit Grandpa."

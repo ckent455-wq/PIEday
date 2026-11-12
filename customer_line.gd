@@ -7,7 +7,7 @@ var next_arrival := 6.0
 var time := 0.0
 var front_door_auto_opened := false
 var front_door_open_for := 0.0
-const CUSTOMER_MODELS := ["male_1", "female_1", "male_2", "female_2", "male_3", "female_3", "male_photo", "male_glasses", "male_blue_hoodie", "male_gray_hoodie"]
+const CUSTOMER_MODELS := ["male_1", "female_1", "male_2", "female_2", "male_3", "female_3", "male_photo", "male_glasses", "male_blue_hoodie", "male_gray_hoodie", "auburn_hoodie"]
 const ROBBER_MODELS := ["robber_1", "robber_2"]
 const WALK_SPEED := 4.0
 const ROBBER_RUN_SPEED := 7.5
@@ -66,6 +66,7 @@ func make_actor(at: Vector3, saved_model := "") -> Node3D:
 	var shape := CapsuleShape3D.new()
 	shape.radius = 0.28
 	shape.height = 1.70 if model_name == "male_blue_hoodie" else 2.15
+	if model_name == "auburn_hoodie": shape.height = 1.82
 	collider.shape = shape
 	collider.position.y = shape.height * .5
 	body.add_child(collider)
@@ -89,6 +90,7 @@ static func attach_visual(actor: Node3D, model_name: String, animate := true) ->
 	visual.name = "Visual"
 	actor.add_child(visual)
 	visual.scale = Vector3.ONE * (.94 if model_name == "male_blue_hoodie" else 1.17)
+	if model_name == "auburn_hoodie": visual.scale = Vector3.ONE
 	var bones: Dictionary = {}
 	for skeleton in visual.find_children("*", "Skeleton3D", true, false):
 		for bone_name in ["Arm_L","Arm_R","Leg_L","Leg_R"]:

@@ -16,7 +16,9 @@ parser.add_argument('--source', default=str(SCRIPT))
 args = parser.parse_args(sys.argv[sys.argv.index('--')+1:] if '--' in sys.argv else [])
 HERE = Path(args.source).resolve()
 VARIANT = args.variant
-HOODIE = VARIANT in ['male_blue_hoodie', 'male_gray_hoodie']
+AUBURN = VARIANT == 'auburn_hoodie'
+HOODIE = AUBURN or VARIANT in ['male_blue_hoodie', 'male_gray_hoodie']
+HOODIE_COLOR = (.031, .045, .098, 1) if AUBURN else (.006,.065,.25,1) if VARIANT == 'male_blue_hoodie' else (.23,.25,.27,1)
 HEAD_LIFT = .0225 if VARIANT == 'male_glasses' else 0.0
 OUT = ROOT / 'assets' / 'customers'
 bpy.ops.object.select_all(action='SELECT')
@@ -62,7 +64,7 @@ for obj in list(bpy.data.objects):
             vertex.co.x *= (1.10 if .2 < height < .75 else 1.04) if VARIANT == 'male_photo' else 1.02
             if VARIANT == 'male_glasses' and vertex.co.z > 1.73:
                 vertex.co.z = 1.73+(vertex.co.z-1.73)*.7
-            if HOODIE and vertex.co.z > 1.71:
+            if HOODIE and not AUBURN and vertex.co.z > 1.71:
                 # The references have a fringe and a buzzcut, not a tall quiff.
                 vertex.co.z = 1.71+(vertex.co.z-1.71)*(.8 if VARIANT == 'male_blue_hoodie' else .48)
             if VARIANT == 'male_blue_hoodie':
@@ -182,7 +184,7 @@ for obj in list(bpy.data.objects):
             mesh.to_mesh(obj.data)
             mesh.free()
             fabric = bpy.data.materials.new('SweatshirtFabric')
-            fabric.diffuse_color = (.006,.065,.25,1) if VARIANT == 'male_blue_hoodie' else (.23,.25,.27,1)
+            fabric.diffuse_color = HOODIE_COLOR
             denim = bpy.data.materials.new('Denim')
             denim.diffuse_color = (.018,.028,.055,1) if VARIANT == 'male_blue_hoodie' else (.035,.065,.11,1)
             for mat in [fabric,denim]:
@@ -231,7 +233,7 @@ upper.add(list(range(12,24)),1,'REPLACE')
 modifier = neck.modifiers.new('Skin','ARMATURE')
 modifier.object = rig
 
-if HOODIE:
+if HOODIE and not AUBURN:
     # The chest graphic is a small skinned fabric panel with explicit UVs,
     # keeping its orientation independent of the donor's rotated UV islands.
     graphic = bpy.data.meshes.new('ChestGraphic')
@@ -246,12 +248,14 @@ if HOODIE:
     panel.parent = rig
     panel.vertex_groups.new(name='DEF-spine.003').add([0,1,2,3],1,'REPLACE')
     panel.modifiers.new('Skin','ARMATURE').object = rig
+
+if HOODIE:
     # A lowered hood gives the sweatshirt an actual 3D silhouette around the
     # back of the neck. It follows the upper spine, leaving the face clear.
     hood_mat = bpy.data.materials.new('HoodFabric')
-    hood_mat.diffuse_color = (.018,.16,.36,1) if VARIANT == 'male_blue_hoodie' else (.27,.29,.31,1)
+    hood_mat.diffuse_color = HOODIE_COLOR
     hood_mat.use_nodes = True
-    hood_mat.node_tree.nodes.get('Principled BSDF').inputs['Base Color'].default_value = (.006,.065,.25,1) if VARIANT == 'male_blue_hoodie' else (.23,.25,.27,1)
+    hood_mat.node_tree.nodes.get('Principled BSDF').inputs['Base Color'].default_value = HOODIE_COLOR
     hood_mat.node_tree.nodes.get('Principled BSDF').inputs['Roughness'].default_value = .96
     hood_vertices, hood_faces = [], []
     for i in range(17):
@@ -272,6 +276,129 @@ if HOODIE:
     hood.vertex_groups.new(name='DEF-spine.003').add(list(range(len(hood_vertices))),1,'REPLACE')
     hood.modifiers.new('Skin','ARMATURE').object = rig
     for polygon in mesh.polygons: polygon.use_smooth = True
+
+if AUBURN:
+    hair_material = face.copy()
+    hair_material.name = 'Auburn strands'
+    hair_shader = hair_material.node_tree.nodes.get('Principled BSDF')
+    hair_shader.inputs['Roughness'].default_value = .83
+
+    def add_hair(name, vertices, faces, columns, wrap=False):
+        mesh = bpy.data.meshes.new(name)
+        mesh.from_pydata(vertices, [], faces)
+        mesh.update()
+        obj = bpy.data.objects.new(name, mesh)
+        bpy.context.collection.objects.link(obj)
+        obj.parent = rig
+        head_group = obj.vertex_groups.new(name='DEF-spine.006')
+        chest_group = obj.vertex_groups.new(name='DEF-spine.003')
+        for vertex in mesh.vertices:
+            weight = max(0.0, min(1.0, (vertex.co.z - 1.43) / .14))
+            head_group.add([vertex.index], weight, 'REPLACE')
+            chest_group.add([vertex.index], 1.0 - weight, 'REPLACE')
+        obj.modifiers.new('Skin', 'ARMATURE').object = rig
+        mesh.materials.append(hair_material)
+        uv = mesh.uv_layers.new(name='Hair strands')
+        row_count = len(vertices) // columns
+        for polygon in mesh.polygons:
+            polygon.use_smooth = True
+            crosses_seam = wrap and any(mesh.loops[i].vertex_index % columns == 0 for i in polygon.loop_indices) and any(mesh.loops[i].vertex_index % columns == columns - 1 for i in polygon.loop_indices)
+            for index in polygon.loop_indices:
+                row, column = divmod(mesh.loops[index].vertex_index, columns)
+                if crosses_seam and column == 0:
+                    column = columns
+                along = row / max(1, row_count - 1)
+                across = column / (columns if wrap else columns - 1)
+                # Sample the auburn scalp strip, clear of the forehead and ears.
+                uv.data[index].uv = (.17 + across * .23 + along * .10, .982 - along * .065)
+        return obj
+
+    # The crown follows the forehead, then extends over the ears at the sides.
+    vertices, faces = [], []
+    segments = 24
+    for row, (z, width, depth, lift) in enumerate([
+        (1.784, .009, .012, 0), (1.777, .051, .061, 0),
+        (1.747, .085, .088, .011), (1.700, .107, .102, .034),
+    ]):
+        for index in range(segments):
+            angle = math.tau * index / segments
+            front = max(0, -math.sin(angle))
+            sweep = math.cos(angle) * .009 * front if row == 3 else 0
+            vertices.append((math.cos(angle) * width - .005,
+                             .038 + math.sin(angle) * depth, z + lift * front + sweep))
+            if row:
+                current = row * segments + index
+                next_vertex = row * segments + (index + 1) % segments
+                faces.append((current, next_vertex, next_vertex - segments, current - segments))
+    faces.append(tuple(range(segments)))
+    add_hair('SweptCrown', vertices, faces, segments, wrap=True)
+
+    # Broad overlapping waves give the back a soft edge across the shoulders.
+    vertices, faces = [], []
+    for row, (z, width, depth) in enumerate([
+        (1.734, .091, .091), (1.677, .106, .110), (1.615, .107, .119),
+        (1.550, .105, .114), (1.494, .124, .104), (1.455, .151, .094),
+        (1.420, .161, .082), (1.404, .146, .075),
+    ]):
+        for index in range(segments + 1):
+            angle = -.34 + (math.pi + .68) * index / segments
+            wave = math.sin(index * 1.27 + row * .46) * (.002 + row * .0008)
+            vertices.append((math.cos(angle) * (width + wave),
+                             .038 + math.sin(angle) * (depth + wave),
+                             z + wave * (2 if row > 4 else 1)))
+            if row and index:
+                corner = row * (segments + 1) + index
+                faces.append((corner, corner - 1, corner - segments - 2, corner - segments - 1))
+    add_hair('ShoulderWaves', vertices, faces, segments + 1)
+
+    def add_lock(name, path):
+        # Smooth the guide points before building a flattened, tapered strand.
+        sampled = []
+        for i in range(len(path) - 1):
+            a, b = path[max(0, i - 1)], path[i]
+            c, d = path[i + 1], path[min(len(path) - 1, i + 2)]
+            for t in (0, 1 / 3, 2 / 3):
+                sampled.append(tuple(
+                    .5 * (2 * q + (-p + r) * t + (2 * p - 5 * q + 4 * r - s) * t**2
+                          + (-p + 3 * q - 3 * r + s) * t**3)
+                    for p, q, r, s in zip(a, b, c, d)
+                ))
+        sampled.append(path[-1])
+        vertices, faces = [], []
+        cross_segments = 8
+        for row, (x, y, z, width, depth) in enumerate(sampled):
+            before = sampled[max(0, row - 1)]
+            after = sampled[min(len(sampled) - 1, row + 1)]
+            dx, dz = after[0] - before[0], after[2] - before[2]
+            length = math.hypot(dx, dz)
+            nx, nz = -dz / length, dx / length
+            for index in range(cross_segments):
+                angle = math.tau * index / cross_segments
+                vertices.append((x + math.cos(angle) * width * nx,
+                                 y + math.sin(angle) * depth,
+                                 z + math.cos(angle) * width * nz))
+                if row:
+                    start = row * cross_segments
+                    following = (index + 1) % cross_segments
+                    faces.append((start + index, start + following,
+                                  start + following - cross_segments, start + index - cross_segments))
+        faces.append(tuple(reversed(range(cross_segments))))
+        faces.append(tuple(range(len(vertices) - cross_segments, len(vertices))))
+        add_hair(name, vertices, faces, cross_segments, wrap=True)
+
+    add_lock('LeftFaceWave', [
+        (-.044, -.041, 1.758, .009, .008), (-.082, -.053, 1.707, .025, .015),
+        (-.102, -.035, 1.629, .022, .017), (-.101, -.024, 1.556, .026, .021),
+        (-.116, -.053, 1.476, .035, .024), (-.144, -.087, 1.427, .034, .018),
+        (-.172, -.080, 1.435, .020, .010), (-.183, -.073, 1.452, .003, .003),
+    ])
+    add_lock('RightFaceWave', [
+        (-.029, -.041, 1.767, .006, .006), (.026, -.061, 1.762, .019, .011),
+        (.074, -.059, 1.730, .026, .015), (.103, -.040, 1.673, .024, .017),
+        (.112, -.024, 1.592, .027, .021), (.121, -.039, 1.514, .028, .021),
+        (.146, -.068, 1.459, .032, .017), (.173, -.073, 1.452, .017, .011),
+        (.185, -.061, 1.461, .003, .003),
+    ])
 
 bpy.ops.wm.save_as_mainfile(filepath=str(HERE / 'portrait_customer.blend'))
 bpy.ops.export_scene.gltf(filepath=str(OUT / (VARIANT+'.glb')), export_format='GLB',

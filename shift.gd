@@ -329,6 +329,7 @@ func setup(host: Node3D) -> void:
 		begin_prep(false)
 		earnings.day_completed = true
 		phase = "closed"
+		burger_station.refresh()
 		game.set_night(true)
 		_update_shift_clock()
 		_message("Closing duties are complete. " + ("Hospital visiting hours are open. " if earnings.grandpa.visit_available() else "") + "Use the diner exit to head out.")
@@ -452,7 +453,12 @@ func set_rush_started(value: bool) -> void:
 		cue.tween_callback(rush_bell.play)
 
 func _update_shift_clock() -> void:
-	if phase == "prep": shift_clock.text = "READY TO OPEN · FRYER BROKEN" if is_instance_valid(maintenance) and maintenance.is_broken("fryer") else "READY TO OPEN" if is_instance_valid(donut_fryer) and donut_fryer.prepared() else "PREP: FRY & STOCK DONUTS"
+	if phase == "prep":
+		if not is_instance_valid(burger_station) or not is_instance_valid(maintenance) or not is_instance_valid(donut_fryer):
+			shift_clock.text = "OPENING PREP"
+		elif not maintenance.is_broken("fryer") and not donut_fryer.prepared(): shift_clock.text = "PREP: FRY & STOCK DONUTS"
+		elif not burger_station.missing_produce().is_empty(): shift_clock.text = "PREP: STOCK %s TRAY" % burger_station.missing_produce().to_upper()
+		else: shift_clock.text = "READY TO OPEN"
 	elif phase == "cleanup": shift_clock.text = "AFTER HOURS - CLEANUP"
 	elif phase == "closed": shift_clock.text = "CLOSED"
 	elif closing_time and phase == "waiting" and order_taken: shift_clock.text = "CLOSED · LAST ORDER"
@@ -651,6 +657,10 @@ func begin_prep(resolve_evening := true) -> void:
 	_reset_customer()
 	_clear_tray(true)
 	phase = "prep"
+	burger_station.tomatoes_stocked = false
+	burger_station.onions_stocked = false
+	burger_station.lettuce_stocked = false
+	burger_station.cheese_stocked = false
 	closing_time = false
 	rush_started = false
 	rush_order = false
@@ -668,7 +678,7 @@ func begin_prep(resolve_evening := true) -> void:
 	if _training_available() and tutorial.tutorial_state == "welcome":
 		_message("Use the wall clipboard behind the counter for training, or fry and stock donuts to open.")
 	else:
-		_message("Opening prep: fry donuts in the kitchen, lift at 5 seconds (burns at 10), then ice and stock each flavor at the display case.")
+		_message("Opening prep: stock all three donut flavors and bring tomatoes, onions, lettuce, and cheese from the freezer to the bun counter.")
 
 func begin_cleanup() -> void:
 	if is_instance_valid(scrubbing_audio): scrubbing_audio.stop()
@@ -682,9 +692,9 @@ func begin_cleanup() -> void:
 	order.clear()
 	_clear_tray(true)
 	arrival_delay = 0
+	phase = "cleanup"
 	burger_station.reset()
 	donut_fryer.clear_fries()
-	phase = "cleanup"
 	closing_time = true
 	_set_carrying_trash(false)
 	cleaning_progress = 0
@@ -748,6 +758,10 @@ func start_shift(use_random_orders := true) -> bool:
 	if use_random_orders and not maintenance.is_broken("fryer") and not donut_fryer.prepared():
 		_message("Opening prep: fry and stock strawberry, chocolate and glazed donuts before opening.")
 		return false
+	var missing_produce: String = burger_station.missing_produce()
+	if use_random_orders and not missing_produce.is_empty():
+		_message("Opening prep: bring %s stock from the freezer to the tray by the buns." % missing_produce)
+		return false
 	if tutorial.tutorial_state == "done" and tutorial.practice_order_index == tutorial.PRACTICE_ORDERS.size():
 		corpses.reset()
 	for done in tasks.values():
@@ -755,6 +769,11 @@ func start_shift(use_random_orders := true) -> bool:
 			_message("Finish all closing duties before opening the next shift.")
 			return false
 	phase = "arriving"
+	burger_station.tomatoes_stocked = true
+	burger_station.onions_stocked = true
+	burger_station.lettuce_stocked = true
+	burger_station.cheese_stocked = true
+	burger_station.refresh()
 	order_index = 0
 	rush_started = false
 	rush_order = false
@@ -1034,6 +1053,7 @@ func action_prompt(node: Node) -> String:
 		"pie": return "[Click / E] Pick up " + str(node.get_meta("item"))
 		"bottle": return "[Click / E] Take " + str(node.get_meta("item"))
 		"burger_topping": return burger_station.topping_prompt(int(node.get_meta("topping_index")))
+		"freezer_tomato", "freezer_onion", "freezer_lettuce", "freezer_cheese": return burger_station.produce_box_prompt(int(node.get_meta("topping_index")))
 		"burger_grill", "burger_prep", "burger_raw": return burger_station.prompt(action)
 		"open_sign": return open_sign.prompt()
 		"donut_fryer": return donut_fryer.prompt(node)
@@ -1104,6 +1124,7 @@ func interact(node: Node) -> void:
 			else: pickup_item(str(node.get_meta("item")), node)
 		"bottle": bottle_cooler.take(node)
 		"burger_topping": burger_station.add_topping(int(node.get_meta("topping_index")))
+		"freezer_tomato", "freezer_onion", "freezer_lettuce", "freezer_cheese": burger_station.take_produce(int(node.get_meta("topping_index")))
 		"burger_grill", "burger_prep", "burger_raw": burger_station.use(action)
 		"open_sign": open_sign.use()
 		"donut_fryer": donut_fryer.use(node)
@@ -1165,7 +1186,7 @@ func interact(node: Node) -> void:
 			if phase == "prep":
 				if is_practicing(): _message("Follow the training instructions before opening.")
 				elif _training_available() and tutorial.tutorial_state == "welcome": tutorial.open_tutorial()
-				else: _message("Finish donut prep, then flip the OPEN sign in the front window to start the shift.")
+				else: _message("Stock the donuts and burger toppings. Then flip the OPEN sign.")
 			elif phase == "closed": hospital_visits.open_departure()
 			elif phase == "cleanup":
 				if tasks.values().all(func(done): return done): _show_day_summary()
@@ -1383,6 +1404,8 @@ func _item_model(parent: Node3D, item: String, at: Vector3, size: float, source:
 	elif item in ["Raw patty", "Cooked patty"]:
 		var patty = load("res://assets/burger/burger_patty_" + ("raw" if item == "Raw patty" else "cooked") + ".glb").instantiate()
 		holder.add_child(patty)
+	elif item in BURGER_STATION.PRODUCE_ITEMS:
+		BURGER_STATION.produce_model(holder, item, Vector3(0, 0.07, 0))
 	elif item.ends_with(" stock"):
 		_box(holder, Vector3(0, 0.08, 0), Vector3(0.45, 0.16, 0.35), Color(0.5, 0.39, 0.24))
 		var pie = preload("res://assets/pies/pie_ps2.glb").instantiate()
@@ -1479,6 +1502,9 @@ func pickup_item(item: String, source: Node3D = null) -> bool:
 
 func place_carried() -> bool:
 	if carried_item.is_empty(): return false
+	if carried_item in BURGER_STATION.PRODUCE_ITEMS:
+		_message("Stock the matching ingredient tray by the buns.")
+		return false
 	if carried_item.ends_with(" stock"):
 		_message("Take the replacement crate to the kitchen cooler, not the serving tray.")
 		return false

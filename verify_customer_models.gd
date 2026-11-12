@@ -42,8 +42,10 @@ func check():
 	game.get_child(0).visible = true
 	shift.start_demo()
 	line.next_arrival = INF
+	var portrait: Node3D = line.make_actor(Vector3(-1.55, -0.094, -2.05), "auburn_hoodie")
+	line.waiting.append({"actor": portrait, "seconds": 0.0, "junction": true})
 	for frame in range(620): shift._process(1.0 / 60.0)
-	require(shift.phase == "waiting", "New customer reaches counter")
+	require(shift.phase == "waiting" and shift.customer == portrait, "New portrait customer reaches counter")
 	shift.interact(shift.customer.get_node("Interaction"))
 	require(shift.order_taken, "Customer still accepts interaction")
 	game.camera.look_at(shift.customer.global_position + Vector3(0, 1.65, 0))

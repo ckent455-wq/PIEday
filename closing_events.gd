@@ -19,7 +19,8 @@ var lights: Array[Light3D] = []
 var energies: Array[float] = []
 var figure: Node3D
 var rng := RandomNumberGenerator.new()
-const ENCOUNTERS := ["bell", "flicker", "figure", "knocks", "cooler", "footsteps"]
+const ENCOUNTERS := ["bell", "flicker", "figure", "knocks", "cooler", "footsteps", "gassy_pie"]
+var gassy_pie = preload("res://title_pie.gd").new()
 var extra_at := 0.0
 var extra_done := true
 var trash_audio: AudioStreamPlayer3D
@@ -42,6 +43,16 @@ const FIGURE_AWAY_SECONDS := 0.2
 func setup(host: Node3D) -> void:
 	shift = host
 	name = "ClosingEvents"
+	gassy_pie.closing_encounter = true
+	gassy_pie.game = shift.game
+	gassy_pie.kitchen_route.assign([
+		Vector3(-3.0, -0.09, -2.49), Vector3(3.78, -0.09, -2.49),
+		Vector3(4.05, -0.09, -2.83), Vector3(4.05, -0.09, -5.30),
+		Vector3(3.70, -0.09, -5.65), Vector3(3.05, -0.09, -6.20),
+		Vector3(3.05, -0.09, -7.40), Vector3(3.05, -0.09, -9.82),
+		Vector3(1.52, -0.09, -9.82), Vector3(1.52, -0.09, -9.49),
+	])
+	add_child(gassy_pie)
 	rng.randomize()
 	effect_audio = AudioStreamPlayer3D.new()
 	effect_audio.name = "ClosingEncounterSound"
@@ -195,13 +206,14 @@ func begin() -> void:
 	bell_done = encounter != "bell"
 	flicker_done = encounter != "flicker"
 	figure_done = encounter != "figure"
-	extra_done = encounter not in ["knocks", "cooler", "footsteps"]
+	extra_done = encounter not in ["knocks", "cooler", "footsteps", "gassy_pie"]
 	extra_at = rng.randf_range(10, 35)
 	bell_at = rng.randf_range(10, 38)
 	flicker_at = rng.randf_range(10, 38)
 	figure_at = rng.randf_range(5, 14)
 
 func reset() -> void:
+	gassy_pie.hide()
 	_restore_lights()
 	if is_instance_valid(effect_audio): effect_audio.stop()
 	if is_instance_valid(monster_audio): monster_audio.stop()
@@ -342,7 +354,12 @@ func _tick_extra(delta: float) -> void:
 	if extra_done or elapsed < extra_at or not shift.customer_line.departing.is_empty(): return
 	var player_position: Vector3 = shift.game.player.global_position
 	var coop = preload("res://coop_session.gd").active(self)
-	if encounter == "knocks" and is_instance_valid(bathroom_door):
+	if encounter == "gassy_pie":
+		var counter := Vector3(0.75, 0.0, -4.7)
+		if player_position.distance_to(counter) < 6.0 or (coop != null and coop.partner_target.distance_to(counter) < 6.0):
+			extra_done = true
+			gassy_pie.start_closing()
+	elif encounter == "knocks" and is_instance_valid(bathroom_door):
 		var at: Vector3 = (bathroom_door.global_transform * bathroom_door.get_aabb()).get_center()
 		if player_position.distance_to(at) < 6 or (coop != null and coop.partner_target.distance_to(at) < 6):
 			extra_done = true

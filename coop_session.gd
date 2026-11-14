@@ -877,10 +877,13 @@ func _capture_events() -> Dictionary:
 	var streams := []
 	for sound in [event.effect_audio, event.monster_audio, game.shift.scrubbing_audio]:
 		streams.append([sound.playing, sound.stream.resource_path if sound.stream != null else "", sound.global_position, sound.pitch_scale])
-	return {"visible": event.figure.visible, "transform": event.figure.transform, "dissolve": maxf(0.0, event.dissolve_elapsed / event.DISSOLVE_SECONDS), "lights": light_energy, "sounds": streams}
+	return {"visible": event.figure.visible, "transform": event.figure.transform, "dissolve": maxf(0.0, event.dissolve_elapsed / event.DISSOLVE_SECONDS), "lights": light_energy, "sounds": streams, "gassy_pie": event.gassy_pie.closing_state()}
 
 func _sync_events(data: Dictionary) -> void:
 	var event = game.shift.closing_events
+	var pie: Dictionary = data.get("gassy_pie", {})
+	if pie.is_empty() or not event.gassy_pie.visible or pie.get("settled", false) != event.gassy_pie.settled:
+		event.gassy_pie.restore_closing(pie)
 	event.figure.visible = data.visible
 	event.figure.transform = data.transform
 	event._set_dissolve(data.dissolve)

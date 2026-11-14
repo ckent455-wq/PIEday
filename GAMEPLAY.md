@@ -1,5 +1,11 @@
 # PIEday prototype
 
+## Controller
+
+- Left stick moves and right stick looks. Press the left stick to sprint and Y to jump in the diner.
+- A or RT interacts, fires the equipped pistol, and can be held to scrub. X returns or sets down the held item.
+- Menu/Start pauses. Use the D-pad or left stick to navigate menus, A to confirm or advance dialogue, and B to go back.
+
 Press **Esc** to pause. The menu offers Resume, Save Game, Load Game, Restart Day,
 and Quit to Desktop.
 The shift timer, customers, brewing, baking, chores, and closing encounters freeze

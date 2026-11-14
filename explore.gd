@@ -1,4 +1,5 @@
 extends Node3D
+const CONTROLLER := preload("res://controller_input.gd")
 
 var player: CharacterBody3D
 var camera: Camera3D
@@ -165,6 +166,9 @@ func _unhandled_input(event: InputEvent) -> void:
 	if is_instance_valid(shift) and shift.robbery.blackout.visible: return
 	if is_instance_valid(pause_menu) and pause_menu.is_open: return
 	if is_instance_valid(shift) and is_instance_valid(shift.dialogue) and shift.dialogue.is_open: return
+	if event.is_action_pressed("pad_return") and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
+		if coop != null and not coop.hosting: coop.request_action(true)
+		else: shift.discard_last()
 	if event is InputEventMouseMotion and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
 		player.rotate_y(-event.relative.x * 0.0025)
 		pitch = clampf(pitch - event.relative.y * 0.0025, -1.5, 1.5)
@@ -194,7 +198,7 @@ func _movement_direction(input: Vector2) -> Vector3:
 	var backward := camera.global_basis.z
 	right.y = 0
 	backward.y = 0
-	return (right.normalized() * input.x + backward.normalized() * input.y).normalized()
+	return (right.normalized() * input.x + backward.normalized() * input.y).limit_length()
 
 func face_point(target: Vector3) -> void:
 	var direction := target - camera.global_position
@@ -208,15 +212,19 @@ func _physics_process(delta: float) -> void:
 	if shift.robbery.blackout.visible: return
 	if coop != null and is_instance_valid(pause_menu) and pause_menu.is_open: return
 	if coop != null and shift.dialogue.is_open: return
-	var direction := Vector3(float(Input.is_physical_key_pressed(KEY_D)) - float(Input.is_physical_key_pressed(KEY_A)), 0, float(Input.is_physical_key_pressed(KEY_S)) - float(Input.is_physical_key_pressed(KEY_W)))
-	direction = _movement_direction(Vector2(direction.x, direction.z))
-	var speed := 6.0 if Input.is_physical_key_pressed(KEY_SHIFT) else 3.2
+	if Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
+		var look := CONTROLLER.look(delta)
+		player.rotate_y(-look.x)
+		pitch = clampf(pitch - look.y, -1.5, 1.5)
+		camera.rotation.x = pitch
+	var direction := _movement_direction(CONTROLLER.movement())
+	var speed := 6.0 if Input.is_physical_key_pressed(KEY_SHIFT) or Input.is_action_pressed("pad_sprint") else 3.2
 	if shift.carried_item == "Carrying body": speed = 2.4
 	player.velocity.x = direction.x * speed
 	player.velocity.z = direction.z * speed
 	if not player.is_on_floor():
 		player.velocity.y -= 18.0 * delta
-	elif Input.is_physical_key_pressed(KEY_SPACE):
+	elif Input.is_physical_key_pressed(KEY_SPACE) or Input.is_action_pressed("pad_jump"):
 		player.velocity.y = 6.0
 	var previous_position := player.position
 	player.move_and_slide()

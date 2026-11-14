@@ -1,4 +1,5 @@
 extends CanvasLayer
+const CONTROLLER := preload("res://controller_input.gd")
 signal selected(index: int)
 signal dialogue_completed
 const UI := preload("res://diner_ui.gd")
@@ -138,14 +139,14 @@ func _share() -> void:
 
 func _input(event: InputEvent) -> void:
 	if not is_open: return
-	if event is InputEventKey and event.pressed and not event.echo:
-		if event.keycode == KEY_ESCAPE:
+	if event.is_action_pressed("ui_cancel") or CONTROLLER.advance(event):
+		if event.is_action_pressed("ui_cancel"):
 			get_viewport().set_input_as_handled()
 			finish()
-		elif dialogue_mode and event.keycode in [KEY_E,KEY_SPACE,KEY_ENTER,KEY_KP_ENTER]:
+		elif dialogue_mode and CONTROLLER.advance(event):
 			get_viewport().set_input_as_handled()
 			advance()
-		elif not dialogue_mode and typewriter.typing and event.keycode in [KEY_E,KEY_SPACE,KEY_ENTER,KEY_KP_ENTER]:
+		elif not dialogue_mode and typewriter.typing and CONTROLLER.advance(event):
 			get_viewport().set_input_as_handled()
 			if not _network_input("reveal"):
 				typewriter.reveal()

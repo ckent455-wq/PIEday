@@ -2294,6 +2294,14 @@ _surfaces = [{
 }]
 blend_shape_mode = 0
 
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_donut_glass"]
+resource_name = "Donut case clear glass"
+transparency = 1
+cull_mode = 2
+albedo_color = Color(0.82, 0.94, 1, 0.10)
+roughness = 0.08
+metallic_specular = 0.35
+
 [sub_resource type="ArrayMesh" id="ArrayMesh_fd3jo"]
 resource_name = "Showcase"
 _surfaces = [{
@@ -2316,7 +2324,7 @@ _surfaces = [{
 "index_count": 36,
 "index_data": PackedByteArray("CAAJAAoACAAKAAsADAANAA4ADAAOAA8AEAARABIAEAASABMAFAAVABYAFAAWABcAAAABAAIAAAACAAMABAAFAAYABAAGAAcA"),
 "lods": [0.44193998, PackedByteArray("AAABAAIAAAACAAMABAAFAAYABAAGAAcA")],
-"material": SubResource("StandardMaterial3D_1s8vy"),
+"material": SubResource("StandardMaterial3D_donut_glass"),
 "name": "Glass",
 "primitive": 3,
 "uv_scale": Vector4(3.68616, 1.9919757, 0, 0),

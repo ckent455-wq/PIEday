@@ -1,4 +1,5 @@
 extends Node3D
+const CONTROLLER := preload("res://controller_input.gd")
 ## Standalone visit location. Campaign scheduling is added separately.
 
 var player: CharacterBody3D
@@ -317,12 +318,17 @@ func interact() -> void:
 
 func _physics_process(delta: float) -> void:
 	if leaving or (is_instance_valid(incident) and incident.active): return
-	var direction := Vector2(float(Input.is_physical_key_pressed(KEY_D))-float(Input.is_physical_key_pressed(KEY_A)),float(Input.is_physical_key_pressed(KEY_S))-float(Input.is_physical_key_pressed(KEY_W)))
+	if Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
+		var look := CONTROLLER.look(delta)
+		player.rotate_y(-look.x)
+		pitch = clampf(pitch - look.y, -1.4, 1.4)
+		camera.rotation.x = pitch
+	var direction := CONTROLLER.movement()
 	var forward := -camera.global_basis.z
 	forward.y = 0
 	forward = forward.normalized()
 	var right := forward.cross(Vector3.UP)
-	var motion := (right * direction.x - forward * direction.y).normalized()
+	var motion := right * direction.x - forward * direction.y
 	player.velocity.x = motion.x * 3.0
 	player.velocity.z = motion.z * 3.0
 	if not player.is_on_floor(): player.velocity.y -= 18 * delta

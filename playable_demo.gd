@@ -23,7 +23,7 @@ func setup_lesson(shift: Node) -> void:
 
 func open_tutorial() -> void:
 	lesson.show_choices("BEFORE WE OPEN",
-		"WASD to move, mouse to look, E to interact and Q to return what you're holding. Practice donuts, drinks, pies, burgers and fries, then learn how to use the pistol.",
+		"WASD moves, mouse looks, E interacts, and Q returns held items. On a controller, use the left stick to move, right stick to look, A or RT to interact, and X to return an item.",
 		["Start training", "Skip tutorial"])
 
 func practice_hint(shift: Node) -> String:

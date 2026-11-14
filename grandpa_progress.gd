@@ -113,6 +113,10 @@ func visit_dialogue(cash: int) -> Array[String]:
 		lines.append("There you are, kiddo. They told me the surgery money is there. I asked them to say it again. Then I asked whether saying it twice cost extra.")
 	elif days <= 1:
 		lines.append("There you are, kiddo. I was starting to think the coffee machine had taken you hostage. How was your first day running the place?")
+		lines.append("Oh, and if you hear little footsteps in the diner, that's probably the pie. It gets up and walks around sometimes. Last I saw, it was headed for the kitchen.")
+		lines.append("It's a very gassy pie, kiddo. Every step sounds like a little fart. That's how you know it's coming.")
+		lines.append("Listen, kiddo. After you flip the sign off, you might hear the bell ring out front. I used to go check. There was never anyone at the counter.")
+		lines.append("One night I heard the back door open while I was standing right beside it. I could still feel the key in my pocket. Finish up and come home, all right?")
 	else:
 		lines.append(GREETINGS[stage])
 	# Incidents wait for a complete conversation, including after skipped visits.

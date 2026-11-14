@@ -1,4 +1,5 @@
 extends Node3D
+const CONTROLLER := preload("res://controller_input.gd")
 
 const UI := preload("res://diner_ui.gd")
 const RETRO := preload("res://retro_dialogue.gd")
@@ -337,6 +338,7 @@ func finish() -> void:
 	skip.hide()
 	credits.hide()
 	end_card.show()
+	end_card.find_children("*", "Button", true, false)[0].grab_focus()
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 
 func replay() -> void:
@@ -363,7 +365,7 @@ func main_menu() -> void:
 	else: get_tree().change_scene_to_file("res://main_menu.tscn")
 
 func _unhandled_input(event: InputEvent) -> void:
-	if event is InputEventKey and event.pressed and not event.echo:
-		if event.keycode in [KEY_ESCAPE,KEY_E,KEY_SPACE,KEY_ENTER] and state == "credits": finish()
-		elif event.keycode == KEY_ESCAPE and state in ["walk", "speech"]: _begin_credits()
-		elif event.keycode in [KEY_E,KEY_SPACE,KEY_ENTER] and state == "speech": advance()
+	if CONTROLLER.back(event) or CONTROLLER.advance(event):
+		if state == "credits": finish()
+		elif CONTROLLER.back(event) and state in ["walk", "speech"]: _begin_credits()
+		elif CONTROLLER.advance(event) and state == "speech": advance()

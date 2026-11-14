@@ -1,4 +1,5 @@
 extends Control
+const CONTROLLER := preload("res://controller_input.gd")
 
 const PASSAGES := [
 	"Your grandfather has just been diagnosed with cancer.",
@@ -142,7 +143,7 @@ func _process(delta: float) -> void:
 	if narrative.visible_characters >= passage.length(): _reveal()
 
 func _unhandled_input(event: InputEvent) -> void:
-	if event is InputEventKey and event.pressed and not event.echo and event.keycode in [KEY_E, KEY_SPACE, KEY_ENTER, KEY_KP_ENTER]:
+	if CONTROLLER.advance(event):
 		_continue()
 		get_viewport().set_input_as_handled()
 

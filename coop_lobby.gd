@@ -78,6 +78,7 @@ func _ready() -> void:
 	)
 	face_choice.item_selected.connect(_save_character)
 	apron_choice.item_selected.connect(_save_character)
+	host_button.grab_focus()
 
 func _choice(parent: Control, caption: String, choices: Array) -> OptionButton:
 	var field := OptionButton.new()

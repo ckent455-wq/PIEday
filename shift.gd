@@ -574,18 +574,6 @@ func _setup_donut_case() -> void:
 	for mesh in game.find_children("*", "MeshInstance3D", true, false):
 		if mesh.name == "Showcase" or mesh.name.begins_with("Donus") or mesh.name in ["Tray_04", "Tray_03", "Tray_02", "Tray_01_001"]:
 			mesh.set_meta("action", "donut")
-		if mesh.name == "Showcase":
-			for surface in range(mesh.mesh.get_surface_count()):
-				var original: Material = mesh.get_active_material(surface)
-				if original.resource_name != "Glass": continue
-				var glass := StandardMaterial3D.new()
-				glass.resource_name = "Donut case clear glass"
-				glass.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-				glass.albedo_color = Color(0.82, 0.94, 1.0, 0.10)
-				glass.roughness = 0.08
-				glass.metallic_specular = 0.35
-				glass.cull_mode = BaseMaterial3D.CULL_DISABLED
-				mesh.set_surface_override_material(surface, glass)
 
 func _make_shift_board() -> void:
 	var node := StaticBody3D.new()

@@ -1,4 +1,5 @@
 extends CanvasLayer
+const CONTROLLER := preload("res://controller_input.gd")
 
 const UI := preload("res://diner_ui.gd")
 const RETRO := preload("res://retro_dialogue.gd")
@@ -146,11 +147,10 @@ func finish() -> void:
 
 func _input(event: InputEvent) -> void:
 	if not is_open: return
-	if event is InputEventKey and event.pressed and not event.echo:
-		if event.keycode in [KEY_E, KEY_SPACE, KEY_ENTER, KEY_KP_ENTER, KEY_ESCAPE]:
-			get_viewport().set_input_as_handled()
-			if event.keycode == KEY_ESCAPE: finish()
-			else: advance()
+	if event.is_action_pressed("ui_cancel") or CONTROLLER.advance(event):
+		get_viewport().set_input_as_handled()
+		if event.is_action_pressed("ui_cancel"): finish()
+		else: advance()
 
 func _exit_tree() -> void:
 	if is_open: get_tree().paused = false

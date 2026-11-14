@@ -1,6 +1,6 @@
 # PIEday
 
-Current version: **0.16.0**. Adds first-person serving arms and robber pursuit, cover, missed shots, encounter health bars, headshots, and blood effects.
+Current version: **0.16.1**. Adds first-person serving arms and robber pursuit, cover, missed shots, encounter health bars, headshots, and blood effects.
 
 The game opens with a typewriter-style story on a black screen. Press E or
 Space to reveal each passage and advance, then choose Open the Diner. Earn $15,000 toward Grandpa's

@@ -108,6 +108,7 @@ static func capture(scene: Node) -> Dictionary:
 	for entry in shift.customer_line.departing:
 		data.departing.append({"actor":actor_data(entry.actor),"route":entry.route.duplicate(),"step":entry.step,"speed":entry.speed})
 	data["events"] = properties(shift.closing_events,EVENT_FIELDS)
+	data.events["gassy_pie"] = shift.closing_events.gassy_pie.closing_state()
 	data.events["rng_state"] = shift.closing_events.rng.state
 	data.events["figure_visible"] = shift.closing_events.figure.visible
 	data.events["figure_transform"] = shift.closing_events.figure.transform
@@ -245,6 +246,7 @@ static func restore(scene: Node, data: Dictionary) -> void:
 	apply(shift.customer_line,data.line,LINE_FIELDS)
 	scene.set_night(shift.closing_time or shift.phase == "closed")
 	apply(shift.closing_events,data.events,EVENT_FIELDS)
+	shift.closing_events.gassy_pie.restore_closing(data.events.get("gassy_pie", {}))
 	shift.closing_events._set_dissolve(clampf(shift.closing_events.dissolve_elapsed / shift.closing_events.DISSOLVE_SECONDS, 0.0, 1.0))
 	shift.closing_events.rng.state = data.events.rng_state
 	shift.closing_events.figure.visible = data.events.figure_visible

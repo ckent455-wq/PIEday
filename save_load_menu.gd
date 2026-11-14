@@ -1,4 +1,5 @@
 extends CanvasLayer
+const CONTROLLER := preload("res://controller_input.gd")
 const SAVES := preload("res://save_states.gd")
 const UI := preload("res://diner_ui.gd")
 var host: Node
@@ -45,6 +46,7 @@ func setup(scene: Node, pause_owner: Node = null) -> void:
 	rows.add_theme_constant_override("separation",12)
 	column.add_child(rows)
 	var back := Button.new()
+	back.name = "BackButton"
 	back.text = "Back [Esc]"
 	back.custom_minimum_size.y = 42
 	column.add_child(back)
@@ -67,6 +69,7 @@ func open(save_mode: bool) -> void:
 	if saving and not SAVES.wallet_for(host).save_enabled: status.text = "Preview mode: saving is disabled to protect your real slots."
 	refresh()
 	overlay.show()
+	overlay.find_child("BackButton", true, false).grab_focus()
 	for button in rows.get_children():
 		if not button.disabled:
 			button.grab_focus()
@@ -133,7 +136,7 @@ func _from_main_menu() -> bool:
 
 func _input(event: InputEvent) -> void:
 	if not is_open: return
-	if event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_ESCAPE:
+	if CONTROLLER.back(event):
 		get_viewport().set_input_as_handled()
 		if confirm.visible: confirm.hide()
 		else: close()

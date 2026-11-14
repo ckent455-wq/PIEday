@@ -109,7 +109,7 @@ func _button(parent: Control, text: String) -> Button:
 
 func _input(event: InputEvent) -> void:
 	if is_instance_valid(saves) and saves.is_open: return
-	if event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_ESCAPE:
+	if event.is_action_pressed("pad_pause") or (event.is_action_pressed("ui_cancel") and (is_open or event is InputEventKey)):
 		# The intro's fade also pauses the scene; do not interrupt that transition.
 		if get_tree().paused and not is_open and coop == null: return
 		get_viewport().set_input_as_handled()

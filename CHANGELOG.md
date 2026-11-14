@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.16.1
+
+- Add controller gameplay and menu controls.
+- Add the diner title screen, music, and animated gassy pie.
+- Add the gassy pie closing encounter and Grandpa's after-hours dialogue.
+- Clear the donut case glass and improve freezer crate spacing.
+
 ## 0.16.0
 
 - Add WRAD first-person serving arms with food support and cup/bottle grip poses. Empty cups share the same held-item view.

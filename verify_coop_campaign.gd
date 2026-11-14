@@ -182,6 +182,8 @@ func run():
 		assert(await wait_for(func(): return shift.carried_item == "Pistol"))
 		var customer_center: Vector3 = shift.customer.global_position + Vector3.UP * 1.4
 		await aim_at(customer_center, Vector3(-2.4, -0.09, -5.55), "customer")
+		assert(await wait_for(func(): return shift.robbery.robber_health == 50))
+		session.request_action()
 		assert(await wait_for(func(): return shift.phase == "waiting" and has_burger_and_fries()))
 		assert(is_instance_valid(shift.customer))
 		var cola: Node3D = front_cola()

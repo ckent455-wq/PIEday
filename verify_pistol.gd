@@ -53,6 +53,8 @@ func run():
 	var actor = shift.customer
 	var target = actor.get_node("Interaction")
 	require(shift.pistol.fire(target),"Encounter target accepts shot")
+	require(shift.robbery.robber_health == 50 and shift.carried_item == "Pistol", "First hit wounds robber and retains gun")
+	require(shift.pistol.fire(target),"Second hit defeats the robber")
 	require(shift.carried_item.is_empty() and shift.pistol.pickup.visible,"Shot returns pistol")
 	require(actor.get_node("Interaction").get_meta("action") == "corpse","Shot creates a body instead of a departing customer")
 	require(shift.corpses.bodies.size() == 1,"Body persists in diner")

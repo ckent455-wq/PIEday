@@ -1,6 +1,6 @@
 # PIEday
 
-Current version: **0.15.4**. Burger patties are wider on the raw tray, the flat top, and finished burgers. Includes freezer restocking, the onion Deluxe, and title-screen save loading.
+Current version: **0.16.0**. Adds first-person serving arms and robber pursuit, cover, missed shots, encounter health bars, headshots, and blood effects.
 
 The game opens with a typewriter-style story on a black screen. Press E or
 Space to reveal each passage and advance, then choose Open the Diner. Earn $15,000 toward Grandpa's
@@ -16,7 +16,7 @@ previous one leaves. At closing, queued customers walk out. You can finish an
 already accepted order before nighttime cleanup; customers whose orders were not
 taken leave without a penalty.
 
-Before opening, fry and stock all three donut flavors, then switch the neon OPEN sign on in the front window. Burgers use the flat top: three seconds per side, E to flip, then assemble at the bun tray. Raw patties and buns have separate trays. Both co-op PCs must run v0.12.1.
+Before opening, fry and stock all three donut flavors, then switch the neon OPEN sign on in the front window. Burgers use the flat top: three seconds per side, E to flip, then assemble at the bun tray. Raw patties and buns have separate trays. Both co-op PCs must run the same version.
 
 ## Play the Windows release
 

@@ -63,6 +63,7 @@ var hand_anchor: Node3D
 var carried_item := ""
 var carried_source: Node3D
 var carried_visual: Node3D
+var serving_arms: Node3D
 var coffee_station: StaticBody3D
 var soda_station: StaticBody3D
 var bottle_cooler: Node3D
@@ -231,6 +232,8 @@ func setup(host: Node3D) -> void:
 	soda_station.liquid_color = Color(0.12, 0.055, 0.018)
 	add_child(soda_station)
 	soda_station.setup(self)
+	serving_arms = preload("res://player_serving_arms.gd").new()
+	serving_arms.setup(self)
 	bottle_cooler = BOTTLE_COOLER.new()
 	add_child(bottle_cooler)
 	bottle_cooler.setup(self)
@@ -421,7 +424,7 @@ func _refresh_hud() -> void:
 		order_heading.text = "SERVICE NOTICE"
 		lines.append("Masked robber\nGive me all your money!\nPistol drawer under the bell.")
 		if robbery.remaining >= 0.0:
-			lines.append("[color=#ff8e80]Time to react: %.1fs[/color]" % robbery.remaining)
+			lines.append("[color=#ff8e80]Time to react: %.1fs[/color]" % robbery.remaining if robbery.remaining > 0 else "[color=#ff8e80]Get behind cover! Robber is pursuing you.[/color]")
 	elif is_complaint_customer(customer):
 		order_heading.text = "COUNTER"
 		lines.append("Hear him out." if phase == "waiting" else "A customer is approaching.")
@@ -967,7 +970,7 @@ func _process(delta: float) -> void:
 			_pose_customer(sin(animation_time * gait_speed * 7) * (1.35 if running else 1.0) if passage_ready else 0.0)
 	elif is_instance_valid(customer_visual):
 		customer_visual.position.y = 0
-		_pose_customer(0)
+		_pose_customer(sin(animation_time*19)*.8 if refusal_required() and robbery.enemy_state == "chasing" else 0)
 	# The demand pauses the scene. Let fleeing customers reach the exit first.
 	if phase == "arriving" and not walking and refusal_required() and customer_line.departing.is_empty() and robbery.staff_at_counter():
 		phase = "waiting"
@@ -1528,6 +1531,7 @@ func _refresh_carried() -> void:
 		carried_visual.remove_child(child)
 		child.queue_free()
 	if not carried_item.is_empty(): _item_model(carried_visual, carried_item, Vector3.ZERO, 0.95, carried_source)
+	if is_instance_valid(serving_arms): serving_arms.refresh(0)
 
 func has_empty_cup() -> bool:
 	return (is_instance_valid(coffee_station) and coffee_station.holding_empty) or (is_instance_valid(soda_station) and soda_station.holding_empty)

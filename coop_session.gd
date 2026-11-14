@@ -309,6 +309,9 @@ func _guest_action(position: Vector3, yaw: float, pitch: float, return_item: boo
 		acting_guest = false
 		game.target = previous
 		return
+	if not return_item and guest_item == "Pistol":
+		_apply_guest_interaction(null,false,func(): game.shift.pistol.fire_ray(position+Vector3.UP*2.0,direction))
+		return
 	var target: Dictionary = game.interaction_at(position + Vector3.UP * 2.0, direction)
 	var action: Node = target.action
 	if not return_item and not is_instance_valid(action):
@@ -429,6 +432,7 @@ func _snapshot() -> Dictionary:
 		"training": [shift.tutorial.tutorial_state, shift.tutorial.practice_order_index],
 		"phase": shift.phase, "remaining": shift.shift_remaining, "closing": shift.closing_time, "rush": shift.rush_started,
 		"robbery_remaining": shift.robbery.remaining,
+		"robbery_health": shift.robbery.health_state(),
 		"order": shift.order, "taken": shift.order_taken, "cash": shift.earnings.cash, "notice": shift.notice.text,
 		"actors": actors, "customer": str(shift.customer.get_instance_id()) if is_instance_valid(shift.customer) else "",
 		"pies": pies, "tray": shift.tray, "tray_sources": tray_sources, "drinks": drinks, "doors": door_states,
@@ -497,6 +501,7 @@ func _sync_shift(packet: PackedByteArray) -> void:
 		game.set_night(night)
 	_sync_actors(state.actors)
 	shift.customer = replicas.get(state.customer)
+	shift.robbery.restore_health(state.get("robbery_health", {}))
 	shift.tasks.merge(state.tasks, true)
 	for id in shift.tasks:
 		var node: Node3D = shift.task_nodes[id]
@@ -905,8 +910,22 @@ func _peer_disconnected(id: int) -> void:
 func share_bell() -> void:
 	if hosting and partner_ready: _hear_bell.rpc_id(partner_id)
 
+func share_blood(at: Vector3, normal: Vector3, headshot: bool) -> void:
+	if hosting and partner_ready: _blood_impact.rpc_id(partner_id,at,normal,headshot)
+
+@rpc("authority", "call_remote", "unreliable")
+func _blood_impact(at: Vector3, normal: Vector3, headshot: bool) -> void:
+	if is_instance_valid(game) and game.scene_file_path == "res://main.tscn": preload("res://bullet_blood.gd").impact(game.shift,at,normal,headshot)
+
 func share_shot(guest_fired: bool) -> void:
 	if hosting and partner_ready: _hear_shot.rpc_id(partner_id, guest_fired)
+
+func share_robber_shot(at: Vector3) -> void:
+	if hosting and partner_ready: _robber_missed.rpc_id(partner_id,at)
+
+@rpc("authority", "call_remote", "unreliable")
+func _robber_missed(at: Vector3) -> void:
+	if is_instance_valid(game) and game.scene_file_path == "res://main.tscn": game.shift.robbery.play_enemy_shot(at)
 
 func share_robbery_failure(stolen: int, practice: bool) -> void:
 	if hosting and partner_ready: _show_robbery_failure.rpc_id(partner_id, stolen, practice)

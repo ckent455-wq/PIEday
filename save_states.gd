@@ -81,6 +81,7 @@ static func capture(scene: Node) -> Dictionary:
 	data["training"] = [shift.tutorial.tutorial_state, shift.tutorial.practice_order_index, shift.tutorial.PRACTICE_ORDERS.size()]
 	data["drawer_open"] = shift.pistol.drawer_open
 	data["robbery_remaining"] = shift.robbery.remaining
+	data["robbery_health"] = shift.robbery.health_state()
 	data["dine_in"] = shift.dine_in.snapshot()
 	data["corpses"] = shift.corpses.snapshot()
 	data["pies"] = []
@@ -236,6 +237,7 @@ static func restore(scene: Node, data: Dictionary) -> void:
 			station.brew_tween.tween_method(station._fill_cup,station.fill,1.0,maxf(.01,(1-station.fill)*station.fill_seconds))
 			station.brew_tween.tween_callback(station._finish_brewing)
 	if not data.customer.is_empty(): shift._bind_customer_actor(restore_actor(shift.customer_line,data.customer))
+	shift.robbery.restore_health(data.get("robbery_health", {}))
 	for entry in data.waiting:
 		shift.customer_line.waiting.append({"actor":restore_actor(shift.customer_line,entry.actor),"seconds":entry.seconds,"junction":entry.junction})
 	for entry in data.departing:

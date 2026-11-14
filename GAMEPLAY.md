@@ -199,7 +199,7 @@ his room. Replay starts a fresh demo. Campaign autosaves and manual slots are ke
 separate; saving/loading is disabled during the demo. Small contextual hints guide
 new players. The full Windows Desktop preset retains the campaign.
 
-When the robber enters, customers flee through the front door. After the demand, you have three seconds to take the pistol from the drawer under the service bell, aim at the robber, and click or press E to fire. Q returns the pistol.
+When the robber enters, customers flee through the front door. After the demand, you have five seconds to take the pistol from the drawer under the service bell, aim at the robber, and click or press E to fire. Q returns the pistol.
 
 Random robberies can only begin while an order is accepted and a player is at the service counter. They cannot trigger while everyone is working in the kitchen or freezer. If staff leave before the robber arrives, the demand waits for someone to return to the counter; the reaction timer starts after the demand closes. Once announced, leaving the counter does not stop the countdown. Either connected co-op player can staff the counter.
 
@@ -230,3 +230,11 @@ If you cannot afford a repair, keep serving the working menu to earn the money. 
 ## Winning the campaign
 
 Finish closing duties with at least $15,000 saved while Grandpa is still alive. The closing bonus counts toward the goal. His surgery succeeds, and a homecoming cutscene shows him walking back into the diner and thanking the player. The campaign saves as won, Grandpa recovers, and the ending offers replay, a new campaign, or the main menu. New campaigns keep manual save slots. Loading an earlier manual save restores that earlier campaign state. The separate playable demo retains its own ending.
+
+Held food now appears in first-person serving hands. Pies and larger items use a two-hand support pose; donuts use one hand; empty/full cups and bottles use a grip pose. Placing or returning an item clears the hands. The camera-space arms and items move together while walking, and nearby counters do not clip them. The counter tray stays in place.
+
+Robbers pursue staff who flee the counter, finding a route around furniture and opening room doors. Solid walls and closed doors block gunfire. The first shot cannot happen until the five-second response window expires after dialogue. After that, shots are spaced 1.6 seconds apart, with a 65% base hit chance; running and distance reduce accuracy. Misses play a gunshot and flash without stealing money or ending the encounter. Keep moving, use cover, or return fire. Pursuit stops when the robber is defeated or leaves.
+
+During a robbery, the top-center HUD shows player and robber health (100 HP each). A robber bullet deals 25 damage; a player body shot deals 50 damage and a headshot deals 100 damage. Misses deal no damage. The pistol stays equipped after a nonfatal hit. Bars disappear when the encounter ends and reset for the next robber. Active-encounter health is retained in save states and synchronized in co-op, where the player bar shows shared TEAM health.
+
+Bullet impacts produce brief low-poly blood flecks and small surface stains that fade after ten seconds. Player hits briefly flash the screen red. Blood effects have no collision or gameplay state and clean themselves up.

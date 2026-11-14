@@ -117,6 +117,8 @@ func run() -> void:
 	shift.interact(shift.service_bell)
 	assert(shift.is_practicing() and shift.carried_item == "Pistol")
 	shift.interact(shift.customer.get_node("Interaction"))
+	assert(shift.robbery.robber_health == 50 and shift.carried_item == "Pistol")
+	shift.interact(shift.customer.get_node("Interaction"))
 	assert(demo.tutorial_state == "done" and shift.tray.is_empty())
 	assert(shift.carried_item.is_empty() and shift.corpses.bodies.size() == 1)
 	assert(shift.customers_this_shift == 0 and shift.shift_remaining == shift.SHIFT_SECONDS)

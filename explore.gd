@@ -181,6 +181,9 @@ func _unhandled_input(event: InputEvent) -> void:
 		if event.keycode == KEY_F7 and coop == null and preload("res://playable_demo.gd").session(self) == null:
 			shift.begin_cleanup()
 	if event is InputEventMouseButton and event.pressed:
+		if event.button_index == MOUSE_BUTTON_LEFT and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED and shift.carried_item == "Pistol":
+			_interact()
+			return
 		if event.button_index == MOUSE_BUTTON_LEFT and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED and is_instance_valid(target_action) and target_action.get_meta("action", "") in ["appliance_repair", "pistol", "coffee", "cup_stack", "tray", "pie", "donut", "soda", "soda_cup_stack", "bottle", "customer", "bell", "oven", "dispose", "freezer_stock", "restock_cooler"]:
 			_interact()
 			return
@@ -238,6 +241,9 @@ func _interact() -> void:
 		if not coop.hosting:
 			coop.request_action()
 			return
+	if shift.carried_item == "Pistol":
+		shift.pistol.fire_ray(camera.global_position,-camera.global_basis.z)
+		return
 	if is_instance_valid(target_action):
 		shift.interact(target_action)
 	elif is_instance_valid(target_door):
@@ -364,3 +370,6 @@ func _update_interaction() -> void:
 			else:
 				interaction_label.text += " (finish your shift before heading home)"
 	interaction_label.visible = not interaction_label.text.is_empty()
+	if is_instance_valid(shift) and shift.carried_item == "Pistol":
+		interaction_label.text = "[Click / E] Fire · [Q] Return pistol"
+		interaction_label.visible = true

@@ -122,7 +122,28 @@ func tick() -> void:
 	var coop = preload("res://coop_session.gd").active(self)
 	refresh_pickup(shift.carried_item == "Pistol" or (coop != null and coop.guest_item == "Pistol"))
 
-func fire(target: Node) -> bool:
+func fire_ray(origin: Vector3, direction: Vector3) -> bool:
+	if shift.carried_item != "Pistol" or not available(): return false
+	var query := PhysicsRayQueryParameters3D.create(origin,origin+direction.normalized()*40.0,5,[shift.game.player.get_rid()])
+	var hit := shift.get_world_3d().direct_space_state.intersect_ray(query)
+	if not hit.is_empty() and fire(hit.collider,hit.position,hit.normal): return true
+	# Pulling the trigger still fires when the crosshair misses or hits cover.
+	shot.play()
+	muzzle_flash()
+	var coop = preload("res://coop_session.gd").active(self)
+	if coop != null: coop.share_shot(coop.acting_guest)
+	shift._message("Shot missed or hit cover. Keep aiming at the robber.")
+	return true
+
+func is_headshot(at: Vector3) -> bool:
+	if not shift.refusal_required() or not at.is_finite(): return false
+	var skeleton: Skeleton3D = shift.customer.get_meta("skeleton")
+	var head := skeleton.find_bone("DEF-spine.006")
+	if head < 0: return false
+	var head_at: Vector3 = skeleton.global_transform*skeleton.get_bone_global_pose(head).origin
+	return at.y >= head_at.y-.045 and at.y <= head_at.y+.32 and Vector2(at.x-head_at.x,at.z-head_at.z).length() < .34
+
+func fire(target: Node, hit_position := Vector3.INF, hit_normal := Vector3.UP) -> bool:
 	if shift.carried_item != "Pistol" or not available(): return false
 	if not is_instance_valid(target) or target.get_meta("action","") != "customer": return false
 	if not shift.customer.is_ancestor_of(target): return false
@@ -130,15 +151,25 @@ func fire(target: Node) -> bool:
 	muzzle_flash()
 	var coop = preload("res://coop_session.gd").active(self)
 	if coop != null: coop.share_shot(coop.acting_guest)
+	var headshot := is_headshot(hit_position)
+	var impact: Vector3 = hit_position if hit_position.is_finite() else shift.customer.global_position+Vector3.UP*1.4
+	preload("res://bullet_blood.gd").impact(shift,impact,hit_normal,headshot)
+	if coop != null: coop.share_blood(impact,hit_normal,headshot)
+	if not shift.robbery.damage_robber(100 if headshot else 50):
+		shift._message("Robber hit! Health: %d / 100" % shift.robbery.robber_health)
+		return true
 	shift._clear_carried(false)
 	shift.corpses.kill(shift.customer)
 	shift.customer = null
+	shift.robbery.update_health_hud()
 	if shift.is_practicing():
 		shift.tutorial.complete_encounter(shift)
+		if headshot: shift._message("Headshot! " + shift.notice.text)
 		tick()
 		return true
 	shift.customers_this_shift += 1
 	shift._depart_customer(false)
+	if headshot: shift._message("Headshot! " + shift.notice.text)
 	tick()
 	return true
 

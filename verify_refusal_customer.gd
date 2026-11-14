@@ -44,6 +44,7 @@ func check_evacuation(shift):
 	shift.pistol.drawer_open = true
 	shift.pistol.take()
 	require(shift.pistol.fire(shift.customer.get_node("Interaction")), "The robber can be stopped after evacuation")
+	require(shift.pistol.fire(shift.customer.get_node("Interaction")), "Second hit defeats robber after evacuation")
 	shift.corpses.grab(shift.corpses.bodies[0].body)
 	shift.corpses.dispose()
 	advance(shift, 4)
@@ -86,7 +87,7 @@ func check():
 	shift.service_bell.ring()
 	require(not shift.serve_order() and shift.refusal_required(), "Cannot submit food to this customer")
 	# A normal queued customer must move up immediately after refusal.
-	var next: Node3D = line.make_actor(Vector3(-1.55, -0.094, -2.05))
+	var next: Node3D = line.make_actor(Vector3(-1.55, -0.094, -2.05), "male_1")
 	line.waiting.append({"actor": next, "seconds": 4.0, "junction": true})
 	shift.interact(action)
 	require(shift.customer == next and line.departing.size() == 1, "Refused customer leaves and queue advances")
@@ -112,7 +113,11 @@ func check():
 	shift.earnings.shift_takings = 200
 	shift.robbery.tick(shift.robbery.REACTION_SECONDS - 0.1)
 	require(shift.earnings.cash == 800 and not shift.robbery.blackout.visible, "The player gets the full response window")
+	# This regression checks hit accounting, not the separately tested miss roll.
+	shift.robbery.base_accuracy = 1.0
+	shift.robbery.player_health = shift.robbery.PLAYER_HIT_DAMAGE
 	shift.robbery.tick(0.2)
+	shift.robbery.base_accuracy = .65
 	require(shift.earnings.cash == 600 and shift.robbery.blackout.visible, "Running out of time also protects previous savings")
 	advance(shift, 10)
 	require(shift.phase == "cleanup", "Final refusal allows closing chores")

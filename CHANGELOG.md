@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.16.0
+
+- Add WRAD first-person serving arms with food support and cup/bottle grip poses. Empty cups share the same held-item view.
+- Give five seconds after the robbery demand before the first shot. Robbers pursue fleeing players around obstacles and through room doors, with cover checks, misses, and 1.6 seconds between shots.
+- Fix player pistol firing beyond item interaction range; misses retain the gun and cover blocks bullets.
+- Show robbery-only health bars: player 100 HP, 25 damage per enemy hit; robber 100 HP, 50 body-shot damage and 100 headshot damage. Co-op shares team health.
+- Add temporary blood impact flecks, fading stains, and player damage flashes.
+- Preserve encounter health in saves and co-op snapshots. Include editable arms sources and regression checks.
+
+
 ## 0.15.4
 
 - Widen burger patties by 12% on the raw tray, flat top, in hand, and in assembled burgers.

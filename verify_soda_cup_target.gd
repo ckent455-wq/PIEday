@@ -28,6 +28,20 @@ func check():
   var cup=station.machine_cup.global_position+Vector3.UP*.1
   var found=game.interaction_at(origin,(cup-origin).normalized())
   assert(found.action!=station.stack,"Empty-cup hitbox must not steal filled-cup targeting")
+  station._finish_brewing()
+  await physics_frame
+  await physics_frame
+  for side in [-0.9, 0.9]:
+   var side_origin: Vector3 = origin + Vector3(side, 0, -0.25)
+   for offset in [Vector3(-0.16, 0, 0), Vector3.ZERO, Vector3(0.16, 0, 0)]:
+    var target = game.interaction_at(side_origin, side_origin.direction_to(cup + offset))
+    assert(target.action == station, "Full soda pickup should work from either side of each nozzle")
+  game.shift.interact(station)
+  assert(game.shift.carried_item == station.FLAVORS[i] and station.state == "empty")
+  assert(station.full_cup_target.disabled)
+  game.shift.discard_last()
+  await physics_frame
+  await physics_frame
  game.shift.interact(station.stack)
  assert(station.holding_empty and station.cups_left==9)
  print("PASS: ",tests," empty-cup rays across holder/angles/heights, all flavor buttons, no interception of filled-cup rays and real empty-cup pickup")

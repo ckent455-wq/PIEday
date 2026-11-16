@@ -19,7 +19,9 @@ var lights: Array[Light3D] = []
 var energies: Array[float] = []
 var figure: Node3D
 var rng := RandomNumberGenerator.new()
-const ENCOUNTERS := ["bell", "flicker", "figure", "knocks", "cooler", "footsteps", "gassy_pie"]
+const ENCOUNTERS := ["bell", "figure", "knocks", "cooler", "footsteps", "gassy_pie"]
+const FIGURE_CHANCE := 0.20
+const FLICKER_CHANCE := (1.0 - FIGURE_CHANCE) / 6.0
 var gassy_pie = preload("res://title_pie.gd").new()
 var extra_at := 0.0
 var extra_done := true
@@ -69,7 +71,6 @@ func setup(host: Node3D) -> void:
 	add_child(trash_audio)
 	monster_audio = AudioStreamPlayer3D.new()
 	monster_audio.name = "ShadowDissipationSound"
-	monster_audio.stream = preload("res://assets/audio/shadow_dissipate.wav")
 	monster_audio.unit_size = 5.0
 	monster_audio.max_distance = 14.0
 	monster_audio.volume_db = -6.0
@@ -192,6 +193,7 @@ func on_trash_disposed() -> void:
 	trash_audio.play()
 	if active and encounter == "figure" and not figure_done:
 		trash_disposed = true
+		figure_at = elapsed + 15.0
 
 func awaiting_doorway_scare() -> bool:
 	return active and encounter == "figure" and trash_disposed and not figure_done
@@ -200,17 +202,48 @@ func begin() -> void:
 	reset()
 	_place_figure()
 	active = true
-	# One independent roll per closing, including the first: 30% quiet nights.
-	encounter = "" if rng.randf() < 0.3 else ENCOUNTERS[rng.randi_range(0, ENCOUNTERS.size() - 1)]
-	if preload("res://playable_demo.gd").session(self) != null: encounter = "figure"
+	# Pick one main scare. The lights can flicker ahead of it.
+	if rng.randf() < FIGURE_CHANCE:
+		encounter = "figure"
+	else:
+		var other_encounters := ENCOUNTERS.duplicate()
+		other_encounters.erase("figure")
+		encounter = other_encounters[rng.randi_range(0, other_encounters.size() - 1)]
+	var demo := preload("res://playable_demo.gd").session(self) != null
+	if demo: encounter = "figure"
 	bell_done = encounter != "bell"
-	flicker_done = encounter != "flicker"
+	flicker_done = demo or rng.randf() >= FLICKER_CHANCE
 	figure_done = encounter != "figure"
 	extra_done = encounter not in ["knocks", "cooler", "footsteps", "gassy_pie"]
-	extra_at = rng.randf_range(10, 35)
-	bell_at = rng.randf_range(10, 38)
-	flicker_at = rng.randf_range(10, 38)
-	figure_at = rng.randf_range(5, 14)
+	extra_at = rng.randf_range(6, 18)
+	bell_at = rng.randf_range(6, 18)
+	flicker_at = rng.randf_range(2, 4)
+	figure_at = 0.0
+	print("[Closing scare] Selected: ", "flicker then " if not flicker_done else "", encounter)
+
+func ensure_closing_scare() -> void:
+	if not active or awaiting_doorway_scare():
+		return
+	var triggered := false
+	match encounter:
+		"bell": triggered = bell_done
+		"flicker": triggered = flicker_done
+		"figure": triggered = figure_done
+		"footsteps": triggered = extra_done and steps_left < 6
+		"knocks", "cooler", "gassy_pie": triggered = extra_done
+	if not triggered:
+		_ring_fallback()
+
+func _ring_fallback() -> void:
+	print("[Closing scare] Triggered: bell (fallback for ", encounter, ")")
+	encounter = "bell"
+	bell_done = true
+	flicker_done = true
+	figure_done = true
+	extra_done = true
+	steps_left = 0
+	figure.hide()
+	shift.service_bell.play_ding(true)
 
 func reset() -> void:
 	gassy_pie.hide()
@@ -242,7 +275,9 @@ func _set_dissolve(amount: float) -> void:
 func _dismiss_figure() -> void:
 	if dissolve_elapsed < 0.0:
 		dissolve_elapsed = 0.0
+		print("[Closing scare] Triggered: figure")
 		monster_audio.global_position = figure.global_position + Vector3(0, 1.5, 0)
+		monster_audio.stream = preload("res://assets/audio/doorway_demon_scream.wav") if figure_seen else preload("res://assets/audio/shadow_dissipate.wav")
 		monster_audio.play()
 		shadow_wisps.global_position = figure.global_position + Vector3(0, 1.25, 0)
 		shadow_wisps.visible = true
@@ -256,12 +291,18 @@ func tick(delta: float) -> void:
 	if not active: return
 	elapsed += delta
 	_tick_extra(delta)
+	if not extra_done and elapsed >= extra_at + 12.0:
+		_ring_fallback()
+	if awaiting_doorway_scare() and not figure_seen and dissolve_elapsed < 0.0 and elapsed >= figure_at:
+		_ring_fallback()
 	if not bell_done and elapsed >= bell_at:
 		bell_done = true
 		# Sound and button animation only: never submit an order or overwrite chores.
-		shift.service_bell.play_ding()
+		print("[Closing scare] Triggered: bell")
+		shift.service_bell.play_ding(true)
 	if not flicker_done and elapsed >= flicker_at:
 		flicker_done = true
+		print("[Closing scare] Triggered: flicker")
 		flicker_time = 0
 		var interior: Node3D = shift.game.get_node("NightInteriorLights")
 		for light in interior.get_children():
@@ -296,14 +337,13 @@ func tick(delta: float) -> void:
 			if coop != null and coop.partner_target.distance_to(figure.global_position) < target.distance_to(figure.global_position): target = coop.partner_target
 			target.y = figure.global_position.y
 			if target.distance_to(figure.global_position) > 0.1: figure.look_at(target,Vector3.UP,true)
-			if shift.game.player.global_position.distance_to(figure.global_position) < 1.2:
-				_dismiss_figure()
-				return
 			var watching := _figure_in_view()
 			if watching:
 				seen_seconds += delta
 				away_seconds = 0
 				figure_seen = true
+				_dismiss_figure()
+			elif shift.game.player.global_position.distance_to(figure.global_position) < 1.2:
 				_dismiss_figure()
 			elif figure_seen:
 				away_seconds += delta
@@ -347,6 +387,7 @@ func _tick_extra(delta: float) -> void:
 	if steps_left > 0:
 		step_timer -= delta
 		if step_timer <= 0:
+			if steps_left == 6: print("[Closing scare] Triggered: footsteps")
 			_sound(preload("res://assets/audio/closing_footstep.wav"), step_position)
 			step_position += step_direction
 			steps_left -= 1
@@ -358,11 +399,13 @@ func _tick_extra(delta: float) -> void:
 		var counter := Vector3(0.75, 0.0, -4.7)
 		if player_position.distance_to(counter) < 6.0 or (coop != null and coop.partner_target.distance_to(counter) < 6.0):
 			extra_done = true
+			print("[Closing scare] Triggered: gassy_pie")
 			gassy_pie.start_closing()
 	elif encounter == "knocks" and is_instance_valid(bathroom_door):
 		var at: Vector3 = (bathroom_door.global_transform * bathroom_door.get_aabb()).get_center()
 		if player_position.distance_to(at) < 6 or (coop != null and coop.partner_target.distance_to(at) < 6):
 			extra_done = true
+			print("[Closing scare] Triggered: knocks")
 			_sound(preload("res://assets/audio/closing_knocks.wav"), at)
 	elif encounter == "cooler":
 		for door in shift.game.doors:
@@ -371,6 +414,7 @@ func _tick_extra(delta: float) -> void:
 			var nearby: bool = player_position.distance_to(at) < 7 or (coop != null and coop.partner_target.distance_to(at) < 7)
 			if nearby and _cooler_in_view(door, at):
 				extra_done = true
+				print("[Closing scare] Triggered: cooler")
 				opened_cooler = door
 				shift.game._set_door_open(door, true)
 				break

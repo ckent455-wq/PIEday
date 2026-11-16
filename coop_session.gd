@@ -7,7 +7,7 @@ const DEFAULT_NAME := "PARTNER"
 const CAMPAIGN_PATH := "user://coop_earnings.cfg"
 const SAVE := preload("res://save_states.gd")
 const UNIFORM := preload("res://coop_uniform.gd")
-const SUPPORTED_ACTIONS := ["appliance_repair","clock", "open_sign", "burger_grill", "burger_prep", "burger_raw", "burger_topping", "pie", "donut", "donut_fryer", "frozen_fries", "tray", "coffee", "cup_stack", "soda", "soda_cup_stack", "bottle", "oven", "bell", "customer", "pistol", "pistol_drawer", "corpse", "task", "table_trash", "trash_bin", "dining_customer", "freezer_stock", "freezer_tomato", "freezer_onion", "freezer_lettuce", "freezer_cheese", "restock_cooler", "dispose"]
+const SUPPORTED_ACTIONS := ["appliance_repair", "sink", "clock", "open_sign", "burger_grill", "burger_prep", "burger_raw", "burger_topping", "pie", "donut", "donut_fryer", "frozen_fries", "tray", "coffee", "cup_stack", "soda", "soda_cup_stack", "bottle", "oven", "bell", "customer", "pistol", "pistol_drawer", "corpse", "task", "table_trash", "trash_bin", "dining_customer", "freezer_stock", "freezer_tomato", "freezer_onion", "freezer_lettuce", "freezer_cheese", "restock_cooler", "dispose"]
 var hosting := false
 var partner_id := 0
 var partner_ready := false
@@ -428,7 +428,7 @@ func _snapshot() -> Dictionary:
 	return {
 		"scene": game.scene_file_path, "epoch": scene_epoch, "paused": get_tree().paused, "progress": _wallet_state(shift.earnings),
 		"donuts": shift.donut_fryer.snapshot(), "burger": shift.burger_station.snapshot(),
-		"bottles": shift.bottle_cooler.snapshot(),
+		"bottles": shift.bottle_cooler.snapshot(), "sinks": shift.sinks.map(func(sink): return sink.running),
 		"training": [shift.tutorial.tutorial_state, shift.tutorial.practice_order_index],
 		"phase": shift.phase, "remaining": shift.shift_remaining, "closing": shift.closing_time, "rush": shift.rush_started,
 		"robbery_remaining": shift.robbery.remaining,
@@ -484,6 +484,9 @@ func _sync_shift(packet: PackedByteArray) -> void:
 	shift.tutorial.practice_order_index = state.training[1]
 	shift.donut_fryer.restore(state.get("donuts", {}))
 	shift.bottle_cooler.restore(state.bottles)
+	var sink_states: Array = state.get("sinks", [state.get("sink_running", false)])
+	for i in mini(shift.sinks.size(), sink_states.size()):
+		shift.sinks[i].set_running(sink_states[i])
 	shift.burger_station.restore(state.get("burger", {}))
 	shift.shift_remaining = state.remaining
 	shift.robbery.remaining = state.robbery_remaining
@@ -910,8 +913,8 @@ func _sync_events(data: Dictionary) -> void:
 func _peer_disconnected(id: int) -> void:
 	if id == partner_id: leave("Your partner left the shift.")
 
-func share_bell() -> void:
-	if hosting and partner_ready: _hear_bell.rpc_id(partner_id)
+func share_bell(carry_through_diner: bool) -> void:
+	if hosting and partner_ready: _hear_bell.rpc_id(partner_id, carry_through_diner)
 
 func share_blood(at: Vector3, normal: Vector3, headshot: bool) -> void:
 	if hosting and partner_ready: _blood_impact.rpc_id(partner_id,at,normal,headshot)
@@ -948,8 +951,8 @@ func _hear_shot(guest_fired: bool) -> void:
 	game.camera = local_camera
 
 @rpc("authority", "call_remote", "reliable")
-func _hear_bell() -> void:
-	if not hosting and is_instance_valid(game): game.shift.service_bell.play_ding()
+func _hear_bell(carry_through_diner: bool) -> void:
+	if not hosting and is_instance_valid(game): game.shift.service_bell.play_ding(carry_through_diner)
 
 func _connection_failed() -> void:
 	leave("Connection ended. Check the host address and UDP port %d." % PORT)

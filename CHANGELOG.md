@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.16.2
+
+- Add the Traingle Studios star-impact splash, scattering title letters, and a fade into the main menu.
+- Refresh the diner with checkerboard flooring, matte-black trim, red stool tops, and tufted booths with rounded cushions. Clear the sauce dishes and center the trash can.
+- Make the kitchen and all three bathroom faucets usable with visible water and running-water audio. Add a kitchen sink drain.
+- Schedule a random scare every closing shift. Flickering lights can precede another scare, and the dumpster demon has a 20% selection chance and screams when spotted.
+- Make filled soda cups easier to pick up from either side of the machine.
+
+
 ## 0.16.1
 
 - Add controller gameplay and menu controls.

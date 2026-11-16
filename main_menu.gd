@@ -13,6 +13,9 @@ func _ready() -> void:
 		get_tree().change_scene_to_file.call_deferred("res://intro.tscn")
 		return
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
+	var splash: ColorRect
+	if first_open:
+		splash = await _show_studio_logo()
 	theme = UI.theme()
 	_build_backdrop()
 	add_child(preload("res://diner_music.gd").new())
@@ -63,7 +66,133 @@ func _ready() -> void:
 		var updater := preload("res://game_updater.gd").new()
 		add_child(updater)
 		updater.setup(column)
+	if splash != null:
+		move_child(splash, -1)
+		var fade := create_tween()
+		fade.tween_property(splash, "modulate:a", 0.0, 1.1).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+		await fade.finished
+		splash.queue_free()
 	(resume if has_autosave else new_game).grab_focus()
+
+func _show_studio_logo() -> ColorRect:
+	var splash := ColorRect.new()
+	splash.color = Color("020609")
+	add_child(splash)
+	splash.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	var mark := Control.new()
+	splash.add_child(mark)
+	mark.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
+	mark.position.y -= 170.0
+	var triangle := Line2D.new()
+	triangle.points = PackedVector2Array([Vector2(0, 0), Vector2(77, 130), Vector2(-77, 130), Vector2(0, 0)])
+	triangle.width = 3.6
+	triangle.antialiased = true
+	triangle.default_color = Color(0.76, 0.86, 0.78)
+	mark.add_child(triangle)
+	var presents := UI.label("Traingle Studios Presents...", 46, triangle.default_color)
+	presents.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	mark.add_child(presents)
+	presents.position = Vector2(-320, 179)
+	presents.size.x = 640
+	mark.modulate.a = 0.0
+	var animation := create_tween()
+	animation.tween_property(mark, "modulate:a", 1.0, 0.65)
+	animation.tween_interval(1.7)
+	await animation.finished
+	await _shatter_studio_mark(mark, triangle, presents)
+	mark.hide()
+	return splash
+
+func _shatter_studio_mark(mark: Control, triangle: Line2D, presents: Label) -> void:
+	var impact := Vector2(24, 79)
+	var star := Polygon2D.new()
+	var points := PackedVector2Array()
+	for index in range(10):
+		var radius := 25.0 if index % 2 == 0 else 10.0
+		points.append(Vector2.from_angle(index * TAU / 10.0 - PI * 0.5) * radius)
+	star.polygon = points
+	star.color = Color("fff0a6")
+	var tail := Line2D.new()
+	tail.points = PackedVector2Array([Vector2(110, -55), Vector2(8, -4)])
+	tail.width = 4.0
+	tail.antialiased = true
+	tail.default_color = Color(1.0, 0.78, 0.37, 0.68)
+	var streak := Node2D.new()
+	mark.add_child(streak)
+	streak.add_child(tail)
+	streak.add_child(star)
+	streak.position = impact + Vector2(440, -220)
+	var flight := create_tween().set_parallel()
+	flight.tween_property(streak, "position", impact, 0.38).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	flight.tween_property(star, "rotation", -TAU, 0.38)
+	await flight.finished
+	streak.hide()
+	triangle.hide()
+	var ring := Line2D.new()
+	for index in range(33):
+		ring.add_point(Vector2.from_angle(index * TAU / 32.0) * 20.0)
+	ring.width = 3.0
+	ring.antialiased = true
+	ring.default_color = star.color
+	mark.add_child(ring)
+	ring.position = impact
+	var burst := create_tween().set_parallel()
+	burst.tween_property(ring, "scale", Vector2.ONE * 7.0, 0.42).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_QUAD)
+	burst.tween_property(ring, "modulate:a", 0.0, 0.42)
+	var travel := get_viewport_rect().size.length() + 64.0
+	var shard_flight_time := 7.0
+	var title_center := presents.position + presents.size * 0.5
+	var half_text_width := presents.get_minimum_size().x * 0.5
+	var hit_time := shard_flight_time
+	var hit_x := title_center.x
+	for edge in range(triangle.points.size() - 1):
+		var start := triangle.points[edge]
+		var finish := triangle.points[edge + 1]
+		for index in range(7):
+			var a := start.lerp(finish, index / 7.0)
+			var b := start.lerp(finish, (index + 0.8) / 7.0)
+			var shard := Line2D.new()
+			shard.points = PackedVector2Array([Vector2.ZERO, b - a])
+			shard.width = 3.6
+			shard.antialiased = true
+			shard.default_color = star.color.lerp(triangle.default_color, index / 7.0)
+			mark.add_child(shard)
+			shard.position = a
+			var scatter := (a - impact).normalized() * (travel * (1.0 + index * 0.08))
+			burst.tween_property(shard, "position", a + scatter, shard_flight_time)
+			burst.tween_property(shard, "rotation", (index - 3) * 0.7, shard_flight_time)
+			if scatter.y > 0.0:
+				var progress := (title_center.y - a.y) / scatter.y
+				var crossing_x := a.x + scatter.x * progress
+				var crossing_time := progress * shard_flight_time
+				if progress >= 0.0 and crossing_time < hit_time and absf(crossing_x - title_center.x) < half_text_width:
+					hit_time = crossing_time
+					hit_x = crossing_x
+	_scatter_studio_letters(presents, burst, hit_time, hit_x, travel)
+	await burst.finished
+
+func _scatter_studio_letters(title: Label, burst: Tween, hit_time: float, hit_x: float, travel: float) -> void:
+	var font := title.get_theme_font("font")
+	var font_size := title.get_theme_font_size("font_size")
+	var text_width := font.get_string_size(title.text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x
+	var text_left := title.position.x + (title.size.x - text_width) * 0.5
+	burst.tween_callback(title.hide).set_delay(hit_time)
+	for index in range(title.text.length()):
+		var character := title.text.substr(index, 1)
+		if character == " ":
+			continue
+		var letter := UI.label(character, font_size, title.get_theme_color("font_color"))
+		title.get_parent().add_child(letter)
+		var advance := font.get_string_size(title.text.left(index), HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x
+		letter.position = Vector2(text_left + advance, title.position.y)
+		letter.pivot_offset = letter.get_minimum_size() * 0.5
+		letter.hide()
+		var offset := letter.position.x + letter.pivot_offset.x - hit_x
+		var delay := hit_time + absf(offset) / 750.0
+		var direction := Vector2.from_angle(randf_range(0.0, TAU))
+		burst.tween_callback(letter.show).set_delay(hit_time)
+		burst.tween_property(letter, "position", letter.position + direction * travel, 3.8).set_delay(delay)
+		burst.tween_property(letter, "rotation", randf_range(-TAU * 2.0, TAU * 2.0), 3.8).set_delay(delay)
 
 func _build_backdrop() -> void:
 	var diner := preload("res://diner_layout.tscn").instantiate()

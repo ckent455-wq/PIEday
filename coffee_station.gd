@@ -16,7 +16,10 @@ var fill_radius := 0.048
 var cup_position := Vector3(0, -0.20, -0.09)
 var spout_position := Vector3(0, 0.175, -0.09)
 var shift: Node3D
-var state := "empty"
+var state := "empty":
+	set(value):
+		state = value
+		_update_pickup_target()
 var holding_empty := false
 var cups_left := 10
 var stack: StaticBody3D
@@ -29,6 +32,9 @@ var status: Label3D
 var brew_tween: Tween
 var fill := 0.0
 var coffee_audio: AudioStreamPlayer3D
+
+func _update_pickup_target() -> void:
+	pass
 
 func setup(host: Node3D) -> void:
 	shift = host

@@ -38,7 +38,7 @@ func check():
 	await physics_frame
 	await physics_frame
 	events.tick(.4)
-	assert(events.monster_audio.playing, "Shadow sound starts with visible dissipation")
+	assert(events.monster_audio.playing and events.monster_audio.stream.resource_path.ends_with("doorway_demon_scream.wav"), "Scream starts on sight as the figure dissipates")
 	assert(events.figure_seen and events.figure.visible, "Visible on turning back to the door")
 	if DisplayServer.get_name() != "headless":
 		await create_timer(.2).timeout

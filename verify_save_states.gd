@@ -134,6 +134,7 @@ func run() -> void:
 		room.paused.resume_game()
 	var title = load("res://main_menu.tscn").instantiate()
 	root.add_child(title)
+	while not title.has_node("SaveLoadMenu"): await process_frame
 	var title_saves = title.get_node("SaveLoadMenu")
 	title_saves.directory = directory
 	var load_button: Button

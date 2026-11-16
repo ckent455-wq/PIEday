@@ -64,9 +64,11 @@ func setup(host: Node3D) -> void:
 	sound.max_distance = 12
 	add_child(sound)
 
-func play_ding() -> void:
+func play_ding(carry_through_diner := false) -> void:
+	sound.attenuation_model = AudioStreamPlayer3D.ATTENUATION_DISABLED if carry_through_diner else AudioStreamPlayer3D.ATTENUATION_INVERSE_DISTANCE
+	sound.max_distance = 0.0 if carry_through_diner else 12.0
 	sound.play()
-	if shift.game.coop != null: shift.game.coop.share_bell()
+	if shift.game.coop != null: shift.game.coop.share_bell(carry_through_diner)
 	var tween := create_tween()
 	tween.tween_property(button, "position:y", -0.013, 0.055)
 	tween.tween_property(button, "position:y", 0.0, 0.12)

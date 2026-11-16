@@ -20,14 +20,20 @@ func check():
 	require(not events.active and not events.figure.visible, "No haunting during daylight")
 	shift.begin_cleanup()
 	events.rng.seed = 42517
-	var counts := {"": 0, "bell": 0, "flicker": 0, "figure": 0, "knocks": 0, "cooler": 0, "footsteps": 0}
+	var counts := {}
+	for name in events.ENCOUNTERS: counts[name] = 0
+	var paired := 0
 	for night in range(300):
 		events.begin()
-		var enabled := int(not events.bell_done) + int(not events.flicker_done) + int(not events.figure_done) + int(not events.extra_done)
-		require(enabled <= 1, "At most one encounter even on the first shift")
-		counts[events.encounter] += 1
-	for count in counts.values(): require(count > 12, "Quiet nights and each encounter occur")
-	print("Seeded encounter distribution: ", counts)
+		var enabled := int(not events.bell_done) + int(not events.figure_done) + int(not events.extra_done)
+		require(enabled == 1 and counts.has(events.encounter), "Exactly one main encounter is selected every closing")
+		if not events.flicker_done:
+			paired += 1
+			require(events.flicker_at + 1.25 < minf(events.bell_at, events.extra_at), "Flicker precedes timed scares")
+		if counts.has(events.encounter): counts[events.encounter] += 1
+	for count in counts.values(): require(count > 12, "Each encounter occurs")
+	require(paired > 0 and paired < 300, "Flicker sometimes accompanies a main encounter")
+	print("Seeded encounter distribution: ", counts, " with ", paired, " paired flickers")
 	events.begin()
 	events.extra_done = true
 	events.bell_done = false
@@ -36,6 +42,14 @@ func check():
 	events.bell_at = 0
 	events.flicker_at = 100
 	events.figure_at = 0
+	events.begin()
+	events.encounter = "cooler"
+	events.extra_done = false
+	events.ensure_closing_scare()
+	require(events.encounter == "bell" and events.bell_done and shift.service_bell.sound.playing, "An untriggered scare falls back to the bell at closing")
+	events.extra_done = true
+	events.bell_done = false
+	events.bell_at = 0
 	var notice: String = shift.notice.text
 	events.tick(0.1)
 	require(events.bell_done and shift.service_bell.sound.playing, "Unattended bell sounds")

@@ -1,6 +1,7 @@
 extends "res://coffee_station.gd"
 
 var pour_audio: AudioStreamPlayer3D
+var full_cup_target: CollisionShape3D
 
 const FLAVORS := ["Cola", "Lemon Fizz", "Dr. Paw Paw"]
 const BANDS := [Color(0.80, 0.12, 0.08), Color(0.76, 0.88, 0.12), Color(0.49, 0.16, 0.59)]
@@ -9,6 +10,12 @@ const LIQUIDS := [Color(0.10, 0.035, 0.012), Color(0.72, 0.76, 0.24), Color(0.17
 func setup(host: Node3D) -> void:
 	drink_name = "Cola"
 	super.setup(host)
+	full_cup_target = CollisionShape3D.new()
+	var pickup_box := BoxShape3D.new()
+	pickup_box.size = Vector3(0.78, 0.32, 0.55)
+	full_cup_target.shape = pickup_box
+	add_child(full_cup_target)
+	_update_pickup_target()
 	_add_holder_rims()
 	_replace_nozzles()
 	pour_audio = AudioStreamPlayer3D.new()
@@ -37,6 +44,10 @@ func setup(host: Node3D) -> void:
 		label.font_size = 32
 		label.outline_size = 5
 	apply_flavor()
+
+func _update_pickup_target() -> void:
+	if not is_instance_valid(full_cup_target): return
+	full_cup_target.disabled = state != "ready"
 
 func _add_holder_rims() -> void:
 	# The three imported stacks face outward along Z and taper toward their tips.
@@ -78,6 +89,8 @@ func apply_flavor() -> void:
 	liquid_color = LIQUIDS[index]
 	band_color = BANDS[index]
 	if is_instance_valid(machine_cup): machine_cup.position.x = (index - 1) * 0.285
+	if is_instance_valid(full_cup_target):
+		full_cup_target.position = machine_cup.position + Vector3(0, 0.13, 0.22)
 	if is_instance_valid(stream): stream.position.x = (index - 1) * 0.285
 	if is_instance_valid(pour_audio): pour_audio.position = Vector3((index - 1) * 0.285, spout_position.y, spout_position.z)
 	for node in [liquid, stream]:

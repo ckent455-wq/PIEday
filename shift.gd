@@ -103,10 +103,12 @@ var burger_station: Node3D
 var donut_fryer: Node3D
 var fries_rack: StaticBody3D
 var open_sign: StaticBody3D
+var sinks: Array[Node3D] = []
 var tutorial: CanvasLayer
 
 func setup(host: Node3D) -> void:
 	game = host
+	_setup_sinks()
 	if get_tree().root.has_meta("pie_day_wallet"):
 		earnings = get_tree().root.get_meta("pie_day_wallet")
 		get_tree().root.remove_meta("pie_day_wallet")
@@ -494,6 +496,7 @@ func close_service() -> void:
 		begin_cleanup()
 
 func _show_day_summary() -> void:
+	closing_events.ensure_closing_scare()
 	earnings.finish_day()
 	_update_cash_display()
 	if earnings.grandpa.is_dead():
@@ -541,6 +544,22 @@ func _tag_pies() -> void:
 	for row in range(4):
 		for column in range(3):
 			_label(interior, PIE_NAMES[column].to_upper(), Vector3(0.68 + column * 0.56, 0.17 + row * 0.52, -8.91), 0.0012)
+
+func _setup_sinks() -> void:
+	var faucet := preload("res://diner_kitchen_sink.gd")
+	var kitchen := faucet.new()
+	add_child(kitchen)
+	sinks.append(kitchen)
+	var drain := Vector3(-1.702, 0.890, -8.645)
+	kitchen.setup(Vector3(-1.702, 1.657, -8.645), drain, Vector3(-1.70, 1.28, -8.58), Vector3(0.85, 0.76, 0.52))
+	kitchen.tag_target(game.find_child("buddle", true, false))
+	kitchen.add_drain(drain)
+	# These three basins share a single counter mesh, so each gets its own ray target.
+	for x in [-9.7117, -8.5389, -7.4074]:
+		var bathroom := faucet.new()
+		add_child(bathroom)
+		sinks.append(bathroom)
+		bathroom.setup(Vector3(x, 1.494, -8.60), Vector3(x, 0.906, -8.60), Vector3(x, 1.30, -8.58), Vector3(1.05, 0.66, 0.92))
 
 func _setup_donut_case() -> void:
 	var case_light := OmniLight3D.new()
@@ -1046,6 +1065,7 @@ func action_prompt(node: Node) -> String:
 		"burger_topping": return burger_station.topping_prompt(int(node.get_meta("topping_index")))
 		"freezer_tomato", "freezer_onion", "freezer_lettuce", "freezer_cheese": return burger_station.produce_box_prompt(int(node.get_meta("topping_index")))
 		"burger_grill", "burger_prep", "burger_raw": return burger_station.prompt(action)
+		"sink": return node.get_meta("sink").prompt()
 		"open_sign": return open_sign.prompt()
 		"donut_fryer": return donut_fryer.prompt(node)
 		"frozen_fries": return "[E] Take frozen fries" if phase in ["waiting", "arriving"] or is_practicing() else "Frozen fries · cook to order"
@@ -1102,6 +1122,9 @@ func interact(node: Node) -> void:
 		maintenance.repair(appliance)
 		return
 	match action:
+		"sink":
+			var sink: Node3D = node.get_meta("sink")
+			sink.set_running(not sink.running)
 		"corpse": corpses.grab(node)
 		"pistol": pistol.take()
 		"pistol_drawer": pistol.set_drawer_open(not pistol.drawer_open)

@@ -36,7 +36,10 @@ func check():
 			match i:
 				0: assert(game.shift.service_bell.sound.playing)
 				1: assert(events.flicker_done and events.flicker_time >= 0)
-				3: assert(events.extra_done and events.effect_audio.playing)
+				3:
+					assert(not events.extra_done and not events.effect_audio.playing)
+					events.on_mopping_started("bathroom")
+					assert(events.extra_done and events.finishing_stall_scare())
 				4: assert(events.extra_done and is_instance_valid(events.opened_cooler) and events.opened_cooler.get_node("OpeningSound").playing)
 				5:
 					assert(events.extra_done and events.steps_left == 6)

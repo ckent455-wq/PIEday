@@ -11,9 +11,13 @@ config_version=5
 [application]
 
 config/name="PIEday"
-config/version="0.16.2"
+config/version="0.16.3"
 run/main_scene="res://main_menu.tscn"
 config/features=PackedStringArray("4.7")
+
+[autoload]
+
+AudioSettings="*res://audio_settings.gd"
 
 [display]
 

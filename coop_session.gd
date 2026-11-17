@@ -424,7 +424,9 @@ func _snapshot() -> Dictionary:
 	for station in [shift.coffee_station, shift.soda_station]:
 		drinks.append([station.state, station.cups_left, station.fill, station.drink_name, station.status.text])
 	var door_states := []
-	for door in game.doors: door_states.append([door.get_meta("open"), door.rotation.y])
+	for door in game.doors:
+		var sound := door.get_node_or_null("OpeningSound") as AudioStreamPlayer3D
+		door_states.append([door.get_meta("open"), door.rotation.y, sound != null and sound.bus == AudioSettings.SCARES])
 	return {
 		"scene": game.scene_file_path, "epoch": scene_epoch, "paused": get_tree().paused, "progress": _wallet_state(shift.earnings),
 		"donuts": shift.donut_fryer.snapshot(), "burger": shift.burger_station.snapshot(),
@@ -545,7 +547,11 @@ func _sync_shift(packet: PackedByteArray) -> void:
 		var opening: bool = not door.get_meta("open", false) and state.doors[i][0]
 		door.set_meta("open", state.doors[i][0])
 		door.rotation.y = state.doors[i][1]
-		if opening and door.has_node("OpeningSound"): door.get_node("OpeningSound").play()
+		if opening and door.has_node("OpeningSound"):
+			var sound := door.get_node("OpeningSound") as AudioStreamPlayer3D
+			var scare: bool = state.doors[i].size() > 2 and state.doors[i][2]
+			sound.bus = AudioSettings.SCARES if scare else AudioSettings.EFFECTS
+			sound.play()
 	var oven = shift.oven
 	var old_item: String = oven.pie_item
 	var old_elapsed: float = oven.elapsed
@@ -788,6 +794,7 @@ func _tick_guest_cleaning(delta: float) -> void:
 	if shift.tasks[guest_cleaning]:
 		guest_cleaning = ""
 		return
+	if guest_cleaning_time == 0.0: shift.closing_events.on_mopping_started(guest_cleaning)
 	guest_cleaning_time += delta
 	shift.scrubbing_audio.global_position = shift.task_nodes[guest_cleaning].global_position
 	if not shift.scrubbing_audio.playing: shift.scrubbing_audio.play()
@@ -879,7 +886,7 @@ func _capture_events() -> Dictionary:
 		if light is Light3D: light_energy.append(light.light_energy)
 	var streams := []
 	for sound in [event.effect_audio, event.monster_audio, game.shift.scrubbing_audio]:
-		streams.append([sound.playing, sound.stream.resource_path if sound.stream != null else "", sound.global_position, sound.pitch_scale])
+		streams.append([sound.playing, sound.stream.resource_path if sound.stream != null else "", sound.global_position, sound.pitch_scale, sound.volume_db, sound.get_playback_position()])
 	return {"visible": event.figure.visible, "transform": event.figure.transform, "dissolve": maxf(0.0, event.dissolve_elapsed / event.DISSOLVE_SECONDS), "lights": light_energy, "sounds": streams, "gassy_pie": event.gassy_pie.closing_state()}
 
 func _sync_events(data: Dictionary) -> void:
@@ -907,7 +914,10 @@ func _sync_events(data: Dictionary) -> void:
 			if not source[1].is_empty() and (sound.stream == null or sound.stream.resource_path != source[1]): sound.stream = load(source[1])
 			sound.global_position = source[2]
 			sound.pitch_scale = source[3]
-			if sound.stream != null and not sound.playing: sound.play()
+			if source.size() > 4: sound.volume_db = source[4]
+			if sound.stream != null and not sound.playing:
+				var position := float(source[5]) if source.size() > 5 and sound.stream == event.STALL_BANGS else 0.0
+				sound.play(position)
 		elif sound.playing: sound.stop()
 
 func _peer_disconnected(id: int) -> void:

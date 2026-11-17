@@ -21,14 +21,20 @@ var figure: Node3D
 var rng := RandomNumberGenerator.new()
 const ENCOUNTERS := ["bell", "figure", "knocks", "cooler", "footsteps", "gassy_pie"]
 const FIGURE_CHANCE := 0.20
-const FLICKER_CHANCE := (1.0 - FIGURE_CHANCE) / 6.0
+const GASSY_PIE_CHANCE := 0.25
+const FLICKER_CHANCE := 0.20
 var gassy_pie = preload("res://title_pie.gd").new()
 var extra_at := 0.0
 var extra_done := true
 var trash_audio: AudioStreamPlayer3D
 var monster_audio: AudioStreamPlayer3D
 var effect_audio: AudioStreamPlayer3D
-var bathroom_door: MeshInstance3D
+var stall_doors: Array[MeshInstance3D] = []
+var stall_motions: Dictionary = {}
+const STALL_BANGS := preload("res://assets/audio/stall_bangs.wav")
+const STALL_STRIKES := [0.0, 0.23, 0.49, 0.74, 1.01]
+const STALL_STRIKE_ORDER := [0, 2, 1, 2, 0]
+const STALL_SWINGS := [0.31, 0.38, 0.27, 0.34, 0.43]
 var opened_cooler: MeshInstance3D
 var steps_left := 0
 var step_timer := 0.0
@@ -57,6 +63,7 @@ func setup(host: Node3D) -> void:
 	add_child(gassy_pie)
 	rng.randomize()
 	effect_audio = AudioStreamPlayer3D.new()
+	effect_audio.bus = AudioSettings.SCARES
 	effect_audio.name = "ClosingEncounterSound"
 	effect_audio.unit_size = 3.0
 	effect_audio.max_distance = 15.0
@@ -70,6 +77,7 @@ func setup(host: Node3D) -> void:
 	trash_audio.volume_db = -7.0
 	add_child(trash_audio)
 	monster_audio = AudioStreamPlayer3D.new()
+	monster_audio.bus = AudioSettings.SCARES
 	monster_audio.name = "ShadowDissipationSound"
 	monster_audio.unit_size = 5.0
 	monster_audio.max_distance = 14.0
@@ -77,8 +85,7 @@ func setup(host: Node3D) -> void:
 	add_child(monster_audio)
 	for door in shift.game.doors:
 		if "Cubicles_Door" in door.name:
-			bathroom_door = door
-			break
+			stall_doors.append(door)
 	figure = Node3D.new()
 	figure.name = "YardStalker"
 	add_child(figure)
@@ -203,11 +210,15 @@ func begin() -> void:
 	_place_figure()
 	active = true
 	# Pick one main scare. The lights can flicker ahead of it.
-	if rng.randf() < FIGURE_CHANCE:
+	var roll := rng.randf()
+	if roll < FIGURE_CHANCE:
 		encounter = "figure"
+	elif roll < FIGURE_CHANCE + GASSY_PIE_CHANCE:
+		encounter = "gassy_pie"
 	else:
 		var other_encounters := ENCOUNTERS.duplicate()
 		other_encounters.erase("figure")
+		other_encounters.erase("gassy_pie")
 		encounter = other_encounters[rng.randi_range(0, other_encounters.size() - 1)]
 	var demo := preload("res://playable_demo.gd").session(self) != null
 	if demo: encounter = "figure"
@@ -246,6 +257,12 @@ func _ring_fallback() -> void:
 	shift.service_bell.play_ding(true)
 
 func reset() -> void:
+	for door in stall_motions:
+		var motion: Tween = stall_motions[door]
+		if is_instance_valid(door) and door.has_meta("tween") and door.get_meta("tween") == motion and motion.is_valid():
+			motion.kill()
+			door.rotation.y = _stall_rest_angle(door)
+	stall_motions.clear()
 	gassy_pie.hide()
 	_restore_lights()
 	if is_instance_valid(effect_audio): effect_audio.stop()
@@ -284,14 +301,54 @@ func _dismiss_figure() -> void:
 		shadow_wisps.restart()
 		shadow_wisps.emitting = true
 
+func finishing_stall_scare() -> bool:
+	return effect_audio.playing and effect_audio.stream == STALL_BANGS
+
+func on_mopping_started(task_id: String) -> void:
+	if shift.phase != "cleanup" or task_id != "bathroom" or not active or encounter != "knocks" or extra_done or stall_doors.is_empty():
+		return
+	extra_done = true
+	print("[Closing scare] Triggered: stall banging")
+	var middle := stall_doors[floori(stall_doors.size() * 0.5)]
+	_sound(STALL_BANGS, middle.global_position, 6.0)
+	for index in stall_doors.size():
+		_rattle_stall(stall_doors[index], index)
+
+func _stall_rest_angle(door: MeshInstance3D) -> float:
+	return float(door.get_meta("closed_rotation")) + (float(door.get_meta("swing_angle")) if door.get_meta("open", false) else 0.0)
+
+func _rattle_stall(door: MeshInstance3D, door_index: int) -> void:
+	if door.has_meta("tween"):
+		var previous: Tween = door.get_meta("tween")
+		if previous.is_valid():
+			previous.kill()
+	var rest := _stall_rest_angle(door)
+	var direction := signf(float(door.get_meta("swing_angle")))
+	if door.get_meta("open", false): direction *= -1.0
+	var motion := create_tween()
+	var previous_end := 0.0
+	for index in STALL_STRIKES.size():
+		if STALL_STRIKE_ORDER[index] % stall_doors.size() != door_index:
+			continue
+		var strike: float = STALL_STRIKES[index]
+		if strike > previous_end:
+			motion.tween_interval(strike - previous_end)
+		motion.tween_property(door, "rotation:y", rest + direction * STALL_SWINGS[index], 0.045).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_CUBIC)
+		motion.tween_interval(0.065)
+		motion.tween_property(door, "rotation:y", rest - direction * 0.045, 0.065)
+		motion.tween_property(door, "rotation:y", rest, 0.045)
+		previous_end = strike + 0.22
+	door.set_meta("tween", motion)
+	stall_motions[door] = motion
+
 func tick(delta: float) -> void:
-	if shift.phase != "cleanup" and not (shift.phase == "closed" and (awaiting_doorway_scare() or monster_audio.playing)):
+	if shift.phase != "cleanup" and not (shift.phase == "closed" and (awaiting_doorway_scare() or monster_audio.playing or finishing_stall_scare())):
 		if active: reset()
 		return
 	if not active: return
 	elapsed += delta
 	_tick_extra(delta)
-	if not extra_done and elapsed >= extra_at + 12.0:
+	if not extra_done and encounter != "knocks" and elapsed >= extra_at + 12.0:
 		_ring_fallback()
 	if awaiting_doorway_scare() and not figure_seen and dissolve_elapsed < 0.0 and elapsed >= figure_at:
 		_ring_fallback()
@@ -342,6 +399,10 @@ func tick(delta: float) -> void:
 				seen_seconds += delta
 				away_seconds = 0
 				figure_seen = true
+				var progress = shift.earnings.grandpa
+				if not progress.doorway_figure_seen:
+					progress.doorway_figure_seen = true
+					shift.earnings._save()
 				_dismiss_figure()
 			elif shift.game.player.global_position.distance_to(figure.global_position) < 1.2:
 				_dismiss_figure()
@@ -367,10 +428,11 @@ func _restore_lights() -> void:
 	lights.clear()
 	energies.clear()
 
-func _sound(stream: AudioStream, at: Vector3) -> void:
+func _sound(stream: AudioStream, at: Vector3, volume := -5.0) -> void:
 	effect_audio.stream = stream
 	effect_audio.global_position = at
-	effect_audio.pitch_scale = rng.randf_range(0.94, 1.06)
+	effect_audio.pitch_scale = 1.0 if stream == STALL_BANGS else rng.randf_range(0.94, 1.06)
+	effect_audio.volume_db = volume
 	effect_audio.play()
 
 func _cooler_in_view(door: MeshInstance3D, at: Vector3) -> bool:
@@ -401,12 +463,6 @@ func _tick_extra(delta: float) -> void:
 			extra_done = true
 			print("[Closing scare] Triggered: gassy_pie")
 			gassy_pie.start_closing()
-	elif encounter == "knocks" and is_instance_valid(bathroom_door):
-		var at: Vector3 = (bathroom_door.global_transform * bathroom_door.get_aabb()).get_center()
-		if player_position.distance_to(at) < 6 or (coop != null and coop.partner_target.distance_to(at) < 6):
-			extra_done = true
-			print("[Closing scare] Triggered: knocks")
-			_sound(preload("res://assets/audio/closing_knocks.wav"), at)
 	elif encounter == "cooler":
 		for door in shift.game.doors:
 			if not door.has_meta("cooler") or door.get_meta("open", false): continue
@@ -416,7 +472,7 @@ func _tick_extra(delta: float) -> void:
 				extra_done = true
 				print("[Closing scare] Triggered: cooler")
 				opened_cooler = door
-				shift.game._set_door_open(door, true)
+				shift.game._set_door_open(door, true, true)
 				break
 	elif encounter == "footsteps" and (player_position.z > -14 or (coop != null and coop.partner_target.z > -14)):
 		var camera: Camera3D = shift.game.camera

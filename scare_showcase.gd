@@ -1,7 +1,7 @@
 extends CanvasLayer
 
 const SCARES := ["bell", "flicker", "figure", "knocks", "cooler", "footsteps"]
-const TITLES := ["Bell rings by itself", "Lights flicker (currently silent)", "Monster in the back doorway", "Bathroom stall knocking", "Cooler opens while you watch", "Footsteps in the empty diner"]
+const TITLES := ["Bell rings by itself", "Lights flicker (currently silent)", "Monster in the back doorway", "Bathroom stall banging", "Cooler opens while you watch", "Footsteps in the empty diner"]
 var game: Node3D
 var current := 0
 var heading: Label
@@ -77,10 +77,8 @@ func select_scare(index: int) -> void:
 			_place(Vector3(0.7, 0.03, -18), game.find_child("OutdoorDumpster", true, false).global_position + Vector3(0, 0.65, 0))
 			hint = "E / click: dump the trash. Turn toward the diner to see and hear the monster dissolve."
 		3:
-			var door: MeshInstance3D = events.bathroom_door
-			var at: Vector3 = (door.global_transform * door.get_aabb()).get_center()
-			_place(Vector3(at.x + 1, 0.03, at.z + 1), at)
-			hint = "Listen for three knocks from the stall door in 1.5 seconds."
+			_place(Vector3(-7.15, 0.03, -9.36), Vector3(-7.15, 0.75, -10.48))
+			hint = "Aim at the bathroom floor marker and hold E to start mopping."
 		4:
 			var cooler: MeshInstance3D
 			for door in game.doors:

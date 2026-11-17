@@ -65,6 +65,7 @@ func setup(host: Node3D) -> void:
 	add_child(sound)
 
 func play_ding(carry_through_diner := false) -> void:
+	sound.bus = AudioSettings.SCARES if carry_through_diner else AudioSettings.EFFECTS
 	sound.attenuation_model = AudioStreamPlayer3D.ATTENUATION_DISABLED if carry_through_diner else AudioStreamPlayer3D.ATTENUATION_INVERSE_DISTANCE
 	sound.max_distance = 0.0 if carry_through_diner else 12.0
 	sound.play()

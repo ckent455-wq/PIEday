@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.16.3
+
+- Add separate, saved Music and Sound Effects sliders to the main and pause menus.
+- Keep closing scare audio independent of the Sound Effects slider.
+- Trigger loud, staggered bathroom stall slams when mopping begins.
+- Raise the gassy pie to a 25% closing selection chance and paired light flickers to 20%.
+- Unlock Grandpa's story about Eddie after the player sees the dumpster demon.
+
+
 ## 0.16.2
 
 - Add the Traingle Studios star-impact splash, scattering title letters, and a fade into the main menu.

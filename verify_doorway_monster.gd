@@ -31,6 +31,7 @@ func check():
 	assert(shift.phase == "closed" and events.awaiting_doorway_scare(), "Last chore keeps encounter alive")
 	events.tick(.1)
 	assert(events.figure.visible and events.figure.global_position.z > -15, "Monster appears in doorway behind player")
+	assert(not shift.earnings.grandpa.doorway_figure_seen, "An unseen figure does not unlock Grandpa's story")
 	assert(not events._dumpster_bounds().intersects(events._figure_bounds(events.figure.global_position)))
 	var saved = preload("res://save_states.gd").capture(game)
 	assert(saved.events.trash_disposed and saved.events.figure_visible)
@@ -40,6 +41,15 @@ func check():
 	events.tick(.4)
 	assert(events.monster_audio.playing and events.monster_audio.stream.resource_path.ends_with("doorway_demon_scream.wav"), "Scream starts on sight as the figure dissipates")
 	assert(events.figure_seen and events.figure.visible, "Visible on turning back to the door")
+	var progress = shift.earnings.grandpa
+	assert(progress.doorway_figure_seen and not progress.doorway_story_told)
+	var config := ConfigFile.new()
+	progress.write_config(config)
+	var restored = preload("res://grandpa_progress.gd").new()
+	restored.read_config(config)
+	assert(restored.visit_dialogue(0).any(func(line): return "night cook named Eddie" in line))
+	restored.finish_visit_conversation()
+	assert(not restored.visit_dialogue(0).any(func(line): return "night cook named Eddie" in line))
 	if DisplayServer.get_name() != "headless":
 		await create_timer(.2).timeout
 		await RenderingServer.frame_post_draw

@@ -12,6 +12,8 @@ var last_setback_id := ""
 var setback_history: Array = []
 var last_discussed_setback_day := -100
 var last_witnessed_mistreatment_day := -100
+var doorway_figure_seen := false
+var doorway_story_told := false
 var evening_pending := false
 var visit_in_progress := false
 var next_visit_day := 1
@@ -119,6 +121,12 @@ func visit_dialogue(cash: int) -> Array[String]:
 		lines.append("One night I heard the back door open while I was standing right beside it. I could still feel the key in my pocket. Finish up and come home, all right?")
 	else:
 		lines.append(GREETINGS[stage])
+	if doorway_figure_seen and not doorway_story_told:
+		lines.append("You saw somebody in the back doorway after you threw the bag in? Before you tell me anything else, kiddo, did you hear him breathe? I never did. Just the scream.")
+		lines.append("There was a night cook named Eddie. He'd take the trash out last and knock twice so I'd let him in. The night the back steps caught fire, I heard two knocks while I was on the phone with the fire department. By the time I opened the door, there was nobody there.")
+		lines.append("They found his apron by the dumpster. I took it home to wash it for his wife. Next morning it was hanging on its hook in the kitchen, dry as a bone. When I got home that night, it was still soaking in my sink.")
+		lines.append("About a week later, I threw out the trash and turned around. Someone was holding the door open with Eddie's good hand. The other one was tucked up under his chin. I said his name. That was when he screamed.")
+		lines.append("I stopped saying his name after that. Then one night, from inside the dumpster, I heard him say mine. He said it so softly I had to lean in. Kiddo, if you hear your name out there, keep walking.")
 	# Incidents wait for a complete conversation, including after skipped visits.
 	if last_setback_day > last_discussed_setback_day:
 		match last_setback_id:
@@ -146,6 +154,7 @@ func visit_dialogue(cash: int) -> Array[String]:
 
 func finish_visit_conversation() -> void:
 	last_discussed_setback_day = last_setback_day
+	if doorway_figure_seen: doorway_story_told = true
 
 func read_config(config: ConfigFile) -> void:
 	days = maxi(0,int(config.get_value("grandpa","days",0)))
@@ -156,6 +165,8 @@ func read_config(config: ConfigFile) -> void:
 	last_setback_id = str(config.get_value("grandpa","last_setback_id",""))
 	last_discussed_setback_day = int(config.get_value("grandpa","last_discussed_setback_day",-100))
 	last_witnessed_mistreatment_day = int(config.get_value("grandpa","last_witnessed_mistreatment_day",-100))
+	doorway_figure_seen = bool(config.get_value("grandpa","doorway_figure_seen",false))
+	doorway_story_told = bool(config.get_value("grandpa","doorway_story_told",false))
 	evening_pending = bool(config.get_value("grandpa","evening_pending",false))
 	visit_in_progress = bool(config.get_value("grandpa","visit_in_progress",false))
 	next_visit_day = maxi(1,int(config.get_value("grandpa","next_visit_day",1)))
@@ -182,6 +193,8 @@ func read_config(config: ConfigFile) -> void:
 func write_config(config: ConfigFile) -> void:
 	config.set_value("grandpa","campaign_won",campaign_won)
 	config.set_value("grandpa","victory_day",victory_day)
+	config.set_value("grandpa","doorway_figure_seen",doorway_figure_seen)
+	config.set_value("grandpa","doorway_story_told",doorway_story_told)
 	for key in ["days","health","death_day","setback_seed","last_setback_day","last_setback_id","last_discussed_setback_day","last_witnessed_mistreatment_day","evening_pending","visit_in_progress","next_visit_day","last_visit_day","last_visit_choice_day","setback_history"]:
 		config.set_value("grandpa",key,get(key))
 	for retired in ["letters","next_letter_day","funded_announced"]:

@@ -116,6 +116,7 @@ func _ready() -> void:
 		foot.size = Vector3(0.12, 0.065, 0.18)
 		_add_part(hip, foot, shoe, Vector3(0, -0.29, 0.04))
 		var plop := AudioStreamPlayer.new()
+		if closing_encounter: plop.bus = AudioSettings.SCARES
 		plop.stream = muffled_step
 		plop.volume_db = FOOTSTEP_VOLUME_DB
 		plop.pitch_scale = 0.94 if side < 0.0 else 1.06

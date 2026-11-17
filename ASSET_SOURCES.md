@@ -122,3 +122,5 @@ Long Slide Magnum Pistol from 3D Low-Poly Guns Pack 2 by Polyy (https://polyy.ai
 - **Kitchen faucet** uses a crossfaded mono loop from the public HQ preview of FillSoko’s CC0 [Faucet recording](https://freesound.org/people/FillSoko/sounds/257959/).
 
 - **Doorway demon scream** uses Breviceps’s CC0 [Jumpscare Scream](https://freesound.org/people/Breviceps/sounds/587354/). The public HQ preview was trimmed to the scream onset and converted to mono for spatial playback.
+
+- **Bathroom stall bangs** use kyles’s CC0 [door metal knock heavy bang from other side](https://freesound.org/people/kyles/sounds/637480/). Five impacts from the public HQ preview were cut to the stall animation timing, level-matched, and converted to mono.

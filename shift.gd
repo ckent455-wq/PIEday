@@ -512,7 +512,7 @@ func _show_day_summary() -> void:
 		preload("res://hospital_travel.gd").go(game,"res://grandpa_victory.tscn",earnings)
 		return
 	phase = "closed"
-	if not closing_events.awaiting_doorway_scare(): closing_events.reset()
+	if not closing_events.awaiting_doorway_scare() and not closing_events.finishing_stall_scare(): closing_events.reset()
 	arrival_delay = 0
 	_message("SHIFT COMPLETE! Sales: $%d | Tips: $%d | Service: $%d | Streak: $%d\nClosing bonus: $%d | Robbery loss: $%d | Today: $%d | Cash: $%d\n%s" % [earnings.sales, earnings.tips, earnings.service_rewards, earnings.streak_rewards, earnings.closing_bonus, earnings.robbery_losses, earnings.day_total(), earnings.cash, ("HOSPITAL VISITING HOURS ARE OPEN. Visit Grandpa or go home using the diner exit." if earnings.grandpa.visit_available() else "Use the diner exit to head home for the night.")])
 	notice_time = 0
@@ -626,6 +626,10 @@ func _make_task(id: String, title: String, location: Vector3) -> void:
 	collider.shape = shape
 	collider.position.y = 0.2
 	node.add_child(collider)
+	if id == "bathroom":
+		# Leave the stall doors in view when aiming at the mop spot.
+		shape.size.y = 0.92
+		collider.position.y = 0.46
 	if id == "trash":
 		var bag: Node3D = preload("res://assets/trashbag/trashbag_a.glb").instantiate()
 		bag.name = "MorningTrashBag"
@@ -1029,6 +1033,7 @@ func _update_cleaning(delta: float) -> void:
 	if cleaning_task != id:
 		cleaning_task = id
 		cleaning_progress = 0
+	if cleaning_progress == 0.0: closing_events.on_mopping_started(id)
 	scrubbing_audio.global_position = target.global_position + Vector3(0, 0.1, 0)
 	if not scrubbing_audio.playing: scrubbing_audio.play()
 	cleaning_progress += delta

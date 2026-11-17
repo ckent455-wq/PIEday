@@ -324,10 +324,12 @@ func _toggle_door(door: MeshInstance3D) -> void:
 	else:
 		_set_door_open(door, opened)
 
-func _set_door_open(door: MeshInstance3D, opened: bool) -> void:
+func _set_door_open(door: MeshInstance3D, opened: bool, scare := false) -> void:
 	if opened and not door.get_meta("open", false) and door.has_meta("cooler"):
 		var sound := door.get_node_or_null("OpeningSound") as AudioStreamPlayer3D
-		if sound: sound.play()
+		if sound:
+			sound.bus = AudioSettings.SCARES if scare else AudioSettings.EFFECTS
+			sound.play()
 	if door.has_meta("tween"):
 		var old_tween: Tween = door.get_meta("tween")
 		if old_tween.is_valid():

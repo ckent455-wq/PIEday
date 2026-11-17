@@ -14,10 +14,12 @@ func _loop(source: AudioStreamWAV) -> AudioStreamWAV:
 	return result
 
 func _ready() -> void:
+	bus = AudioSettings.MUSIC
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	name = "DinerMusic"
 	stream = _loop(preload("res://assets/music/counter_service.wav"))
 	night_track = AudioStreamPlayer.new()
+	night_track.bus = AudioSettings.MUSIC
 	night_track.name = "AfterHoursMusic"
 	night_track.stream = _loop(preload("res://assets/music/last_customer.wav"))
 	night_track.volume_db = -60.0

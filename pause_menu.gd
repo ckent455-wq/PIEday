@@ -5,6 +5,8 @@ var resume_button: Button
 var restart_button: Button
 var quit_button: Button
 var restart_dialog: ConfirmationDialog
+var audio_dialog: AcceptDialog
+var audio_button: Button
 var is_open := false
 var saves: CanvasLayer
 var coop: Node
@@ -56,6 +58,14 @@ func _ready() -> void:
 	resume_button = _button(column, "Resume")
 	var save_button := _button(column,"Save Game")
 	var load_button := _button(column,"Load Game")
+	audio_button = _button(column, "Audio Settings")
+	audio_dialog = preload("res://audio_settings_dialog.gd").new()
+	audio_dialog.theme = overlay.theme
+	add_child(audio_dialog)
+	audio_button.pressed.connect(audio_dialog.show_settings)
+	audio_dialog.visibility_changed.connect(func(): panel.visible = not audio_dialog.visible)
+	audio_dialog.confirmed.connect(audio_button.grab_focus)
+	audio_dialog.canceled.connect(audio_button.grab_focus)
 	restart_button = _button(column, "Restart Day")
 	quit_button = _button(column, "Quit to Desktop")
 	# Resume after the button event finishes so its click cannot pick up an item.
@@ -113,7 +123,10 @@ func _input(event: InputEvent) -> void:
 		# The intro's fade also pauses the scene; do not interrupt that transition.
 		if get_tree().paused and not is_open and coop == null: return
 		get_viewport().set_input_as_handled()
-		if restart_dialog.visible:
+		if audio_dialog.visible:
+			audio_dialog.hide()
+			audio_button.grab_focus()
+		elif restart_dialog.visible:
 			restart_dialog.hide()
 			resume_button.grab_focus()
 		elif is_open:
@@ -136,6 +149,7 @@ func pause_game() -> void:
 
 func resume_game() -> void:
 	if not is_open: return
+	audio_dialog.hide()
 	restart_dialog.hide()
 	is_open = false
 	overlay.hide()

@@ -93,6 +93,7 @@ func _ready() -> void:
 	add_child(camera)
 	_build_ui()
 	music = AudioStreamPlayer.new()
+	music.bus = AudioSettings.MUSIC
 	var track: AudioStreamWAV = preload("res://assets/music/grandpas_home.wav").duplicate()
 	track.loop_mode = AudioStreamWAV.LOOP_FORWARD
 	track.loop_end = roundi(track.get_length() * track.mix_rate)

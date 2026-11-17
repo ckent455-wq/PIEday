@@ -58,6 +58,12 @@ func _ready() -> void:
 	saves.setup(self)
 	_add_button(column, "Load Game", func(): saves.open(false))
 	_add_button(column, "Online Co-op", func(): _open("res://coop_lobby.tscn"))
+	var audio_dialog := preload("res://audio_settings_dialog.gd").new()
+	audio_dialog.theme = theme
+	add_child(audio_dialog)
+	var audio_button := _add_button(column, "Audio Settings", audio_dialog.show_settings)
+	audio_dialog.confirmed.connect(audio_button.grab_focus)
+	audio_dialog.canceled.connect(audio_button.grab_focus)
 	_add_button(column, "Quit", func(): get_tree().quit())
 	var version := UI.label("v" + str(ProjectSettings.get_setting("application/config/version")), 14, UI.MUTED)
 	version.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER

@@ -3,6 +3,7 @@ extends AudioStreamPlayer
 var fade: Tween
 
 func _ready() -> void:
+	bus = AudioSettings.MUSIC
 	name = "HospitalMusic"
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	var loop: AudioStreamWAV = preload("res://assets/music/still_here.wav").duplicate()

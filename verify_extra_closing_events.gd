@@ -24,19 +24,34 @@ func check():
 	shift.begin_cleanup()
 	var events = shift.closing_events
 	select(events, "knocks")
-	require(is_instance_valid(events.bathroom_door), "Bathroom source exists")
-	var at: Vector3 = (events.bathroom_door.global_transform * events.bathroom_door.get_aabb()).get_center()
-	game.player.global_position = at + Vector3(1, 0, 1)
-	events.tick(0.1)
-	require(events.extra_done and events.effect_audio.playing, "Knocking plays near bathroom")
-	require(events.effect_audio.global_position.distance_to(at) < 0.01, "Knocking comes from actual cubicle door")
+	require(events.stall_doors.size() == 3, "All three stall doors are connected")
+	events.tick(30.0)
+	events.on_mopping_started("kitchen")
+	require(not events.extra_done and not events.effect_audio.playing, "No bangs from waiting or mopping the kitchen")
+	events.on_mopping_started("bathroom")
+	require(events.extra_done and events.finishing_stall_scare(), "Bangs start with bathroom mopping")
+	for motion in events.stall_motions.values():
+		motion.pause()
+		motion.custom_step(0.075)
+	for i in events.stall_doors.size():
+		var door: MeshInstance3D = events.stall_doors[i]
+		var moved := absf(door.rotation.y - events._stall_rest_angle(door)) > 0.2
+		require(moved == (i == 0), "Only the first struck door moves on the first bang")
+	for motion in events.stall_motions.values():
+		motion.custom_step(0.23)
+	var second: MeshInstance3D = events.stall_doors[2]
+	require(absf(second.rotation.y - events._stall_rest_angle(second)) > 0.2, "The next bang moves a different door")
+	for motion in events.stall_motions.values():
+		motion.custom_step(1.1)
+	for door in events.stall_doors:
+		require(is_equal_approx(door.rotation.y, events._stall_rest_angle(door)), "Every door settles at its original open or closed angle")
 	select(events, "cooler")
 	var cooler: MeshInstance3D
 	for door in game.doors:
 		if door.has_meta("cooler"):
 			game._set_door_open(door, false)
 			cooler = door
-	at = (cooler.global_transform * cooler.get_aabb()).get_center()
+	var at: Vector3 = (cooler.global_transform * cooler.get_aabb()).get_center()
 	game.player.global_position = Vector3(at.x, 0.03, at.z - 2.5)
 	game.face_point(game.camera.global_position + Vector3(0, 0, -1))
 	await physics_frame
@@ -66,5 +81,5 @@ func check():
 	shift.begin_prep()
 	require(not events.active and not events.effect_audio.playing and events.steps_left == 0, "Effects stop on next day")
 	require(not shift.tasks.values().has(false), "Encounters do not add or block chores")
-	if failures == 0: print("PASS: spatial bathroom knocks, cooler opening and player closing, six moving footsteps, next-day cleanup")
+	if failures == 0: print("PASS: bathroom-mop bangs and door motion, cooler opening and player closing, six moving footsteps, next-day cleanup")
 	quit(1 if failures else 0)

@@ -28,12 +28,16 @@ func run():
 		for sample in 10: assert(not line._roll_robber())
 	game.player.position=game.spawn_point
 	assert(line._roll_robber(),"Accepted order at the front counter permits a robbery")
+	line.robbery_started_this_shift=true
+	assert(not line._roll_robber(),"An eligible arrival cannot add a second robbery in the same shift")
+	line.robbery_started_this_shift=false
 	shift.closing_time=true
 	assert(not line._roll_robber(),"No new robberies after closing")
 	shift.closing_time=false
 	line.next_arrival=0
 	shift._process(.016)
 	assert(shift.refusal_required() and shift.phase=="arriving")
+	assert(line.robbery_started_this_shift, "The first robbery uses up this shift's robbery roll")
 	game.player.position=Vector3(4.25,.03,-12.3)
 	advance(shift,15)
 	assert(not shift.walking and shift.phase=="arriving" and not shift.dialogue.is_open,"Demand waits when staff leave the counter before arrival")

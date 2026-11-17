@@ -27,6 +27,7 @@ var leaving := false
 var acting_guest := false
 var ui_applying := false
 var wallet: RefCounted
+var fresh_campaign := false
 var guest_trash := false
 var guest_table := -1
 var guest_body: Node3D
@@ -83,7 +84,7 @@ func _peer_connected(id: int) -> void:
 	if not hosting: return
 	partner_id = id
 	_check_connection_timeout()
-	if wallet == null: wallet = preload("res://earnings.gd").new(true, CAMPAIGN_PATH)
+	if wallet == null: wallet = preload("res://earnings.gd").new(not fresh_campaign, CAMPAIGN_PATH)
 	var progress := _wallet_state(wallet)
 	progress["character"] = Vector3i(character_model, character_apron, character_face)
 	progress["character_name"] = clean_name(character_name)
@@ -107,6 +108,10 @@ func _join_character(model: int, apron: int, face: int, player_name: String) -> 
 	if not hosting or leaving or character_received or multiplayer.get_remote_sender_id() != partner_id: return
 	character_received = true
 	_set_partner_character(model, apron, face, player_name)
+	if fresh_campaign:
+		fresh_campaign = false
+		wallet.save_enabled = true
+		wallet._save()
 	_load_diner.call_deferred()
 
 func _set_partner_character(model: int, apron: int, face: int, player_name: String) -> void:

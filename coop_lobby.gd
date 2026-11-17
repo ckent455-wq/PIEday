@@ -3,11 +3,15 @@ extends Control
 const UI := preload("res://diner_ui.gd")
 const SESSION := preload("res://coop_session.gd")
 const UNIFORM := preload("res://coop_uniform.gd")
+const DISCOVERY := preload("res://coop_lan_discovery.gd")
 const PROFILE_PATH := "user://coop_character.cfg"
 var status: Label
 var address: LineEdit
 var host_button: Button
+var new_game_button: Button
 var join_button: Button
+var find_button: Button
+var nearby_menu: PopupMenu
 var name_field: LineEdit
 var model_choice: OptionButton
 var face_choice: OptionButton
@@ -15,6 +19,8 @@ var apron_choice: OptionButton
 var preview_stage: Node3D
 var preview_actor: Node3D
 var preview_name: Label
+var discovery: RefCounted
+var nearby_hosts := {}
 
 func _ready() -> void:
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
@@ -45,14 +51,36 @@ func _ready() -> void:
 	model_choice = _choice(column, "Character", ["Character 1", "Character 2"])
 	face_choice = _choice(column, "Face", [])
 	apron_choice = _choice(column, "Apron", UNIFORM.APRONS)
-	host_button = _button(column, "Host Shift", func(): _connect_game(true))
+	var host_options := HBoxContainer.new()
+	column.add_child(host_options)
+	host_button = _button(host_options, "Host / Continue", func(): _connect_game(true))
+	host_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	var new_game := ConfirmationDialog.new()
+	new_game.title = "Start a New Co-op Game?"
+	new_game.dialog_text = "Start from Day 1 with $0 and Grandpa at full health?\nThe current co-op autosave is replaced when your partner joins. Manual saves are kept."
+	new_game.ok_button_text = "Start New Game"
+	new_game.theme = theme
+	add_child(new_game)
+	new_game.confirmed.connect(func(): _connect_game(true, true))
+	new_game_button = _button(host_options, "New Co-op Game", func(): new_game.popup_centered())
+	new_game_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	find_button = _button(column, "Find Local Games", _find_local_games)
+	nearby_menu = PopupMenu.new()
+	nearby_menu.theme = theme
+	add_child(nearby_menu)
+	nearby_menu.index_pressed.connect(func(index: int):
+		_connect_game(false, false, str(nearby_menu.get_item_metadata(index)))
+	)
+	var direct_join := HBoxContainer.new()
+	column.add_child(direct_join)
 	address = LineEdit.new()
 	address.placeholder_text = "Host IP address"
+	address.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	address.custom_minimum_size.y = 42
 	address.text_submitted.connect(func(_value): _connect_game(false))
-	column.add_child(address)
-	join_button = _button(column, "Join Shift", func(): _connect_game(false))
-	status = UI.label("Direct connection over UDP port %d." % SESSION.PORT, 16, UI.MUTED)
+	direct_join.add_child(address)
+	join_button = _button(direct_join, "Join by IP", func(): _connect_game(false))
+	status = UI.label("Find hosts on the same Wi-Fi or LAN.", 16, UI.MUTED)
 	status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	if get_tree().root.has_meta("coop_status"):
 		status.text = get_tree().root.get_meta("coop_status")
@@ -171,14 +199,15 @@ func _button(parent: Control, caption: String, pressed: Callable) -> Button:
 	button.pressed.connect(pressed)
 	return button
 
-func _connect_game(hosting: bool) -> void:
-	if SESSION.active(self) != null: return
-	var target := address.text.strip_edges()
+func _connect_game(hosting: bool, fresh_campaign := false, discovered_address := "") -> void:
+	if SESSION.active(self) != null or discovery != null: return
+	var target := address.text.strip_edges() if discovered_address.is_empty() else discovered_address
 	if not hosting and target.is_empty():
-		status.text = "Enter the host's IP address."
+		status.text = "Enter the host's IP address or find a local game."
 		return
 	var session := SESSION.new()
 	session.name = "CoopSession"
+	session.fresh_campaign = fresh_campaign
 	_write_profile()
 	session.character_name = SESSION.clean_name(name_field.text)
 	session.character_model = model_choice.selected
@@ -190,8 +219,7 @@ func _connect_game(hosting: bool) -> void:
 		session.queue_free()
 		status.text = "Could not %s: %s" % ["host" if hosting else "join", error_string(error)]
 		return
-	host_button.disabled = true
-	join_button.disabled = true
+	_set_connection_buttons_disabled(true)
 	model_choice.disabled = true
 	face_choice.disabled = true
 	apron_choice.disabled = true
@@ -201,9 +229,62 @@ func _connect_game(hosting: bool) -> void:
 		for ip in IP.get_local_addresses():
 			if ip.is_valid_ip_address() and ":" not in ip and not ip.begins_with("127.") and not ip.begins_with("169.254."):
 				addresses.append(ip)
-		status.text = "Waiting for your partner on UDP %d.\nLocal addresses: %s" % [SESSION.PORT, ", ".join(addresses)]
+		discovery = DISCOVERY.new()
+		var host_name := SESSION.DEFAULT_NAME if session.character_name.is_empty() else session.character_name
+		var discovery_error: Error = discovery.host(host_name)
+		var invite := "Your partner can select %s in Find Local Games.\n" % host_name
+		if discovery_error != OK:
+			_stop_discovery()
+			invite = "Local discovery is unavailable.\n"
+		status.text = invite + "Waiting for your partner on UDP %d.\nLocal addresses: %s" % [SESSION.PORT, ", ".join(addresses)]
 	else:
 		status.text = "Connecting to %s…" % target
+
+func _find_local_games() -> void:
+	if SESSION.active(self) != null or discovery != null: return
+	nearby_hosts.clear()
+	discovery = DISCOVERY.new()
+	var error: Error = discovery.find_hosts()
+	if error != OK:
+		_stop_discovery()
+		status.text = "Could not start the local search: %s" % error_string(error)
+		return
+	_set_connection_buttons_disabled(true)
+	status.text = "Looking for games on your local network…"
+
+func _process(delta: float) -> void:
+	if discovery == null: return
+	var found: Dictionary = discovery.tick(delta)
+	if discovery.hosting: return
+	nearby_hosts.merge(found, true)
+	if discovery.seconds_left > 0.0: return
+	_stop_discovery()
+	_set_connection_buttons_disabled(false)
+	if nearby_hosts.is_empty():
+		status.text = "No local games found. Have your partner host on the same network."
+		return
+	nearby_menu.clear()
+	var names := nearby_hosts.values()
+	for ip in nearby_hosts:
+		var label: String = nearby_hosts[ip]
+		if names.count(label) > 1: label += " · " + ip
+		nearby_menu.add_item(label)
+		nearby_menu.set_item_metadata(nearby_menu.item_count - 1, ip)
+	status.text = "Select a host to join."
+	nearby_menu.popup_centered(Vector2i(260, 0))
+	nearby_menu.set_focused_item(0)
+
+func _set_connection_buttons_disabled(disabled: bool) -> void:
+	for button in [host_button, new_game_button, join_button, find_button]:
+		button.disabled = disabled
+
+func _stop_discovery() -> void:
+	if discovery != null:
+		discovery.close()
+		discovery = null
+
+func _exit_tree() -> void:
+	_stop_discovery()
 
 func _back() -> void:
 	var session = SESSION.active(self)

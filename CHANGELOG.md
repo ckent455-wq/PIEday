@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.16.4
+
+- Find and join a co-op host by name on the same local network.
+- Start a fresh co-op campaign from the lobby, with a separate Host / Continue option.
+- Cap random robberies at one per shift and preserve the cap in manual saves.
+
+
 ## 0.16.3
 
 - Add separate, saved Music and Sound Effects sliders to the main and pause menus.

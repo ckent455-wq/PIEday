@@ -16,13 +16,14 @@ const LEGACY_ENCOUNTERS := {"adult_unclothed": "robber_1", "adult_female_uncloth
 var last_model := -1
 var nude_chance := 0.08
 var last_was_nude := false
+var robbery_started_this_shift := false
 var force_nude_next := false
 var force_nude_model := ""
 
 func _roll_robber() -> bool:
 	# Explicit practice/test requests bypass scheduling; random encounters require
 	# an accepted order and a staff member physically at the service counter.
-	return force_nude_next or (shift.robbery.can_start_encounter() and not last_was_nude and randf() < nude_chance)
+	return force_nude_next or (not robbery_started_this_shift and shift.robbery.can_start_encounter() and not last_was_nude and randf() < nude_chance)
 
 func make_actor(at: Vector3, saved_model := "") -> Node3D:
 	var actor := Node3D.new()

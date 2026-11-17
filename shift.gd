@@ -802,6 +802,7 @@ func start_shift(use_random_orders := true) -> bool:
 	service_seconds = 0
 	payment_label.visible = false
 	customers_this_shift = 0
+	customer_line.robbery_started_this_shift = false
 	arrival_delay = 0.25
 	_message("SHIFT OPEN! A customer is on the way. Take their order at the counter.")
 	return true
@@ -833,6 +834,7 @@ func _spawn_customer() -> void:
 	_begin_customer_arrival(actor)
 
 func _begin_robbery_arrival(actor: Node3D) -> void:
+	customer_line.robbery_started_this_shift = true
 	if is_instance_valid(speech): speech.hide()
 	customer_line.evacuate(false, true)
 	dine_in.close_for_night(true)

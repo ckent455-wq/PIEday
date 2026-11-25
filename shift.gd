@@ -91,6 +91,7 @@ var notice_panel: PanelContainer
 var payment_panel: PanelContainer
 var order_panel: PanelContainer
 var order_text: RichTextLabel
+var checklist_styled := false
 var order_heading: Label
 var dialogue: CanvasLayer
 var restock: Node3D
@@ -410,9 +411,24 @@ func _build_hud() -> void:
 func _refresh_hud() -> void:
 	notice_panel.visible = not notice.text.is_empty() and not (is_instance_valid(dialogue) and dialogue.is_open)
 	payment_panel.visible = payment_label.visible
-	order_panel.visible = (phase in ["arriving", "waiting", "leaving", "cleanup", "robbery_cleanup"] or refusal_required()) and not (is_instance_valid(dialogue) and dialogue.is_open)
+	order_panel.visible = (phase in ["arriving", "waiting", "leaving", "cleanup", "robbery_cleanup"] or (phase == "prep" and not is_practicing()) or refusal_required()) and not (is_instance_valid(dialogue) and dialogue.is_open)
+	_style_checklist(phase == "cleanup" or (phase == "prep" and not is_practicing()))
 	var lines := PackedStringArray()
-	if phase == "cleanup":
+	if phase == "prep" and not is_practicing():
+		order_heading.text = "OPENING CHECKLIST"
+		if maintenance.is_broken("fryer"):
+			lines.append("[color=#ada89d]Donut prep waived: fryer out of order.[/color]")
+		else:
+			for index in DONUTS.TYPES.size():
+				var stocked: bool = donut_fryer.stock[index] > 0
+				var title: String = "Stock " + DONUTS.TYPES[index].to_lower() + "s"
+				lines.append(("[color=#a9c6a0]✓  " + title + "[/color]") if stocked else "○  " + title)
+		for index in burger_station.PRODUCE_INDICES:
+			var title: String = "Restock " + {0:"cheese",1:"lettuce",2:"tomatoes",3:"onions"}[index]
+			lines.append(("[color=#a9c6a0]✓  " + title + "[/color]") if burger_station._produce_stocked(index) else "○  " + title)
+		var ready: bool = (donut_fryer.prepared() or maintenance.is_broken("fryer")) and burger_station.missing_produce().is_empty()
+		lines.append("\n[color=#d5af72]○  Switch on the OPEN sign[/color]" if ready else "\n[color=#ada89d]Bring toppings from the freezer to their kitchen trays.[/color]")
+	elif phase == "cleanup":
 		order_heading.text = "CLOSING CHECKLIST"
 		for id in ["bathroom", "kitchen", "tables", "trash", "restock"]:
 			var title: String = {"bathroom": "Clean the bathroom", "kitchen": "Clean the kitchen", "tables": "Clear table trash", "trash": "Take out the trash", "restock": "Replenish cooler"}[id]
@@ -444,6 +460,32 @@ func _refresh_hud() -> void:
 		order_heading.text = "COUNTER"
 		lines.append(("Speak to " + str(customer.get_meta("display_name", "the customer")) + ".") if phase == "waiting" and is_instance_valid(customer) else "Waiting for the next customer.")
 	order_text.text = "\n".join(lines)
+
+func _style_checklist(enabled: bool) -> void:
+	if checklist_styled == enabled: return
+	checklist_styled = enabled
+	order_panel.add_theme_stylebox_override("panel", UI.game_card_style() if enabled else UI.box(UI.INK))
+	order_panel.offset_left = -324 if enabled else -284
+	if enabled:
+		order_heading.add_theme_font_override("font", preload("res://retro_dialogue.gd").font())
+		order_heading.add_theme_font_size_override("font_size", 11)
+		order_heading.add_theme_color_override("font_color", Color("24242a"))
+		var badge := UI.box(Color("e4d6b7"), 9)
+		badge.set_corner_radius_all(0)
+		badge.border_color = Color("8f352e")
+		badge.border_width_bottom = 4
+		order_heading.add_theme_stylebox_override("normal", badge)
+		order_text.add_theme_font_size_override("normal_font_size", 17)
+		order_text.add_theme_color_override("default_color", Color("f5e5c2"))
+		order_text.add_theme_constant_override("line_separation", 8)
+	else:
+		order_heading.remove_theme_font_override("font")
+		order_heading.add_theme_font_size_override("font_size", 12)
+		order_heading.add_theme_color_override("font_color", UI.MUTED)
+		order_heading.remove_theme_stylebox_override("normal")
+		order_text.add_theme_font_size_override("normal_font_size", 18)
+		order_text.remove_theme_color_override("default_color")
+		order_text.remove_theme_constant_override("line_separation")
 
 func rush_active() -> bool:
 	return rush_started and not closing_time and phase in ["arriving", "waiting", "leaving"] and shift_remaining > RUSH_START - RUSH_DURATION
@@ -830,6 +872,14 @@ func _spawn_customer() -> void:
 		_pick_random_order()
 	else:
 		order.assign(ORDERS[order_index % ORDERS.size()])
+	if randomize_orders and preload("res://playable_demo.gd").session(self) == null:
+		for index in order.size():
+			if FRIES.topping_mask(order[index]) >= 0:
+				order[index] = FRIES.serving_name(randi_range(0,7))
+			var mask: int = BURGER_STATION.burger_mask(order[index])
+			if mask >= 0:
+				# Some guests want no condiments; others ask for any combination.
+				order[index] = BURGER_STATION.burger_name(mask | (randi_range(0, 7) << 4))
 	order.assign(maintenance.adapt_order(order))
 	_begin_customer_arrival(actor)
 
@@ -1420,7 +1470,7 @@ func _item_model(parent: Node3D, item: String, at: Vector3, size: float, source:
 		pass
 	elif item == "Table trash":
 		dine_in.trash_visual(holder)
-	elif item in BURGER_STATION.BURGERS:
+	elif BURGER_STATION.burger_mask(item) >= 0:
 		BURGER_STATION.model(holder, item)
 	elif item in ["Raw patty", "Cooked patty"]:
 		holder.add_child(BURGER_STATION.patty_model(item == "Cooked patty"))
@@ -1441,7 +1491,7 @@ func _item_model(parent: Node3D, item: String, at: Vector3, size: float, source:
 		soda_station.drink_model(holder, item)
 	elif item in BOTTLE_COOLER.ITEMS:
 		bottle_cooler.model(holder, item)
-	elif item in [FRIES.RAW, FRIES.SERVING]:
+	elif item == FRIES.RAW or FRIES.topping_mask(item) >= 0:
 		FRIES.model(self, holder, item)
 	elif item in ["Coffee", "Soda"] and is_instance_valid(coffee_station):
 		var station: StaticBody3D = coffee_station if item == "Coffee" else soda_station

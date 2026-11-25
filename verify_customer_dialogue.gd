@@ -40,10 +40,10 @@ func check():
 		generated[sample] = true
 		previous_name = sample
 	require(generated.size() > 70, "Names combine varied first and last names")
-	require(paused and chat.is_open and chat.pages.size() == 3, "Small talk, reply and order open paused")
+	require(paused and chat.is_open and chat.pages.size() == 1, "Customer order opens on one paused page")
 	require(chat.typewriter.typing and chat.body.visible_characters == 0,"Dialogue starts hidden for typewriter reveal")
 	require(chat.speaker.text.contains("CLOCK PAUSED"), "Player sees pause status")
-	require(chat.pages[2][1].contains(shift.order[0]), "Dialogue contains actual order")
+	require(chat.pages[0][1].contains(shift.order[0]), "Dialogue contains actual order")
 	var seconds: float = shift.shift_remaining
 	var service: float = shift.service_seconds
 	var fill: float = shift.coffee_station.fill
@@ -58,17 +58,6 @@ func check():
 	if DisplayServer.get_name() != "headless":
 		await RenderingServer.frame_post_draw
 		root.get_texture().get_image().save_png("res://builds/customer-dialogue.png")
-	key(KEY_SPACE)
-	require(chat.page == 1 and chat.speaker.text.begins_with("YOU"), "Space advances to player reply")
-	key(KEY_SPACE, false)
-	chat.next_button.pressed.emit()
-	await process_frame
-	await process_frame
-	require(chat.page == 1 and not chat.typewriter.typing,"First button click reveals the player reply")
-	chat.next_button.pressed.emit()
-	await process_frame
-	await process_frame
-	require(chat.page == 2 and chat.typewriter.typing,"Button advances to a typing order")
 	chat.typewriter.reveal()
 	require(chat.next_button.text == "Start order","Completed order shows its action")
 	game.set_physics_process(true)
@@ -88,5 +77,5 @@ func check():
 	shift.interact(shift.customer.get_node("Interaction"))
 	shift.begin_cleanup()
 	require(not paused and not chat.is_open and shift.phase == "cleanup", "Shift transition clears dialogue pause")
-	if failures == 0: print("PASS: small talk and order, stopped shift/tip/brewing/arrival timers, keyboard/button advance, E release guard, reminders and clean exit")
+	if failures == 0: print("PASS: single-page orders, stopped shift/tip/brewing/arrival timers, keyboard/button advance, E release guard, reminders and clean exit")
 	quit(1 if failures else 0)

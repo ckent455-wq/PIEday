@@ -1,6 +1,6 @@
 # PIEday
 
-Current version: **0.16.1**. Adds first-person serving arms and robber pursuit, cover, missed shots, encounter health bars, headshots, and blood effects.
+Current version: **0.16.5**. Adds burger condiments, customizable fries with melted cheese and sauce drizzles, retro interaction prompts and duty checklists, shorter customer dialogue, and tray cleanup after robberies.
 
 The game opens with a typewriter-style story on a black screen. Press E or
 Space to reveal each passage and advance, then choose Open the Diner. Earn $15,000 toward Grandpa's

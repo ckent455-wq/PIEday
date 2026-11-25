@@ -19,6 +19,7 @@ const PRODUCE_INDICES := [TOMATO_INDEX, ONION_INDEX, LETTUCE_INDEX, CHEESE_INDEX
 const PRODUCE_ITEMS := [TOMATO_STOCK, ONION_STOCK, LETTUCE_STOCK, CHEESE_STOCK]
 const CHEESE_SLICE := preload("res://assets/burger/cheese_slice.glb")
 const CHEESE_DRAPED := preload("res://assets/burger/cheese_draped.glb")
+const CONDIMENTS := ["Ketchup", "Mustard", "Pickles"]
 const TOPPINGS := ["Cheese", "Lettuce", "Tomato", "Onion"]
 # Each topping has one bit, so ingredients can be added in any order.
 const BURGERS := [
@@ -37,6 +38,7 @@ var audio: AudioStreamPlayer3D
 var grill: StaticBody3D
 var prep: StaticBody3D
 var raw_tray: StaticBody3D
+var condiment_targets: Array[StaticBody3D] = []
 var ingredient_groups: Array[Node3D] = []
 var ingredients_visible := true
 var tomatoes_stocked := false
@@ -88,6 +90,7 @@ func setup(owner_shift: Node) -> void:
 		bun.add_child(bun_top)
 		bun_top.position.y = 0.018
 	_setup_toppings(counter)
+	_setup_condiments()
 	_setup_produce_box(TOMATO_INDEX, "freezer_tomato", -9.22, "TOMATOES")
 	_setup_produce_box(ONION_INDEX, "freezer_onion", -8.59, "ONIONS")
 	_setup_produce_box(LETTUCE_INDEX, "freezer_lettuce", -7.96, "LETTUCE")
@@ -294,12 +297,17 @@ func _prep_sheet_label(sheet: Node3D, caption: String, y: float, pixel: float, i
 
 func topping_prompt(index: int) -> String:
 	if index in PRODUCE_INDICES and shift.phase == "prep" and not shift.is_practicing() and not _produce_stocked(index):
-		var name: String = TOPPINGS[index].to_lower()
+		var name: String = ingredient_name(index).to_lower()
 		return "[E] Stock " + name + " tray" if shift.carried_item == stock_item(index) else "Bring " + name + " stock from the freezer"
-	var mask := BURGERS.find(shift.carried_item)
-	if mask < 0: return TOPPINGS[index] + " — bring an assembled burger"
-	if mask & (1 << index): return TOPPINGS[index] + " already added"
-	return "[E] Add " + TOPPINGS[index].to_lower()
+	var fries_mask: int = shift.FRIES.topping_mask(shift.carried_item)
+	if fries_mask >= 0:
+		var bit: int = shift.FRIES.topping_bit(index)
+		if bit == 0: return "Fries take cheese, ketchup or mustard"
+		return ingredient_name(index) + " already added" if fries_mask & bit else "[E] Add " + ingredient_name(index).to_lower() + " to fries"
+	var mask := burger_mask(shift.carried_item)
+	if mask < 0: return ingredient_name(index) + " — bring an assembled burger"
+	if mask & (1 << index): return ingredient_name(index) + " already added"
+	return "[E] Add " + ingredient_name(index).to_lower()
 
 func add_topping(index: int) -> void:
 	if not ingredients_visible: return
@@ -312,19 +320,30 @@ func add_topping(index: int) -> void:
 				CHEESE_INDEX: cheese_stocked = true
 			shift._clear_carried(false)
 			refresh()
-			shift._message(TOPPINGS[index] + " tray stocked for the shift.")
+			shift._message(ingredient_name(index) + " tray stocked for the shift.")
 		return
-	var mask := BURGERS.find(shift.carried_item)
+	var fries_mask: int = shift.FRIES.topping_mask(shift.carried_item)
+	if fries_mask >= 0:
+		var bit: int = shift.FRIES.topping_bit(index)
+		if bit == 0:
+			shift._message("Fries take cheese, ketchup or mustard.")
+			return
+		shift.carried_item = shift.FRIES.serving_name(fries_mask | bit)
+		shift._refresh_carried()
+		return
+	var mask := burger_mask(shift.carried_item)
 	if mask < 0:
 		shift._message("Assemble a cooked patty and bun before adding toppings.")
 		return
 	var dressed := mask | (1 << index)
 	if dressed == mask: return
-	shift.carried_item = BURGERS[dressed]
+	shift.carried_item = burger_name(dressed)
 	shift._refresh_carried()
-	shift._message("Added " + TOPPINGS[index].to_lower() + " · " + shift.carried_item)
+	shift._message("Added " + ingredient_name(index).to_lower() + " · " + shift.carried_item)
 
 static func _topping_mesh(parent: Node3D, index: int, at: Vector3, on_burger := false) -> Node3D:
+	if index >= 4:
+		return _condiment_mesh(parent, index, at)
 	if TOPPINGS[index] == "Onion":
 		var slice := Node3D.new()
 		slice.name = "OnionSlice"
@@ -429,6 +448,9 @@ func refresh() -> void:
 		for group in ingredient_groups:
 			group.visible = stocked
 			group.get_parent().set_collision_layer_value(3, stocked)
+	for target in condiment_targets:
+		target.visible = stocked
+		target.collision_layer = 4 if stocked else 0
 	if is_instance_valid(tomato_ingredients):
 		tomato_ingredients.visible = stocked and (tomatoes_stocked or shift.is_practicing())
 	if is_instance_valid(onion_ingredients):
@@ -488,10 +510,86 @@ static func model(parent: Node3D, item := "Burger") -> void:
 	var top = preload("res://assets/burger/burger_bun_top.glb").instantiate()
 	parent.add_child(top)
 	var height := 0.0405
-	var mask := maxi(0, BURGERS.find(item))
-	for index in range(TOPPINGS.size()):
+	var mask := maxi(0, burger_mask(item))
+	for index in range(7):
 		if mask & (1 << index):
 			var offset := 0.003 if index == 1 else 0.0
 			_topping_mesh(parent, index, Vector3(0, height + offset, 0), true)
-			height += [0.006, 0.012, 0.010, 0.006][index]
+			height += [0.006, 0.012, 0.010, 0.006, 0.003, 0.003, 0.008][index]
 	top.position.y = height
+
+static func ingredient_name(index: int) -> String:
+	return TOPPINGS[index] if index < 4 else CONDIMENTS[index - 4]
+
+static func burger_name(mask: int) -> String:
+	var extras := PackedStringArray()
+	for index in range(3):
+		if mask & (1 << (index + 4)): extras.append(CONDIMENTS[index].to_lower())
+	return BURGERS[mask & 15] + (" with " + ", ".join(extras) if not extras.is_empty() else "")
+
+static func burger_mask(item: String) -> int:
+	var parts := item.split(" with ")
+	var mask := BURGERS.find(parts[0])
+	if mask < 0: return -1
+	if parts.size() > 1:
+		for extra in parts[1].split(", "):
+			var index := CONDIMENTS.find(extra.capitalize())
+			if index < 0: return -1
+			mask |= 1 << (index + 4)
+	return mask
+
+static func _condiment_mesh(parent: Node3D, index: int, at: Vector3) -> Node3D:
+	var group := Node3D.new()
+	parent.add_child(group)
+	group.position = at
+	for i in range(3):
+		var mesh := MeshInstance3D.new()
+		var disc := CylinderMesh.new()
+		disc.top_radius = .036 if index == 6 else .025
+		disc.bottom_radius = disc.top_radius
+		disc.height = .007 if index == 6 else .003
+		disc.radial_segments = 12
+		var material := StandardMaterial3D.new()
+		material.albedo_color = Color("699236") if index == 6 else Color("c52d24") if index == 4 else Color("e7bb26")
+		disc.material = material
+		mesh.mesh = disc
+		group.add_child(mesh)
+		mesh.position = Vector3((i-1)*.048,0,(i%2)*.04-.02)
+	return group
+
+func _setup_condiments() -> void:
+	var table := shift.game.find_child("Table_Metal", true, false) as MeshInstance3D
+	var center := Vector3(5.865,1.178,-9.342)
+	if table != null:
+		var bounds: AABB = table.global_transform * table.get_aabb()
+		center = bounds.get_center()
+		center.y = bounds.end.y
+	for index in range(4,7):
+		var target := _target("burger_topping",center + Vector3(-.20,.108,(index-5)*.28),Vector3(.22,.23,.17))
+		condiment_targets.append(target)
+		target.name = ingredient_name(index) + "Dispenser"
+		target.set_meta("topping_index",index)
+		shift._box(target,Vector3(0,-.095,0),Vector3(.22,.025,.18),Color("72797a"))
+		if index == 6:
+			var jar := MeshInstance3D.new()
+			var cylinder := CylinderMesh.new()
+			cylinder.top_radius = .06
+			cylinder.bottom_radius = .06
+			cylinder.height = .13
+			cylinder.radial_segments = 12
+			var glass := StandardMaterial3D.new()
+			glass.albedo_color = Color("748744")
+			glass.roughness = .25
+			cylinder.material = glass
+			jar.mesh = cylinder
+			target.add_child(jar)
+			jar.position.y = -.01
+			shift._box(target,Vector3(0,.065,0),Vector3(.12,.025,.12),Color("c4c6b3"))
+		else:
+			var bottle: Node3D = load("res://assets/condiments/" + ("ketchup" if index == 4 else "mustard") + "_bottle.glb").instantiate()
+			target.add_child(bottle)
+			bottle.position.y = -.0825
+			var collider := target.get_child(0) as CollisionShape3D
+			(collider.shape as BoxShape3D).size.y = .34
+			collider.position.y = .04
+		shift._label(target,ingredient_name(index).to_upper(),Vector3(.075,.03,0),.00065)

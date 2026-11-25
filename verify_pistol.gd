@@ -49,13 +49,18 @@ func run():
 	shift.pistol.tick()
 	require(shift.carried_item.is_empty() and shift.pistol.pickup.visible,"Q returns pistol")
 	shift.pistol.take()
+	shift.tray.append("Coffee")
+	shift.tray_sources.append(null)
+	shift._refresh_tray()
 	var cash = shift.earnings.cash
 	var actor = shift.customer
 	var target = actor.get_node("Interaction")
 	require(shift.pistol.fire(target),"Encounter target accepts shot")
 	require(shift.robbery.robber_health == 50 and shift.carried_item == "Pistol", "First hit wounds robber and retains gun")
+	require(shift.tray == ["Coffee"], "Nonfatal hit keeps tray until encounter ends")
 	require(shift.pistol.fire(target),"Second hit defeats the robber")
 	require(shift.carried_item.is_empty() and shift.pistol.pickup.visible,"Shot returns pistol")
+	require(shift.tray.is_empty() and shift.tray_sources.is_empty(), "Defeating robber clears interrupted tray order")
 	require(actor.get_node("Interaction").get_meta("action") == "corpse","Shot creates a body instead of a departing customer")
 	require(shift.corpses.bodies.size() == 1,"Body persists in diner")
 	require(shift.earnings.cash == cash and shift.lost == 0,"No order penalty")

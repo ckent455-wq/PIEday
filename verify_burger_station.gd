@@ -117,5 +117,37 @@ func check():
  shift.begin_prep(false)
  for group in station.ingredient_groups:
   assert(group.visible == (group not in [station.tomato_ingredients, station.onion_ingredients, station.lettuce_ingredients, station.cheese_ingredients]) and group.get_parent().collision_layer == 4, "Tomorrow starts with empty, targetable topping trays")
+ # Condiments use the same real interaction and serving paths as produce.
+ shift.start_demo()
+ shift.set_process(false)
+ for mask in range(128):
+  assert(station.burger_mask(station.burger_name(mask)) == mask)
+ shift.pickup_item("Burger")
+ for index in range(4,7):
+  var dispenser = station.get_node(station.ingredient_name(index) + "Dispenser")
+  var table_bounds: AABB = game.find_child("Table_Metal",true,false).global_transform * game.find_child("Table_Metal",true,false).get_aabb()
+  assert(absf(dispenser.global_position.y - table_bounds.end.y - .108) < .001)
+  var condiment_eye: Vector3 = dispenser.global_position + Vector3(-1.2,.6,0)
+  await physics_frame
+  assert(game.interaction_at(condiment_eye,condiment_eye.direction_to(dispenser.global_position)).action == dispenser, "Condiments targetable on dining-door prep table")
+  shift.interact(dispenser)
+  var dressed = shift.carried_item
+  shift.interact(dispenser)
+  assert(shift.carried_item == dressed)
+ assert(shift.carried_item == "Burger with ketchup, mustard, pickles")
+ assert(shift.place_carried())
+ shift._bind_customer_actor(shift.customer_line.make_actor(Vector3(-2.4,-.094,-3.6),"male_1"))
+ shift.order.assign(["Burger with ketchup, mustard, pickles"])
+ shift.phase = "waiting"
+ shift.order_taken = true
+ assert(shift.serve_order(), "Matching condiments accepted")
+ shift._spawn_customer()
+ shift.pickup_item("Burger with ketchup")
+ assert(shift.place_carried())
+ shift._bind_customer_actor(shift.customer_line.make_actor(Vector3(-2.4,-.094,-3.6),"male_1"))
+ shift.order.assign(["Burger with mustard"])
+ shift.phase = "waiting"
+ shift.order_taken = true
+ assert(not shift.serve_order(), "Wrong condiments rejected")
  print("PASS: physical flat top and prep targeting, raw pickup, two-sided cook, assembly, physical topping bins, deluxe serving/payment, burning, state restoration and burger orders")
  quit()

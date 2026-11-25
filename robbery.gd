@@ -233,6 +233,8 @@ func fail() -> void:
 	var practice: bool = shift.is_practicing()
 	var stolen: int = 0 if practice else shift.earnings.lose_shift_takings()
 	remaining = -1.0
+	# The interrupted food order is cancelled when the encounter ends.
+	shift._clear_tray(false)
 	show_blackout(stolen, practice)
 	if shift.game.coop != null: shift.game.coop.share_robbery_failure(stolen, practice)
 	if shift.carried_item == "Pistol": shift._clear_carried(false)

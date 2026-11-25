@@ -5,7 +5,7 @@ var player: CharacterBody3D
 var camera: Camera3D
 var spawn_point := Vector3.ZERO
 var pitch := 0.0
-var interaction_label: Label
+var interaction_label
 var target_door: MeshInstance3D
 var doors: Array[MeshInstance3D] = []
 var target_action: Node
@@ -106,12 +106,9 @@ func _ready() -> void:
 	prompt_center.offset_right = 340
 	prompt_center.offset_top = 42
 	prompt_center.offset_bottom = 80
-	interaction_label = Label.new()
+	interaction_label = preload("res://interaction_prompt.gd").new()
 	interaction_label.hide()
 	prompt_center.add_child(interaction_label)
-	interaction_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	interaction_label.add_theme_font_size_override("font_size", 17)
-	interaction_label.add_theme_stylebox_override("normal", preload("res://diner_ui.gd").box(Color("191a1bdf"), 10))
 	var crosshair := Panel.new()
 	ui.add_child(crosshair)
 	crosshair.set_anchors_and_offsets_preset(Control.PRESET_CENTER)

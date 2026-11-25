@@ -244,3 +244,10 @@ Robbers pursue staff who flee the counter, finding a route around furniture and 
 During a robbery, the top-center HUD shows player and robber health (100 HP each). A robber bullet deals 25 damage; a player body shot deals 50 damage and a headshot deals 100 damage. Misses deal no damage. The pistol stays equipped after a nonfatal hit. Bars disappear when the encounter ends and reset for the next robber. Active-encounter health is retained in save states and synchronized in co-op, where the player bar shows shared TEAM health.
 
 Bullet impacts produce brief low-poly blood flecks and small surface stains that fade after ten seconds. Player hits briefly flash the screen red. Blood effects have no collision or gameplay state and clean themselves up.
+
+During opening prep, the upper-right OPENING CHECKLIST tracks each donut flavor and the four burger topping trays using live stock state. Completed duties receive the same green checks as closing duties. Once prep is ready it prompts you to switch on the OPEN sign; service replaces the checklist with the customer HUD. A broken fryer waives donut prep consistently with the existing opening rules. No separate checklist state is saved.
+
+
+Burger orders may request ketchup, mustard and pickles. Hold the assembled burger and interact with the labeled condiments on the metal prep table beside the dining-room door. Existing produce trays stay at the bun station. Cooked fries can receive a cheese slice from the cheese tray, plus ketchup and mustard from the same bottles. Customer requests specify the exact combination; extra or missing toppings count as incorrect. Cheese fries sell for $4; plain fries sell for $3. Condiments are included in the price. Toppings are retained in held/tray item names for saving and co-op synchronization.
+
+Normal customer orders use a single dialogue page; roughly 25% include a brief quip on that same page. The clock still pauses. Interrupted tray orders are discarded at the end of a robbery.

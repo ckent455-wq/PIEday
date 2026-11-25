@@ -158,7 +158,8 @@ func fire(target: Node, hit_position := Vector3.INF, hit_normal := Vector3.UP) -
 	if not shift.robbery.damage_robber(100 if headshot else 50):
 		shift._message("Robber hit! Health: %d / 100" % shift.robbery.robber_health)
 		return true
-	shift._clear_carried(false)
+	# Discard the interrupted order as well as returning the pistol.
+	shift._clear_tray(false)
 	shift.corpses.kill(shift.customer)
 	shift.customer = null
 	shift.robbery.update_health_hud()

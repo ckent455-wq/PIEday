@@ -47,3 +47,18 @@ static func card() -> PanelContainer:
 static func passive(node: Node) -> void:
 	if node is Control: node.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	for child in node.get_children(): passive(child)
+
+static func game_card_style() -> StyleBoxFlat:
+	var card := StyleBoxFlat.new()
+	card.bg_color = Color("1c2026f2")
+	card.border_color = Color("d8c6a2")
+	card.set_border_width_all(2)
+	card.border_width_left = 5
+	card.content_margin_left = 12
+	card.content_margin_right = 16
+	card.content_margin_top = 11
+	card.content_margin_bottom = 11
+	card.shadow_color = Color("00000090")
+	card.shadow_size = 4
+	card.shadow_offset = Vector2(3,4)
+	return card

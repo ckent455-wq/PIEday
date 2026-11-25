@@ -3,29 +3,24 @@ const CONTROLLER := preload("res://controller_input.gd")
 
 const UI := preload("res://diner_ui.gd")
 const RETRO := preload("res://retro_dialogue.gd")
+const SMALL_TALK_CHANCE := 0.25
 const CHATS := [
-	["Work was nonstop today. This is the first chance I've had to sit down.", "Then let's get you something good."],
-	["I had a job interview this morning. I think it went pretty well!", "Good luck! Sounds like a little celebration is in order."],
-	["My dog found every muddy puddle on our walk. One of us had a great morning.", "Sounds like you've earned a break."],
-	["I've been helping my sister move all day. I never want to see another staircase.", "You've done enough heavy lifting. I'll take it from here."],
-	["I finally finished the book I've been reading for months. Not sure what to do with myself now.", "Pie is a pretty good next chapter."],
-	["The bus broke down, so I walked the last few blocks. At least it brought me here.", "Well, I'm glad you made it."],
-	["It's my day off. No plans, no errands. Just wanted to treat myself.", "That sounds like a good way to spend it."],
-	["My kid learned to ride a bike today. I think I ran farther than they rode.", "That's a good day. A tiring one, but a good one."],
-	["I burned dinner. Again. Figured I'd leave the cooking to somebody else tonight.", "We've got you covered."],
-	["Nothing special happened today. Honestly, I needed a quiet one.", "Quiet days deserve good food too."],
-	["The automatic doors at the bank only opened for me halfway. Now the manager thinks I want a smaller bank.", "I'll make sure you get a full-sized slice."],
-	["I brought my own chair to a job interview. They already had a chair, so now it looks like I'm interviewing THEM.", "You can use one of ours. No interview required."],
-	["I told my dentist I floss every day. He asked what brand. I said 'loose.' I haven't answered his calls since.", "We can probably keep this conversation off your dental record."],
-	["A pigeon followed me for six blocks. I bought it a bus ticket. The driver says that makes it MY pigeon.", "Let's start with food for you."],
-	["I tried returning a birthday cake because nobody came. The bakery said that isn't a defect in the cake.", "I'm sorry. I can at least help with dessert."],
-	["My coworker called my lunch 'ambitious.' It was just a sandwich in a shoebox. The lid was VERY secure.", "We usually use plates here."],
-	["I accidentally waved at a mannequin. The employee waved back, so now there are TWO people I can't go near.", "This counter should be a safe distance from both of them."],
-	["I complained that the elevator music was too quiet. They turned it up. People think I'm the elevator DJ now.", "You're off duty in here."],
-	["My neighbor keeps borrowing my ladder to look over my fence. I raised the fence. Now he's asking for a taller ladder.", "That sounds like a very expensive conversation."],
-	["I called a meeting to find out who keeps calling meetings. Six people asked if there would be snacks.", "At least we can solve the snack part."],
-	["Someone at the grocery store said 'nice cart.' I panicked and said I built it. They want me to build eleven more.", "Your secret is safe here."],
-	["I put a tiny tie on my thermostat. My landlord says I can't promote appliances without written permission.", "Sounds like you both need a break."],
+ "Long day. I needed this.",
+ "The job interview went well! I think.",
+ "My dog found every puddle today.",
+ "I burned dinner again.",
+ "Day off. Just treating myself.",
+ "I finished my book. Now what?",
+ "The bus broke down. I walked here.",
+ "Nothing happened today. Perfect.",
+ "I brought my own interview chair. Bad move.",
+ "A pigeon thinks I'm its landlord.",
+ "Someone called my lunch ambitious.",
+ "I waved at a mannequin. Can't go back.",
+ "Apparently I'm the elevator DJ now.",
+ "My thermostat got promoted. I'm furious.",
+ "I said I built a shopping cart. They want eleven.",
+ "My ladder is in a custody dispute.",
 ]
 var shift: Node3D
 var overlay: Control
@@ -84,14 +79,14 @@ func begin(actor: Node3D, items: Array, reminder := false) -> void:
 func make_pages(actor: Node3D, items: Array, reminder := false) -> Array:
 	pages.clear()
 	customer_name = str(actor.get_meta("display_name", "Customer"))
-	if not reminder:
+	var line := ""
+	if not reminder and randf() < SMALL_TALK_CHANCE:
 		var index := randi_range(0, CHATS.size() - 1)
 		if last_chat >= 0: index = (last_chat + randi_range(1, CHATS.size() - 1)) % CHATS.size()
 		last_chat = index
 		actor.set_meta("chat_index", index)
-		pages.append([customer_name.to_upper(), CHATS[index][0]])
-		pages.append(["YOU", CHATS[index][1]])
-	pages.append([customer_name.to_upper(), "Could I get " + ", ".join(items) + ", please?"])
+		line = CHATS[index] + "\n\n"
+	pages.append([customer_name.to_upper(), line + "Could I get " + ", ".join(items) + ", please?"])
 	return pages.duplicate(true)
 
 func show_pages(lines: Array) -> void:

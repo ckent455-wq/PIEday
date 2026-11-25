@@ -140,8 +140,8 @@ func is_broken(id: String) -> bool:
 
 func item_available(item: String) -> bool:
 	if item.ends_with("pie"): return not is_broken("oven")
-	if item in shift.BURGER_STATION.BURGERS: return not is_broken("grill")
-	if item in shift.DONUTS.TYPES or item == shift.FRIES.SERVING: return not is_broken("fryer")
+	if shift.BURGER_STATION.burger_mask(item) >= 0: return not is_broken("grill")
+	if item in shift.DONUTS.TYPES or shift.FRIES.topping_mask(item) >= 0: return not is_broken("fryer")
 	if item == "Coffee": return not is_broken("coffee")
 	if item in shift.soda_station.FLAVORS or item == "Soda": return not is_broken("soda")
 	return true

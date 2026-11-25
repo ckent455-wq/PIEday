@@ -83,7 +83,6 @@ func check():
 	shift.earnings.cash = 1234
 	shift.earnings.shift_takings = 234
 	shift.add_item("Coffee")
-	var tray = shift.tray.duplicate()
 	shift.service_bell.ring()
 	require(not shift.serve_order() and shift.refusal_required(), "Cannot submit food to this customer")
 	# A normal queued customer must move up immediately after refusal.
@@ -93,7 +92,7 @@ func check():
 	require(shift.customer == next and line.departing.size() == 1, "Refused customer leaves and queue advances")
 	require(shift.earnings.cash == 1000 and shift.robbery.blackout.visible, "Refusing the robber loses only current shift earnings")
 	require(shift.robbery.caption.text.contains("$234"), "The blackout reports the amount stolen")
-	require(shift.tray == tray, "Prepared food is preserved")
+	require(shift.tray.is_empty() and shift.tray_sources.is_empty(), "Robbery failure clears the interrupted tray order")
 	require(actor.get_node("Interaction").get_meta("action") == "departing_customer", "No duplicate refusal")
 	await create_timer(2.5).timeout
 	advance(shift, 1)
@@ -127,6 +126,8 @@ func check():
 	line.last_was_nude = false
 	shift.order_taken = true
 	for i in range(6):
+		# Isolate the consecutive-customer rule from the per-shift robbery cap.
+		line.robbery_started_this_shift = false
 		var sample = line.make_actor(Vector3.ZERO)
 		require(bool(sample.get_meta("requires_refusal")) == (i % 2 == 0), "Back-to-back special customers are prevented")
 		sample.queue_free()

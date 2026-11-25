@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.16.5
+
+- Add ketchup, mustard and pickles on the prep table beside the dining-room door, with requested burger combinations.
+- Use the custom Blender squeeze bottle for ketchup and a yellow mustard variant.
+- Add cheese, ketchup and mustard requests for fries, with melted cheese and rounded sauce drizzles following the fries.
+- Replace interaction prompts with retro cards and matching morning/closing duty checklists.
+- Reduce normal customer dialogue to one page, with short quips on roughly one in four orders.
+- Clear interrupted tray orders when a robbery ends, whether the robber is defeated or escapes.
+
 ## 0.16.4
 
 - Find and join a co-op host by name on the same local network.
